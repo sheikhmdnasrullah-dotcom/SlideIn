@@ -18,9 +18,9 @@ Go · Python · Lua · TypeScript · Docker.
 - 🔧 What I do there: architecture, deliverability engine, security
   hardening (8 findings fixed with regression tests), KumoMTA policy,
   testing/CI, and all documentation.
-- 📖 Start here: [README](https://github.com/<username>/slidein) ·
-  [Architecture](https://github.com/<username>/slidein/tree/main/docs/architecture) ·
-  [Case study](https://github.com/<username>/slidein/tree/main/docs/portfolio)
+- 📖 Start here: [README](https://github.com/sheikhmdnasrullah-dotcom/SlideIn) ·
+  [Architecture](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/tree/main/docs/architecture) ·
+  [Case study](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/tree/main/docs/portfolio)
 
 **Also exploring:** evidence-tracked AI prospect research (mock-first,
 human review by default) and multi-tenant hardening toward a future hosted

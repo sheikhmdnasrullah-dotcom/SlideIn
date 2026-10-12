@@ -39,8 +39,8 @@ public architecture, no operational data).
 
 ## Repository
 
-Link placeholder: `https://github.com/<username>/slidein` (repository not
-yet created — see publication preflight).
+Repository: `https://github.com/sheikhmdnasrullah-dotcom/SlideIn`
+(public since 2026-10-12).
 
 ## Timeline
 

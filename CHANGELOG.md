@@ -40,9 +40,9 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `./dev` + `./doctor`: FULLY OPERATIONAL; e2e 8/8; platform suite 8/8
   (2026-10-12, local stack, Mailpit sink).
 
-## [0.1.0] — unreleased
+## [0.1.0] — 2026-10-12
 
-Initial open-source release candidate. Contents and verification status:
+Initial public alpha (tag `v0.1.0`). Contents and verification status:
 `docs/project/CURRENT_STATE.md`, `docs/project/PROJECT_AUDIT.md` §10.
-Release checklist and known limitations accompany the 0.1.0 tag; no tag
-exists yet.
+Known limitations: `docs/project/TECHNICAL_DEBT.md`. No upgrade path yet —
+fresh clones only; no production deployment exists.
