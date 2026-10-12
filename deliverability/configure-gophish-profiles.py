@@ -14,7 +14,9 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-API_BASE = "http://169.58.207.75:8333/api"
+API_BASE = os.environ.get("GOPHISH_API_URL", "http://127.0.0.1:8333/api")
+KUMO_SMTP_HOST = os.environ.get("KUMO_SMTP_HOST", "127.0.0.1")
+KUMO_SMTP_PORT = int(os.environ.get("KUMO_SMTP_PORT", "2587"))
 TIMEOUT = 10
 
 PROFILES = [
@@ -39,27 +41,29 @@ PROFILES = [
 ]
 
 def get_headers():
-    return {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
+    api_key = os.environ.get("GOPHISH_API_KEY", "")
+    if api_key:
+        headers["Authorization"] = api_key
+    return headers
 
 def configure_smtp_profile(profile: dict) -> bool:
     """Configure a GoPhish sending profile to use KumoMTA."""
+    # Field names must match models/smtp.go exactly: from_address is a bare
+    # email, host carries host:port, headers is a list. KumoMTA presents a
+    # self-signed cert on the loopback relay, hence ignore_cert_errors.
     data = {
         "name": profile["name"],
-        "from": profile["from_name"],
-        "email": profile["email"],
-        "host": "169.58.207.75",
-        "port": 2587,
+        "from_address": profile["email"],
+        "host": f"{KUMO_SMTP_HOST}:{KUMO_SMTP_PORT}",
         "username": "outbound",
-        "password": os.environ.get("KUMO_AUTH_PASS", "local-dev-password"),
-        "use_tls": True,
-        "headers": {},
-        "ignore_tls": False,
-        "trusted": True,
-        "default_reply_to": profile["reply_to"],
+        "password": os.environ["KUMO_AUTH_PASS"],
+        "ignore_cert_errors": True,
+        "headers": [],
     }
     try:
         req = urllib.request.Request(
-            f"{API_BASE}/smtp",
+            f"{API_BASE}/smtp/",
             data=json.dumps(data).encode(),
             headers=get_headers(),
             method="POST",
@@ -69,9 +73,12 @@ def configure_smtp_profile(profile: dict) -> bool:
             print(f"  [OK] {profile['email']}: Configured (ID: {result.get('id', 'N/A')})")
             return True
     except urllib.error.HTTPError as e:
-        # Profile might already exist - try PUT
-        if e.code == 409 or e.code == 400:
-            print(f"  [SKIP] {profile['email']}: May already exist")
+        if e.code == 409:
+            # Name already in use: idempotent reruns treat this as success.
+            print(f"  [OK] {profile['email']}: Already configured")
+            return True
+        if e.code == 400:
+            print(f"  [SKIP] {profile['email']}: Rejected (check fields)")
         else:
             print(f"  [ERR] {profile['email']}: HTTP {e.code}")
         return False
@@ -80,9 +87,17 @@ def configure_smtp_profile(profile: dict) -> bool:
         return False
 
 def main():
+    if not os.environ.get("GOPHISH_API_KEY"):
+        print("ERROR: GOPHISH_API_KEY is not set (refusing unauthenticated API calls).")
+        print("Read it from the GoPhish host: cat /root/gophish/api_key.txt")
+        sys.exit(2)
+    if not os.environ.get("KUMO_AUTH_PASS"):
+        print("ERROR: KUMO_AUTH_PASS is not set (refusing to configure a broken relay password).")
+        sys.exit(2)
     print("=" * 60)
     print("  GoPhish Profile Configuration")
-    print("  SMTP Relay: KumoMTA (169.58.207.75:2587)")
+    print(f"  API: {API_BASE}")
+    print(f"  SMTP Relay: KumoMTA ({KUMO_SMTP_HOST}:{KUMO_SMTP_PORT})")
     print("=" * 60)
     print()
 

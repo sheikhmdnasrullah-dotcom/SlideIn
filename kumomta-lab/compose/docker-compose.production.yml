@@ -16,6 +16,7 @@ networks:
 
 volumes:
   kumo-data:
+  kumo-etc:
   redis-data:
   prom-data:
   grafana-data:
@@ -34,27 +35,33 @@ services:
           - mail.nasrullahtanim.me
           - kumo.nasrullahtanim.me
     ports:
-      - "0.0.0.0:2587:587"
-      - "0.0.0.0:8029:8029"
+      - "127.0.0.1:2587:2587"
+      - "127.0.0.1:8029:8029"
     volumes:
       - kumo-data:/var/lib/kumo
       - /opt/kumomta-lab/policy:/etc/kumo/policy:ro
       - /opt/kumomta-lab/dkim:/etc/kumo/dkim:ro
       - /opt/kumomta/entrypoint.sh:/entrypoint.sh:ro
+      - kumo-etc:/opt/kumomta/etc
+      - /opt/kumomta/etc/policy/secrets.lua:/opt/kumomta/etc/policy/secrets.lua:ro
     environment:
       <<: *kumo-env
-      KUMO_LISTENER_SMTP: "0.0.0.0:587"
+      KUMO_LISTENER_SMTP: "0.0.0.0:2587"
       KUMO_LISTENER_HTTP: "0.0.0.0:8029"
       KUMO_POLICY_DIR: /etc/kumo/policy
       KUMO_DKIM_DIR: /etc/kumo/dkim
       KUMO_CONFIG_PATH: /etc/kumo/policy/production_init.lua
     cap_drop: ["ALL"]
-    cap_add: ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID"]
+    # Entrypoint starts as root to chown the spool dirs, then setpriv-drops
+    # to kumod(999); DAC_OVERRIDE+FOWNER let it fix ownership of volumes
+    # persisted by earlier runs. Steady state stays unprivileged + no-new-privs.
+    cap_add: ["NET_BIND_SERVICE", "CHOWN", "DAC_OVERRIDE", "FOWNER", "SETUID", "SETGID"]
     security_opt: ["no-new-privileges:true"]
     read_only: true
     entrypoint: ["/entrypoint.sh"]
     tmpfs:
       - /tmp:mode=1777,size=128m
+      - /var/log/kumo:mode=1777,size=64m
     healthcheck:
       test: ["CMD", "bash", "-c", ": > /dev/tcp/127.0.0.1/2587 && : > /dev/tcp/127.0.0.1/8029"]
       interval: 15s

@@ -1,15 +1,22 @@
-{
-  "name": "kumo-mta",
-  "jobs": [
-    {
-      "job_name": "kumomta",
-      "scrape_interval": "15s",
-      "metrics_path": "/metrics",
-      "static_configs": [
-        {
-          "targets": ["kumomta:8029"]
-        }
-      ]
-    }
-  ]
-}
+# Prometheus config for the SlideIn production stack.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  - job_name: kumomta
+    scrape_interval: 15s
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["kumomta:8029"]
+  - job_name: prometheus
+    static_configs:
+      - targets: ["127.0.0.1:9090"]

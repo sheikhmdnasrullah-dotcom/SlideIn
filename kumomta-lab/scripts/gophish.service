@@ -1,0 +1,16 @@
+[Unit]
+Description=GoPhish Campaign Server (SlideIn)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/gophish
+ExecStart=/root/gophish/gophish
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

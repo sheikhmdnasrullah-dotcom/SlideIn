@@ -1,137 +1,65 @@
-{
-  "alertmanager.yml": {
-    "global": {
-      "resolve_timeout": "5m"
-    },
-    "route": {
-      "receiver": "webhook",
-      "group_by": ["alertname", "domain"],
-      "group_wait": "30s",
-      "group_interval": "5m",
-      "repeat_interval": "1h",
-      "routes": [
-        {
-          "match": {
-            "severity": "critical"
-          },
-          "receiver": "critical"
-        },
-        {
-          "match": {
-            "severity": "warning"
-          },
-          "receiver": "warning"
-        }
-      ]
-    },
-    "receivers": [
-      {
-        "name": "webhook",
-        "webhook_configs": [
-          {
-            "url": "http://169.58.207.75:8095/api/alert",
-            "send_resolved": true
-          }
-        ]
-      }
-    ]
-  },
-  "alerts.yml": {
-    "groups": [
-      {
-        "name": "kumo-mta",
-        "rules": [
-          {
-            "alert": "KumoMTADown",
-            "expr": "up{job=\"kumomta\"} == 0",
-            "for": "1m",
-            "labels": {
-              "severity": "critical"
-            },
-            "annotations": {
-              "summary": "KumoMTA is down",
-              "description": "KumoMTA container is not responding"
-            }
-          },
-          {
-            "alert": "HighBounceRate",
-            "expr": "rate(kumo_messages_bounced_total[5m]) > 0.05",
-            "for": "2m",
-            "labels": {
-              "severity": "warning"
-            },
-            "annotations": {
-              "summary": "Bounce rate elevated",
-              "description": "Bounce rate above 5% in last 5 minutes"
-            }
-          },
-          {
-            "alert": "DKIMSigningFailed",
-            "expr": "rate(kumo_dkim_sign_errors_total[5m]) > 0",
-            "for": "1m",
-            "labels": {
-              "severity": "critical"
-            },
-            "annotations": {
-              "summary": "DKIM signing failures detected",
-              "description": "DKIM is not signing messages correctly"
-            }
-          },
-          {
-            "alert": "LowInboxPlacement",
-            "expr": "seed_placement_inbox_pct < 80",
-            "for": "5m",
-            "labels": {
-              "severity": "warning"
-            },
-            "annotations": {
-              "summary": "Seed inbox placement below 80%",
-              "description": "Check DNS, warmup status, and sending patterns"
-            }
-          },
-          {
-            "alert": "HighDeferralRate",
-            "expr": "rate(kumo_messages_deferred_total[5m]) > 0.1",
-            "for": "2m",
-            "labels": {
-              "severity": "warning"
-            },
-            "annotations": {
-              "summary": "Deferral rate elevated",
-              "description": "Too many deferrals from receiving servers"
-            }
-          }
-        ]
-      },
-      {
-        "name": "gophish",
-        "rules": [
-          {
-            "alert": "GoPhishDown",
-            "expr": "up{job=\"gophish\"} == 0",
-            "for": "1m",
-            "labels": {
-              "severity": "critical"
-            },
-            "annotations": {
-              "summary": "GoPhish is down",
-              "description": "GoPhish is not responding"
-            }
-          },
-          {
-            "alert": "GoPhishCampaignFailed",
-            "expr": "rate(gophish_campaign_errors_total[5m]) > 0",
-            "for": "2m",
-            "labels": {
-              "severity": "warning"
-            },
-            "annotations": {
-              "summary": "GoPhish campaign errors",
-              "description": "Campaigns are failing to send"
-            }
-          }
-        ]
-      }
-    ]
-  }
-}
+# Alert rules (converted from the JSON bundle 2026-10-12).
+# NOTE: rules on job="gophish" stay dormant until a GoPhish metrics
+# exporter exists; KumoMTA custom metrics (kumo_*) fire only if the
+# exporter exposes them.
+groups:
+- name: kumo-mta
+  rules:
+  - alert: KumoMTADown
+    expr: up{job="kumomta"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: KumoMTA is down
+      description: KumoMTA container is not responding
+  - alert: HighBounceRate
+    expr: rate(kumo_messages_bounced_total[5m]) > 0.05
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Bounce rate elevated
+      description: Bounce rate above 5% in last 5 minutes
+  - alert: DKIMSigningFailed
+    expr: rate(kumo_dkim_sign_errors_total[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: DKIM signing failures detected
+      description: DKIM is not signing messages correctly
+  - alert: LowInboxPlacement
+    expr: seed_placement_inbox_pct < 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Seed inbox placement below 80%
+      description: Check DNS, warmup status, and sending patterns
+  - alert: HighDeferralRate
+    expr: rate(kumo_messages_deferred_total[5m]) > 0.1
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: Deferral rate elevated
+      description: Too many deferrals from receiving servers
+- name: gophish
+  rules:
+  - alert: GoPhishDown
+    expr: up{job="gophish"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: GoPhish is down
+      description: GoPhish is not responding
+  - alert: GoPhishCampaignFailed
+    expr: rate(gophish_campaign_errors_total[5m]) > 0
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: GoPhish campaign errors
+      description: Campaigns are failing to send
