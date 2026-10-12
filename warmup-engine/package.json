@@ -15,7 +15,7 @@
     "ioredis": "^5.4.1",
     "nodemailer": "^6.9.16",
     "imapflow": "^1.0.171",
-    "mailparser": "^3.7.2",
+    "mailparser": "^3.9.37",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7"
   }
