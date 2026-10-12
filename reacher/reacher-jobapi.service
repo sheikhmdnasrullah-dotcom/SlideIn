@@ -1,0 +1,17 @@
+[Unit]
+Description=SlideIn lead-verification job API (Reacher bulk engine)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/reacher/job_api
+EnvironmentFile=/opt/reacher/job_api/.env
+ExecStart=/opt/reacher/job_api/.venv/bin/python -m uvicorn app:app --host 127.0.0.1 --port 8091
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
