@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# SlideIn Local Development Shutdown Script
+set -e
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$HERE"
+
+echo "=================================================================="
+echo "          Stopping SlideIn Local Development Environment          "
+echo "=================================================================="
+
+# 1. Stop local application processes — patterns are scoped to THIS checkout
+#    so unrelated `next dev` servers (other projects, 9router, ...) survive.
+if pgrep -f "$HERE/deliverability/server.py" >/dev/null 2>&1; then
+    echo "[*] Stopping SlideIn API & Command Center..."
+    pkill -f "$HERE/deliverability/server.py" || true
+    echo "[OK] SlideIn API server stopped."
+fi
+
+if pgrep -f "$HERE/gophish_local" >/dev/null 2>&1; then
+    echo "[*] Stopping SlideIn Go API backend..."
+    pkill -f "$HERE/gophish_local" || true
+    echo "[OK] Go backend stopped."
+fi
+
+if pgrep -f "$HERE/project/node_modules" >/dev/null 2>&1; then
+    echo "[*] Stopping SlideIn Next.js Workspace..."
+    pkill -f "$HERE/project/node_modules" || true
+    echo "[OK] Next.js Workspace stopped."
+fi
+
+
+# 2. Stop Docker Compose infrastructure (docker may be down — not fatal)
+echo "[*] Stopping Docker containers..."
+docker compose -f docker-compose.local.yml stop || true
+
+echo "[OK] All SlideIn local services stopped cleanly without corrupting state."

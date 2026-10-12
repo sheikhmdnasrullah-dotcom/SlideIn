@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible defect
+labels: [bug]
+body:
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: e.g. deliverability API, campaign worker, KumoMTA policy, docs
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Exact reproduction steps
+      description: Commands run, from a clean checkout if possible
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected vs actual behavior
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: go version, python3 --version, docker --version, OS, commit/tag
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (credentials redacted)
+      description: Never paste API keys, passwords, or private URLs
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Security
+      options:
+        - label: This is not a vulnerability report (vulnerabilities go through SECURITY.md, not issues)
+          required: true

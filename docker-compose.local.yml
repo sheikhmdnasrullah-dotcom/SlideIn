@@ -1,0 +1,92 @@
+name: slidein-local
+
+networks:
+  slidein-net:
+    driver: bridge
+
+volumes:
+  kumo-data:
+  mailpit-data:
+  redis-data:
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: slidein-mailpit
+    hostname: mailpit
+    networks:
+      - slidein-net
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP port
+      - "127.0.0.1:8025:8025"   # Web UI and REST API
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    volumes:
+      - mailpit-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8025/api/v1/info"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: slidein-redis
+    hostname: redis
+    networks:
+      - slidein-net
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  kumomta:
+    image: ghcr.io/kumocorp/kumomta:latest
+    container_name: slidein-kumomta
+    hostname: kumo.slidein.local
+    networks:
+      - slidein-net
+    ports:
+      - "127.0.0.1:2587:587"     # SMTP submission (AUTH required)
+      - "127.0.0.1:8029:8029"   # HTTP Admin API
+    depends_on:
+      mailpit:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - kumo-data:/var/lib/kumo
+      - ./kumomta-lab/policy:/etc/kumo/policy:ro
+      - ./kumomta-lab/dkim:/etc/kumo/dkim:ro
+      - ./kumomta/entrypoint-local.sh:/entrypoint-local.sh:ro
+    environment:
+      KUMO_NODE_NAME: "slidein-kumo-1"
+      KUMO_LOG_FORMAT: "json"
+      KUMO_LOG_LEVEL: "info"
+      KUMO_ENABLE_TLS_CLIENT: "true"
+      KUMO_LISTENER_HOST: "0.0.0.0"
+      KUMO_LISTENER_SMTP: "0.0.0.0:587"
+      KUMO_LISTENER_HTTP: "0.0.0.0:8029"
+      KUMO_POLICY_DIR: "/etc/kumo/policy"
+      KUMO_DKIM_DIR: "/etc/kumo/dkim"
+      KUMO_CONFIG_PATH: "/etc/kumo/policy/local_init.lua"
+      REDIS_URL: "redis://redis:6379/0"
+      MAILPIT_HOST: "mailpit"
+      MAILPIT_PORT: "1025"
+    tmpfs:
+      - /tmp:mode=1777,size=128m
+    entrypoint: ["/entrypoint-local.sh"]
+    healthcheck:
+      test: ["CMD", "bash", "-c", ": > /dev/tcp/127.0.0.1/587 && : > /dev/tcp/127.0.0.1/8029"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

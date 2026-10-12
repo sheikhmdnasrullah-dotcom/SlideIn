@@ -1,0 +1,102 @@
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Folders
+_obj
+_test
+
+# Node Modules
+node_modules
+
+# Architecture specific extensions/prefixes
+*.[568vq]
+[568vq].out
+.DS_Store
+
+*.cgo1.go
+*.cgo2.c
+_cgo_defun.c
+_cgo_gotypes.go
+_cgo_export.*
+
+_testmain.go
+
+gophish_admin.crt
+gophish_admin.key
+
+*.exe
+gophish.db*
+gophish
+gophish_local*
+.aider*
+
+# ---------------------------------------------------------------------------
+# Secrets & environment (PROJECT_POLICY §2.1: secrets live only in local
+# config / .env files and must never enter git history)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+config.json
+config.local.json
+config.production.json
+gophish-config-production.json
+deliverability/config.json
+deliverability/config.local.json
+deliverability/config.production.json
+warmup-engine/config.json
+warmup-engine/config.local.json
+warmup-engine/config.production.json
+warmup-engine/accounts.json
+kumomta-lab/secrets/
+
+# Not for publication: dead experimental file (header-forgery prototype,
+# contradicts PROJECT_POLICY security rules, wired to nothing)
+config/kumomta_policy.lua
+
+# ---------------------------------------------------------------------------
+# Nested repositories — own git history & remotes, never published from here
+# ---------------------------------------------------------------------------
+/project/
+/workspace-app/
+/kumomta-src/
+
+# ---------------------------------------------------------------------------
+# Runtime state, logs, databases — never committed
+# ---------------------------------------------------------------------------
+*.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.pid
+__pycache__/
+*.py[cod]
+venv/
+venv_product/
+.venv/
+.pytest_cache/
+.ruff_cache/
+.kilo/
+.claude/
+.agents/
+
+# ---------------------------------------------------------------------------
+# Private data: lead lists, conversations, shell/session logs, server snapshots
+# ---------------------------------------------------------------------------
+/Leads to Mail/
+/conversations/
+/bash_events/
+kumomta-lab/scripts/vps-audit-live.txt
+*.csv
+*.csv~
+*.mmdb
+**/.volume_state.json
+**/.placement_log.csv
+
+# Local TLS material
+*.pem
+*.key
+!**/dummy*.key

@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# SlideIn Local Development Bootstrapper
+set -e
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$HERE"
+
+echo "=================================================================="
+echo "          Starting SlideIn Local Development Environment          "
+echo "=================================================================="
+
+# 1. Check Docker Daemon
+if ! docker info >/dev/null 2>&1; then
+    echo "[!] Docker daemon not reachable. Attempting to start Docker Desktop..."
+    open -a Docker || true
+    echo "[*] Waiting for Docker daemon to become responsive..."
+    for i in {1..30}; do
+        if docker info >/dev/null 2>&1; then
+            echo "[OK] Docker daemon is ready."
+            break
+        fi
+        sleep 2
+    done
+fi
+
+# 2. Build Go binary if missing
+if [ ! -f "$HERE/gophish_local" ]; then
+    echo "[*] Compiling SlideIn Go application binary..."
+    go build -o "$HERE/gophish_local" .
+    echo "[OK] Binary built: gophish_local"
+fi
+
+# 3. Start Local Docker Infrastructure Stack
+echo "[*] Booting local infrastructure (Mailpit, Redis, KumoMTA)..."
+docker compose -f docker-compose.local.yml up -d
+
+# 4. Wait for services to be ready
+echo "[*] Verifying service readiness..."
+for i in {1..20}; do
+    MAILPIT_UP=0
+    REDIS_UP=0
+    KUMO_UP=0
+    nc -z 127.0.0.1 1025 >/dev/null 2>&1 && MAILPIT_UP=1 || true
+    nc -z 127.0.0.1 6379 >/dev/null 2>&1 && REDIS_UP=1 || true
+    nc -z 127.0.0.1 2587 >/dev/null 2>&1 && KUMO_UP=1 || true
+
+    if [ "$MAILPIT_UP" -eq 1 ] && [ "$REDIS_UP" -eq 1 ] && [ "$KUMO_UP" -eq 1 ]; then
+        echo "[OK] All core infrastructure ports are listening!"
+        break
+    fi
+    sleep 1
+done
+
+# 5. Start Go Backend if not already running
+if ! nc -z 127.0.0.1 3333 >/dev/null 2>&1; then
+    echo "[*] Starting SlideIn Go API backend..."
+    nohup "$HERE/gophish_local" --config="$HERE/config.local.json" > "$HERE/gophish_local.log" 2>&1 &
+    sleep 2
+fi
+
+# 6. Start SlideIn Unified API & Command Center if not running
+if ! nc -z 127.0.0.1 8088 >/dev/null 2>&1; then
+    echo "[*] Starting SlideIn API & Command Center..."
+    nohup python3 "$HERE/deliverability/server.py" > "$HERE/slidein_server.log" 2>&1 &
+    sleep 1
+fi
+
+# 7. Start SlideIn Acquisition OS Next.js Workspace if not already running
+WS_MARKER="$HERE/project/node_modules"
+if pgrep -f "$WS_MARKER" >/dev/null 2>&1; then
+    echo "[OK] Acquisition OS Workspace already running."
+else
+    WS_PORT=3000
+    if nc -z 127.0.0.1 3000 >/dev/null 2>&1; then
+        # Port 3000 is occupied by a foreign app — fall back to 3001 so the
+        # readiness check below can never be satisfied by someone else's server.
+        WS_PORT=3001
+    fi
+    echo "[*] Starting SlideIn Acquisition OS Workspace (Next.js, port $WS_PORT)..."
+    (cd "$HERE/project" && nohup npm run dev -- -p "$WS_PORT" > "$HERE/nextjs_dev.log" 2>&1 &)
+    sleep 2
+fi
+
+# Resolve the port OUR workspace process is actually listening on
+WS_PID=$(pgrep -f "$WS_MARKER" | head -1)
+WS_PORT=$(ps -o command= -p "$WS_PID" 2>/dev/null | sed -n 's/.*-p \([0-9][0-9]*\).*/\1/p')
+WS_PORT=${WS_PORT:-3000}
+
+# 8. Run Diagnostic Doctor (non-fatal: links below are printed either way)
+echo ""
+DR_EXIT=0
+python3 "$HERE/doctor" || DR_EXIT=$?
+
+echo ""
+echo "=================================================================="
+echo "          SlideIn Acquisition OS Live Services                    "
+echo "=================================================================="
+echo "  - Acquisition OS Dashboard: http://127.0.0.1:$WS_PORT/dashboard"
+echo "  - Opportunities Pipeline:   http://127.0.0.1:$WS_PORT/leads"
+echo "  - SlideIn REST API:         http://127.0.0.1:8088/v1/status"
+echo "  - Mailpit Inbound Web UI:   http://127.0.0.1:8025"
+echo "  - KumoMTA Submission:       127.0.0.1:2587 (AUTH: outbound)"
+echo "  - KumoMTA Admin API:        http://127.0.0.1:8029"
+echo "  - Go Backend Admin:         http://127.0.0.1:3333"
+echo "  - Redis Queue:              127.0.0.1:6379"
+echo "=================================================================="
+echo ""
+echo "To run full end-to-end tests: python3 test_slidein_platform.py"
+echo "To stop the environment:      ./stop"
+exit "$DR_EXIT"
+

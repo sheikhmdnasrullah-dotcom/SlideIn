@@ -1,0 +1,28 @@
+From: Supplier Accounts <billing@secure-invoice-portal.com>
+To: victim@company.com
+Subject: Updated invoice - action required
+Reply-To: payments@invoice-collector.ru
+Date: Tue, 09 Sep 2026 10:00:00 +0000
+Message-ID: <lab-attack-001@secure-invoice-portal.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="LAB"
+
+--LAB
+Content-Type: text/plain; charset="UTF-8"
+
+Hi, please review your updated invoice. Open it here: https://bit.ly/3xInvoice
+
+You can also grab the document from our shared drive: https://www.dropbox.com/s/abc123/invoice.docm
+
+Complete the quick human verification so we know you're not a robot, then the file downloads.
+
+Thanks,
+Supplier Accounts
+
+--LAB
+Content-Type: application/vnd.ms-word.document.macroEnabled.12; name="invoice.docm"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="invoice.docm"
+
+UEsDBBQAAAAAAGh0WkUAAAAAAAAAAAAAAAAJAAAAW0NvbnRlbnRfVHlwZXNdLnhtbA==
+--LAB--

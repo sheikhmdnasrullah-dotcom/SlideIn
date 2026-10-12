@@ -1,0 +1,22 @@
+{
+  "name": "warmup-engine",
+  "version": "1.0.0",
+  "description": "24/7 Automated Peer-to-Peer Email Warmup Engine with BullMQ, Redis, KumoMTA, and IMAP",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "status": "node cli.js status",
+    "add-account": "node cli.js add-account",
+    "trigger": "node cli.js trigger"
+  },
+  "dependencies": {
+    "bullmq": "^5.41.0",
+    "ioredis": "^5.4.1",
+    "nodemailer": "^6.9.16",
+    "imapflow": "^1.0.171",
+    "mailparser": "^3.7.2",
+    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.4.7"
+  }
+}

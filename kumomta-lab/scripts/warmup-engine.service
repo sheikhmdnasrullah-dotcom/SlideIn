@@ -1,0 +1,16 @@
+[Unit]
+Description=Warmup Email Engine
+After=redis.service KumoMTA.service
+Requires=redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/warmup-engine
+ExecStart=/usr/bin/node /opt/warmup-engine/src/index.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

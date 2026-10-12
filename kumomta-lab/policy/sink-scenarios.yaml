@@ -1,0 +1,107 @@
+# Sink MX scenarios — every recipient domain the lab accepts can be routed to
+# one of these. Each scenario is a small SMTP script (reply / delay / reset).
+#
+# Adding a new scenario does NOT let the lab talk to the real Internet; the
+# scenarios file only changes how this in-process sink answers SMTP.
+
+scenarios:
+  - name: default
+    domain_match: ["lab.internal", "sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 250
+        text: "OK passthrough"
+
+  - name: gmail-throttle
+    domain_match: ["gmail.sink.lab.internal", "gmail.com.sink"]
+    steps:
+      - kind: reply
+        code: 250
+        text: "Accepted, queued"
+      - kind: delay
+        seconds: 0.3
+
+  - name: yahoo-tempfail
+    domain_match: ["yahoo.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 450
+        enhanced: "4.2.1"
+        text: "Mailbox temporarily unavailable, try later"
+
+  - name: microsoft-tarpit
+    domain_match: ["outlook.sink.lab.internal", "microsoft.sink"]
+    steps:
+      - kind: reply
+        code: 250
+        text: "Accepted"
+      - kind: delay
+        seconds: 2.0
+
+  - name: apple-quarantine
+    domain_match: ["icloud.sink.lab.internal", "apple.sink"]
+    steps:
+      - kind: reply
+        code: 250
+        text: "Accepted (lab: routed to quarantine bucket)"
+
+  - name: proofpoint-tempfail
+    domain_match: ["proofpoint.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 451
+        enhanced: "4.3.2"
+        text: "Deferred — try later"
+
+  - name: random-4xx
+    domain_match: ["flaky.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 421
+        enhanced: "4.7.0"
+        text: "Transient — please reconnect"
+
+  - name: permanent-reject
+    domain_match: ["reject.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 550
+        enhanced: "5.1.1"
+        text: "User unknown (lab)"
+
+  - name: slow-mx
+    domain_match: ["slow.sink.lab.internal"]
+    steps:
+      - kind: delay
+        seconds: 5.0
+      - kind: reply
+        code: 250
+        text: "Accepted after slow start"
+
+  - name: proton-defer
+    domain_match: ["proton.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 451
+        enhanced: "4.3.2"
+        text: "ProtonMail deferred (lab)"
+
+  - name: generic-accept
+    domain_match: ["generic.sink.lab.internal", "example.com.sink"]
+    steps:
+      - kind: reply
+        code: 250
+        text: "Accepted"
+
+  - name: chaos-reset
+    domain_match: ["chaos.sink.lab.internal"]
+    steps:
+      - kind: reset
+
+  - name: tls-refusal
+    domain_match: ["tlsfail.sink.lab.internal"]
+    steps:
+      - kind: reply
+        code: 454
+        enhanced: "4.7.0"
+        text: "TLS not available (lab)"

@@ -1,0 +1,17 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+  - package-ecosystem: pip
+    directory: /product
+    schedule:
+      interval: weekly
+    labels: [dependencies]
+  - package-ecosystem: npm
+    directory: /warmup-engine
+    schedule:
+      interval: weekly
+    labels: [dependencies]

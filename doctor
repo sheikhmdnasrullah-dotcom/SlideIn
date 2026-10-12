@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""SlideIn Enterprise System Diagnostics & Doctor.
+
+Inspects all services, containers, network ports, databases, queues, and MTAs.
+Run:
+    ./doctor
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import socket
+import sqlite3
+import subprocess
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+
+# ANSI Colors
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+CYAN = "\033[96m"
+BOLD = "\033[1m"
+RESET = "\033[0m"
+
+
+def check_port(host: str, port: int, timeout: float = 1.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (socket.timeout, ConnectionRefusedError, OSError):
+        return False
+
+
+def run_command(cmd: list[str]) -> tuple[int, str]:
+    try:
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=5)
+        return res.returncode, res.stdout.strip()
+    except Exception as e:
+        return 1, str(e)
+
+
+def find_processes(marker: str) -> list[int]:
+    """Return PIDs whose command line matches marker (path-scoped, ERE)."""
+    try:
+        res = subprocess.run(["pgrep", "-f", marker], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=5)
+        if res.returncode != 0:
+            return []
+        return [int(p) for p in res.stdout.split() if p.strip()]
+    except Exception:
+        return []
+
+
+def process_command(pid: int) -> str:
+    try:
+        res = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=5)
+        return res.stdout.strip()
+    except Exception:
+        return ""
+
+
+def print_row(component: str, status: str, details: str, port: str = "-"):
+    color = GREEN if status == "HEALTHY" else (YELLOW if status == "DEGRADED" or status == "ISOLATED" else RED)
+    status_str = f"{color}{BOLD}{status:<12}{RESET}"
+    print(f"  {component:<24} {status_str} {port:<10} {details}")
+
+
+def main():
+    print(f"\n{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════════════════{RESET}")
+    print(f"{BOLD}{CYAN}                  SlideIn Enterprise Platform Doctor & Diagnostics                {RESET}")
+    print(f"{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════════════════{RESET}\n")
+
+    overall_healthy = True
+
+    # 1. TOOLCHAINS & ENVIRONMENT
+    print(f"{BOLD}1. Host Environment & Toolchains{RESET}")
+    python_ver = sys.version.split()[0]
+    print_row("Python Runtime", "HEALTHY", f"v{python_ver}")
+
+    code, go_out = run_command(["go", "version"])
+    if code == 0:
+        print_row("Go Compiler", "HEALTHY", go_out.replace("go version ", ""))
+    else:
+        print_row("Go Compiler", "DOWN", "go not found in PATH")
+        overall_healthy = False
+
+    code, node_out = run_command(["node", "--version"])
+    if code == 0:
+        print_row("Node.js Runtime", "HEALTHY", node_out)
+    else:
+        print_row("Node.js Runtime", "DOWN", "node not found in PATH")
+
+    code, docker_info = run_command(["docker", "info"])
+    if code == 0:
+        print_row("Docker Daemon", "HEALTHY", "Docker Desktop operational")
+    else:
+        print_row("Docker Daemon", "DOWN", "Docker daemon not running")
+        overall_healthy = False
+
+    # 2. LOCAL DATABASES
+    print(f"\n{BOLD}2. Database Storage & Persistence{RESET}")
+    # SQLite Deliverability State
+    state_db = HERE / "deliverability" / "deliverability_state.db"
+    if not state_db.exists():
+        state_db = HERE / "deliverability_state.db"
+    
+    if state_db.exists():
+        try:
+            conn = sqlite3.connect(str(state_db))
+            cursor = conn.execute("SELECT count(*) FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchone()[0]
+            conn.close()
+            print_row("Deliverability State", "HEALTHY", f"{tables} tables verified in {state_db.name}")
+        except Exception as e:
+            print_row("Deliverability State", "DOWN", f"Corrupt SQLite: {e}")
+            overall_healthy = False
+    else:
+        print_row("Deliverability State", "DEGRADED", "File will be initialized on first run")
+
+    # SQLite GoPhish DB
+    gophish_db = HERE / "gophish.db"
+    if gophish_db.exists():
+        try:
+            conn = sqlite3.connect(str(gophish_db))
+            cursor = conn.execute("SELECT count(*) FROM sqlite_master WHERE type='table'")
+            tables = cursor.fetchone()[0]
+            conn.close()
+            print_row("GoPhish Database", "HEALTHY", f"{tables} tables in gophish.db")
+        except Exception as e:
+            print_row("GoPhish Database", "DOWN", f"Corrupt SQLite: {e}")
+            overall_healthy = False
+    else:
+        print_row("GoPhish Database", "DEGRADED", "gophish.db not yet created")
+
+    # 3. DOCKER INFRASTRUCTURE STACK
+    print(f"\n{BOLD}3. Local Infrastructure Services (Docker Stack){RESET}")
+    # Mailpit
+    mailpit_smtp = check_port("127.0.0.1", 1025)
+    mailpit_web = check_port("127.0.0.1", 8025)
+    if mailpit_smtp and mailpit_web:
+        print_row("Mailpit (SMTP Sink)", "HEALTHY", "Web UI: http://127.0.0.1:8025", "1025, 8025")
+    elif mailpit_smtp:
+        print_row("Mailpit (SMTP Sink)", "DEGRADED", "SMTP up, Web API unreachable", "1025")
+    else:
+        print_row("Mailpit (SMTP Sink)", "DOWN", "Run: docker compose -f docker-compose.local.yml up -d", "1025, 8025")
+        overall_healthy = False
+
+    # Redis
+    redis_ok = check_port("127.0.0.1", 6379)
+    if redis_ok:
+        print_row("Redis Queue / Cache", "HEALTHY", "Responding to ping", "6379")
+    else:
+        print_row("Redis Queue / Cache", "DOWN", "Not listening on 127.0.0.1:6379", "6379")
+        overall_healthy = False
+
+    # KumoMTA
+    kumo_smtp = check_port("127.0.0.1", 2587)
+    kumo_admin = check_port("127.0.0.1", 8029)
+    if kumo_smtp:
+        print_row("KumoMTA ESMTP Engine", "HEALTHY", "ESMTP submission listener ready", "2587")
+    else:
+        print_row("KumoMTA ESMTP Engine", "DOWN", "Kumo submission not listening on 2587", "2587")
+        overall_healthy = False
+
+    if kumo_admin:
+        print_row("KumoMTA Admin API", "HEALTHY", "HTTP Admin API responding", "8029")
+    else:
+        print_row("KumoMTA Admin API", "DOWN", "Admin API not listening on 8029", "8029")
+        overall_healthy = False
+
+    # PostgreSQL (product layer: Acquisition OS API + contract tests)
+    pg_ok = check_port("127.0.0.1", 5432)
+    if pg_ok:
+        print_row("PostgreSQL", "HEALTHY", "Product API database accepting connections", "5432")
+    else:
+        print_row("PostgreSQL", "DEGRADED", "Not listening — product API needs it", "5432")
+
+    # 4. APPLICATION APIS & ENGINES
+    print(f"\n{BOLD}4. Application Backend & Modules{RESET}")
+    slidein_server = check_port("127.0.0.1", 8088)
+    if slidein_server:
+        print_row("SlideIn Unified API", "HEALTHY", "Command Center & REST API listening", "8088")
+    else:
+        print_row("SlideIn Unified API", "DOWN", "Server inactive (start with: ./dev) — see slidein_server.log", "8088")
+        overall_healthy = False
+
+    gophish_admin = check_port("127.0.0.1", 3333)
+    if gophish_admin:
+        print_row("SlideIn / Go API", "HEALTHY", "Admin panel listening", "3333")
+    else:
+        print_row("SlideIn / Go API", "DOWN", "Process inactive (start with: ./dev) — see gophish_local.log", "3333")
+        overall_healthy = False
+
+    # Next.js workspace (path-scoped: never trust port 3000 alone, other apps
+    # may occupy it; parse the actual port our own process listens on)
+    ws_pids = find_processes(str(HERE / "project" / "node_modules"))
+    if ws_pids:
+        cmd = process_command(ws_pids[0])
+        m = re.search(r"-p\s+(\d+)", cmd)
+        ws_port = int(m.group(1)) if m else 3000
+        print_row("Workspace (Next.js)", "HEALTHY", f"Dashboard: http://127.0.0.1:{ws_port}/dashboard", str(ws_port))
+    else:
+        print_row("Workspace (Next.js)", "DOWN", "Not running (start with: ./dev)", "3000")
+        overall_healthy = False
+
+    # Deliverability Core Modules
+    try:
+        sys.path.insert(0, str(HERE / "deliverability"))
+        from core import pipeline, gate, analyzer, placement_risk, provider, models, conversational, repository
+        print_row("Pipeline & Safety Gate", "HEALTHY", "Gate, risk classifier & provider ready")
+    except Exception as e:
+        print_row("Pipeline & Safety Gate", "DOWN", f"Import error: {e}")
+        overall_healthy = False
+
+    # Warmup Engine — distinguish "installed" from "actually running"
+    warmup_modules = (HERE / "warmup-engine" / "node_modules").exists()
+    warmup_pids = find_processes(str(HERE / "warmup-engine"))
+    if warmup_pids:
+        print_row("Warmup Engine (BullMQ)", "HEALTHY", "Node BullMQ engine running", str(warmup_pids[0]))
+    elif warmup_modules:
+        print_row("Warmup Engine (BullMQ)", "DEGRADED", "Installed but not running (cd warmup-engine && npm start)")
+    else:
+        print_row("Warmup Engine (BullMQ)", "DEGRADED", "Run: cd warmup-engine && npm install")
+
+    print(f"\n{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════════════════{RESET}")
+    if overall_healthy:
+        print(f"  {BOLD}{GREEN}✔ SYSTEM STATUS: FULLY OPERATIONAL LOCALLY{RESET}")
+    else:
+        print(f"  {BOLD}{YELLOW}⚠ SYSTEM STATUS: SOME SERVICES REQUIRE INITIALIZATION OR STARTUP{RESET}")
+        print(f"  Quickstart: run {CYAN}./dev{RESET} (or {CYAN}docker compose -f docker-compose.local.yml up -d{RESET} for infrastructure only).")
+    print(f"{BOLD}{CYAN}══════════════════════════════════════════════════════════════════════════════════{RESET}\n")
+    return 0 if overall_healthy else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

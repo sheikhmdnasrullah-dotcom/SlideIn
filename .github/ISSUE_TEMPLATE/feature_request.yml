@@ -1,0 +1,32 @@
+name: Feature request
+description: Propose a concrete, scoped enhancement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem addressed
+      description: What can't you do today, and why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Smallest change that solves it; files/components touched
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security implications
+      description: Auth, tenancy, sending behavior, secrets — or "none"
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This request does not ask for spam-filter evasion, header forgery, or guaranteed inbox placement (always declined)
+          required: true

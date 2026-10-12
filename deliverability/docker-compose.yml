@@ -1,0 +1,40 @@
+# Deploy on the VPS (docker must be installed there).
+# happyDeliver = authoritative analyzer (Postfix + auth_milter + SpamAssassin + rspamd).
+# deliverability-monitor = runs the circuit-breaker tick on a schedule.
+version: "3.8"
+
+services:
+  happydeliver:
+    image: ghcr.io/happydomain/happydeliver:latest
+    # or build from https://github.com/happyDomain/happydeliver
+    ports:
+      - "8080:8080"
+      # 25 only needed if you route test emails TO happyDeliver; we use the
+      # .eml upload endpoint, so 25 is optional.
+      # - "25:25"
+    environment:
+      - HAPPYDELIVER_DOMAIN=tanim.tech
+    hostname: mail.tanim.tech
+    volumes:
+      - hd_data:/var/lib/happydeliver
+      - hd_logs:/var/log/happydeliver
+    restart: unless-stopped
+
+  deliverability-monitor:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - state:/app/state
+    environment:
+      - DELIVERABILITY_CONFIG=/app/config.json
+    # simplest scheduler: run monitor tick every 30 min + keep alive
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt 2>/dev/null;
+             while true; do python3 cli.py monitor; sleep 1800; done"
+    restart: unless-stopped
+
+volumes:
+  hd_data:
+  hd_logs:
+  state:

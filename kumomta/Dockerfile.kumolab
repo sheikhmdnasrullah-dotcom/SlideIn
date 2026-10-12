@@ -1,0 +1,35 @@
+# Lab KumoMTA image. We build from source so we can pin the exact commit.
+#
+# Outbound by default goes ONLY to sink.lab.internal (forced by resolv.conf +
+# iptables inside the container) — see docker-compose network `lab-isolated`
+# which has `internal: true`.
+#
+# Live mode (LAB_MODE=live) is a one-line config switch; the image does NOT
+# implement a "talk to real Gmail" path. Adding one is a deliberate change.
+
+FROM rust:1.82-bookworm AS builder
+
+ARG KUMO_GIT_REF=main
+RUN git clone --depth 1 --branch ${KUMO_GIT_REF} https://github.com/KumoCorp/kumomta.git /src \
+ && cd /src && cargo build --release
+
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates libssl3 tini busybox nc iproute2 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /src/target/release/kumod /usr/local/bin/kumod
+COPY --from=builder /src/target/release/kumocli /usr/local/bin/kumocli
+COPY entrypoint.sh /entrypoint.sh
+COPY resolv-lab.conf /etc/kumo/resolv-lab.conf
+
+RUN chmod +x /entrypoint.sh
+
+# We deliberately do NOT bake any DKIM keys or tokens here.
+VOLUME ["/var/lib/kumo"]
+
+ENV RUST_LOG=info \
+    KUMO_NODE_NAME=kumomta-1
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/entrypoint.sh"]

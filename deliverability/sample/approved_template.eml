@@ -1,0 +1,30 @@
+From: Nasrullah Tanim <hello@nasrullahtanim.me>
+To: {{recipient}}
+Subject: quick idea for {{first_name}}
+Date: Thu, 04 Sep 2026 12:00:00 +0000
+Message-ID: <{{unique_id}}@nasrullahtanim.me>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="000000000000039a35065a9fd87b"
+
+--000000000000039a35065a9fd87b
+Content-Type: text/plain; charset="UTF-8"
+
+Hey {{first_name}},
+
+{{personalization_line}}
+
+I help creators handle the behind-the-scenes work -- research, editing, thumbnails, shorts, and getting the right people to actually see it. Happy to show you how it works in about two minutes if you're curious.
+
+Worth a quick look?
+
+Tanim
+
+If you'd rather not hear from me, you can unsubscribe here: mailto:unsubscribe@nasrullahtanim.me?subject=unsubscribe
+
+--000000000000039a35065a9fd87b
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">Hey {{first_name}},<br><br>{{personalization_line}}<br><br>I help creators handle the behind-the-scenes work -- research, editing, thumbnails, shorts, and getting the right people to actually see it. Happy to show you how it works in about two minutes if you're curious.<br><br>Worth a quick look?<br><br>Tanim<br><br>If you'd rather not hear from me, you can <a href=3D"mailto:unsubscribe@nasrullahtanim.me?subject=unsubscribe">unsubscribe</a>.<br></div>
+
+--000000000000039a35065a9fd87b--

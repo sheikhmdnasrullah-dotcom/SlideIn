@@ -1,0 +1,87 @@
+{
+  "alertmanager": {
+    "global": {
+      "resolve_timeout": "5m",
+      "smtp_smarthost": "",
+      "smtp_from": "",
+      "smtp_auth_username": "",
+      "smtp_auth_password": ""
+    },
+    "route": {
+      "receiver": "webhook",
+      "group_by": ["alertname", "severity"],
+      "group_wait": "30s",
+      "group_interval": "5m",
+      "repeat_interval": "1h",
+      "routes": [
+        {
+          "match": {
+            "severity": "critical"
+          },
+          "receiver": "webhook"
+        },
+        {
+          "match": {
+            "severity": "warning"
+          },
+          "receiver": "webhook"
+        }
+      ]
+    },
+    "receivers": [
+      {
+        "name": "webhook",
+        "webhook_configs": [
+          {
+            "url": "http://169.58.207.75:8095/api/alert",
+            "send_resolved": true
+          }
+        ]
+      }
+    ]
+  },
+  "alerts": [
+    {
+      "name": "KumoMTADown",
+      "query": "up{job=\"kumomta\"} == 0",
+      "for": "1m",
+      "severity": "critical",
+      "description": "KumoMTA is down"
+    },
+    {
+      "name": "HighBounceRate",
+      "query": "rate(kumo_messages_bounced_total[5m]) > 0.05",
+      "for": "2m",
+      "severity": "warning",
+      "description": "Bounce rate above 5%"
+    },
+    {
+      "name": "DKIMSigningFailed",
+      "query": "rate(kumo_dkim_sign_errors_total[5m]) > 0",
+      "for": "1m",
+      "severity": "critical",
+      "description": "DKIM signing failures detected"
+    },
+    {
+      "name": "LowInboxPlacement",
+      "query": "seed_placement_inbox_pct < 80",
+      "for": "5m",
+      "severity": "warning",
+      "description": "Seed inbox placement below 80%"
+    },
+    {
+      "name": "HighDeferralRate",
+      "query": "rate(kumo_messages_deferred_total[5m]) > 0.1",
+      "for": "2m",
+      "severity": "warning",
+      "description": "Deferral rate elevated"
+    },
+    {
+      "name": "GoPhishDown",
+      "query": "up{job=\"gophish\"} == 0",
+      "for": "1m",
+      "severity": "critical",
+      "description": "GoPhish is down"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[Unit]
+Description=KumoMTA Production MTA Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+WorkingDirectory=/opt/kumomta-lab/compose
+ExecStart=/usr/bin/docker compose -f docker-compose.production.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.production.yml down
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

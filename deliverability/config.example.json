@@ -1,0 +1,77 @@
+{
+  "_comment": "Copy to config.json and fill secrets. Never commit config.json (it holds passwords). transport=kumo routes seed tests + sends through KumoMTA submission (kumo block); transport=smtp routes through the SMTP relay. Domain nasrullahtanim.me mailboxes are hosted in mailcow.",
+  "sending_domain": "nasrullahtanim.me",
+  "sending_domains": ["nasrullahtanim.me", "tanim.tech", "tanim.social"],
+  "sending_ip": "FILL_IN_SENDING_IP",
+  "sending_subdomains": ["mail.nasrullahtanim.me", "email.tanim.tech"],
+  "dkim_selectors": ["mxa", "mxb", "s1", "s2", "default", "dkim", "kumo", "mailcow"],
+  "happydeliver_url": "http://127.0.0.1:8095",
+  "reputation_json_path": "/var/lib/deliverability/reputation.json",
+  "transport": "kumo",
+  "profiles": ["hello@nasrullahtanim.me", "talk@nasrullahtanim.me", "connect@nasrullahtanim.me"],
+  "kumo": {
+    "host": "127.0.0.1",
+    "port": 5872,
+    "user": "FILL_IN_KUMO_AUTH_USER",
+    "password": "FILL_IN_KUMO_AUTH_PASSWORD",
+    "from_addr": "hello@nasrullahtanim.me",
+    "use_tls": true,
+    "timeout": 30
+  },
+  "smtp": {
+    "host": "FILL_IN_RELAY_SMTP_HOST",
+    "port": 587,
+    "user": "FILL_IN",
+    "password": "FILL_IN",
+    "from_addr": "hello@tanim.tech",
+    "timeout": 30,
+    "use_tls": true
+  },
+  "gophish": {"base_url": "", "api_key": ""},
+  "seed_accounts": [
+    {
+      "provider": "gmail",
+      "email": "seed.gmail@gmail.com",
+      "host": "imap.gmail.com",
+      "port": 993,
+      "password": "FILL_IN_APP_PASSWORD",
+      "inbox_folder": "INBOX",
+      "spam_folder": "[Gmail]/Spam",
+      "use_x_gm_labels": true
+    },
+    {
+      "provider": "outlook",
+      "email": "seed.outlook@outlook.com",
+      "host": "outlook.office365.com",
+      "port": 993,
+      "password": "FILL_IN_APP_PASSWORD",
+      "inbox_folder": "Inbox",
+      "spam_folder": "Junk"
+    },
+    {
+      "provider": "yahoo",
+      "email": "seed.yahoo@yahoo.com",
+      "host": "imap.mail.yahoo.com",
+      "port": 993,
+      "password": "FILL_IN_APP_PASSWORD",
+      "inbox_folder": "Inbox",
+      "spam_folder": "Bulk Mail"
+    },
+    {
+      "provider": "icloud",
+      "email": "seed@icloud.com",
+      "host": "imap.mail.me.com",
+      "port": 993,
+      "password": "FILL_IN_APP_PASSWORD",
+      "inbox_folder": "INBOX",
+      "spam_folder": "Junk"
+    }
+  ],
+  "gate": {"min_grade": "B", "validity_window_hours": 24},
+  "circuit": {
+    "min_seed_inbox_pct": 100,
+    "max_bounce_rate": 2.0,
+    "max_complaint_rate": 0.1,
+    "min_analyzer_grade": "B"
+  }
+}

@@ -1,0 +1,164 @@
+name: kumomta-production
+
+x-kumo: &kumo-env
+  KUMO_NODE_NAME: "kumomta-1"
+  KUMO_LOG_FORMAT: "json"
+  KUMO_LOG_LEVEL: "info"
+  KUMO_ENABLE_TLS_CLIENT: "true"
+  KUMO_LISTENER_HOST: "0.0.0.0"
+
+networks:
+  production:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  kumo-data:
+  redis-data:
+  prom-data:
+  grafana-data:
+  alert-data:
+
+services:
+
+  kumomta:
+    image: ghcr.io/kumocorp/kumomta:latest
+    container_name: kumomta
+    hostname: mail.nasrullahtanim.me
+    domainname: nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - mail.nasrullahtanim.me
+          - kumo.nasrullahtanim.me
+    ports:
+      - "0.0.0.0:2587:587"
+      - "0.0.0.0:8029:8029"
+    volumes:
+      - kumo-data:/var/lib/kumo
+      - /opt/kumomta-lab/policy:/etc/kumo/policy:ro
+      - /opt/kumomta-lab/dkim:/etc/kumo/dkim:ro
+      - /opt/kumomta/entrypoint.sh:/entrypoint.sh:ro
+    environment:
+      <<: *kumo-env
+      KUMO_LISTENER_SMTP: "0.0.0.0:587"
+      KUMO_LISTENER_HTTP: "0.0.0.0:8029"
+      KUMO_POLICY_DIR: /etc/kumo/policy
+      KUMO_DKIM_DIR: /etc/kumo/dkim
+      KUMO_CONFIG_PATH: /etc/kumo/policy/production_init.lua
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    entrypoint: ["/entrypoint.sh"]
+    tmpfs:
+      - /tmp:mode=1777,size=128m
+    healthcheck:
+      test: ["CMD", "bash", "-c", ": > /dev/tcp/127.0.0.1/2587 && : > /dev/tcp/127.0.0.1/8029"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  redis-governor:
+    image: redis:7-alpine
+    container_name: redis-governor
+    hostname: redis.nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - redis.nasrullahtanim.me
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    hostname: prom.nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - prom.nasrullahtanim.me
+    volumes:
+      - /opt/kumomta-lab/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /opt/kumomta-lab/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - kumomta
+      - redis-governor
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    hostname: grafana.nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - grafana.nasrullahtanim.me
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - /opt/kumomta-lab/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /opt/kumomta-lab/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    secrets:
+      - grafana_admin
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    hostname: alertmanager.nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - alertmanager.nasrullahtanim.me
+    volumes:
+      - /opt/kumomta-lab/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alert-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "127.0.0.1:9093:9093"
+    depends_on:
+      - prometheus
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    hostname: loki.nasrullahtanim.me
+    networks:
+      production:
+        aliases:
+          - loki.nasrullahtanim.me
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - /opt/kumomta-lab/monitoring/loki-local-config.yaml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "127.0.0.1:3100:3100"
+    depends_on:
+      - grafana
+
+secrets:
+  grafana_admin:
+    file: /opt/kumomta-lab/secrets/grafana_admin.txt

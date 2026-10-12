@@ -1,0 +1,216 @@
+name: kumomta-lab
+
+x-kumo: &kumo-env
+  KUMO_NODE_NAME: "kumomta-1"
+  KUMO_LOG_FORMAT: "json"
+  KUMO_LOG_LEVEL: "info"
+  KUMO_ENABLE_TLS_CLIENT: "true"
+  KUMO_LISTENER_HOST: "0.0.0.0"
+  LAB_MODE: "sink"
+  LAB_DEFAULT_OUTBOUND: "false"
+
+networks:
+  lab-internal:
+    driver: bridge
+    internal: false
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  lab-isolated:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.31.0.0/24
+
+volumes:
+  kumo-data:
+  sink-data:
+  redis-data:
+  prom-data:
+  grafana-data:
+  alert-data:
+
+services:
+
+  sink-mx:
+    build:
+      context: ../../sink-mx
+    image: kumolab/sink-mx:latest
+    container_name: sink-mx
+    hostname: sink.lab.internal
+    domainname: lab.internal
+    networks:
+      lab-isolated:
+        aliases:
+          - sink.lab.internal
+          - mx.sink.lab.internal
+    ports:
+      - "127.0.0.1:12525:25"     # SMTP — loopback only (2525 taken by happydeliver)
+      - "127.0.0.1:8467:8467"    # sink admin + metrics
+    volumes:
+      - sink-data:/var/lib/sink
+      - ../policy/sink-scenarios.yaml:/etc/sink/scenarios.yaml:ro
+    environment:
+      SINK_SCENARIOS_FILE: /etc/sink/scenarios.yaml
+      SINK_METRICS_ADDR: "0.0.0.0:8467"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -z 127.0.0.1 25 && nc -z 127.0.0.1 8467"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  kumomta:
+    # Official prebuilt image (avoids a slow/flaky from-source Rust build on the
+    # VPS). init.lua still forces all outbound to sink.lab.internal, so the lab
+    # stays hermetic. For production, pin a specific tag instead of :latest.
+    image: ghcr.io/kumocorp/kumomta:latest
+    container_name: kumomta
+    hostname: mta.lab.internal
+    domainname: lab.internal
+    networks:
+      lab-isolated:
+        aliases:
+          - mta.lab.internal
+          - kumo.lab.internal
+    # Submission from host only
+    ports:
+      - "127.0.0.1:2587:587"     # SMTP submission (auth required)
+      - "127.0.0.1:28029:8029"   # HTTP admin API
+    depends_on:
+      sink-mx:
+        condition: service_healthy
+      redis-governor:
+        condition: service_healthy
+    volumes:
+      - kumo-data:/var/lib/kumo
+      - /opt/kumomta-lab/policy:/etc/kumo/policy:ro
+      - /opt/kumomta-lab/dkim:/etc/kumo/dkim:ro
+      - /opt/kumomta/entrypoint-lab.sh:/entrypoint-lab.sh:ro
+    environment:
+      <<: *kumo-env
+      KUMO_LISTENER_SMTP: "0.0.0.0:587"
+      KUMO_LISTENER_HTTP: "0.0.0.0:8029"
+      KUMO_POLICY_DIR: /etc/kumo/policy
+      KUMO_DKIM_DIR: /etc/kumo/dkim
+      REDIS_URL: "redis://redis-governor:6379/0"
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE", "CHOWN", "SETUID", "SETGID"]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    entrypoint: ["/entrypoint-lab.sh"]
+    tmpfs:
+      - /tmp:mode=1777,size=128m
+    healthcheck:
+      test: ["CMD", "bash", "-c", ": > /dev/tcp/127.0.0.1/587 && : > /dev/tcp/127.0.0.1/8029"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  redis-governor:
+    image: redis:7-alpine
+    container_name: redis-governor
+    hostname: redis.lab.internal
+    networks:
+      lab-isolated:
+        aliases:
+          - redis.lab.internal
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    hostname: prom.lab.internal
+    networks:
+      lab-internal:
+        aliases:
+          - prom.lab.internal
+      lab-isolated:
+        aliases:
+          - prom.lab.internal
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prom-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - sink-mx
+      - kumomta
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: grafana
+    hostname: grafana.lab.internal
+    networks:
+      lab-internal:
+        aliases:
+          - grafana.lab.internal
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: ""
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - prometheus
+    secrets:
+      - grafana_admin
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    hostname: am.lab.internal
+    networks:
+      lab-internal:
+        aliases:
+          - am.lab.internal
+    volumes:
+      - ../monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alert-data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "127.0.0.1:9093:9093"
+    depends_on:
+      - prometheus
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    hostname: loki.lab.internal
+    networks:
+      lab-internal:
+        aliases:
+          - loki.lab.internal
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ../monitoring/loki-local-config.yaml:/etc/loki/local-config.yaml:ro
+    ports:
+      - "127.0.0.1:3100:3100"
+    depends_on:
+      - grafana
+
+secrets:
+  grafana_admin:
+    file: /opt/kumomta-lab/secrets/grafana_admin.txt

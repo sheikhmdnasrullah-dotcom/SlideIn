@@ -1,0 +1,17 @@
+{
+  "name": "Inbox Placement Optimizer",
+  "version": "1.0.0",
+  "description": "Ensures cold emails land in Primary Inbox, not Promotions or Spam",
+  "rules": {
+    "spam_words": ["free", "100%", "guarantee", "act now", "limited time", "urgent", "click here", "buy now", "cash", "earn", "offer", "prize", "promo", "sale", "save big", "winner", "congratulations", "no risk", "risk-free", "best price", "cheap", "deal", "order now", "special"],
+    "promotion_tab_triggers": ["lead funnel", "funnel that work", "work like a magnet", "wire the whole thing", "potential prospects", "lead generation side", "content production side", "partnership on your content and marketing"],
+    "ai_sloppy_openers": ["loved your recent work on", "as a fellow", "i noticed that you are doing great things", "hope this email finds you well", "i'm reaching out because"],
+    "banned_subject_tropes": ["quick thought", "quick idea", "quick note", "quick question", "thoughts on", "idea regarding", "regarding your", "partnership proposal", "synergy", "marketing side", "lead generation", "video editing", "video editor"],
+    "max_subject_length": 50,
+    "min_plain_text": true,
+    "require_unsubscribe": true,
+    "max_image_ratio": 0.5,
+    "max_word_count": 150,
+    "min_word_count": 20
+  }
+}

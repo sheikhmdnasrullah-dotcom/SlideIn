@@ -1,0 +1,48 @@
+# Changelog
+
+All notable changes to this project are documented here.
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- Publication preparation: credential scrub, hardened `.gitignore`,
+  secret-hygiene gate (`scripts/check-secrets.sh`) in CI.
+- Canonical docs layout (`docs/project|architecture|development|deployment|
+  security|api|decisions|portfolio/`), new README, `ROADMAP.md`, threat
+  model, API overview, portfolio case study.
+- Community files: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`,
+  `SUPPORT.md`, issue/PR templates, Dependabot.
+- Server auth hardening: 401 fail-closed + constant-time compare,
+  workspace-scoped conversations, per-DB random seed keys, `show-key` /
+  `rotate-key` CLI, `/v1/workspaces` key redaction.
+- Webhook hardening: SNS SSRF allowlist, required `WEBHOOK_SECRET`
+  (503 fail-closed), SNS TopicArn allowlist, unspam URL validation.
+- Send-path eligibility: `campaign_worker.process_lead()` (duplicate +
+  breaker + suppression), `/v1/leads/submit` checks (403/503).
+- Review-server auth: shared `core/dev_auth.py` key check + loopback bind.
+- 46 new deliverability regression tests (103 total, socket-free).
+
+### Changed
+
+- Deploy scripts read `VPS_PASS` / `KUMO_AUTH_PASS` / `KUMO_ADMIN_PASS`
+  from the environment; `deploy-production.sh` paths fixed and statically
+  verified.
+- Local default SMTP password unified as `local-dev-password` (local stack
+  only; production credentials are environment-provided and rotated).
+- `LICENSE`: retained MIT (GoPhish fork attribution preserved) with
+  SlideIn modification copyright added.
+
+### Verified
+
+- `./dev` + `./doctor`: FULLY OPERATIONAL; e2e 8/8; platform suite 8/8
+  (2026-10-12, local stack, Mailpit sink).
+
+## [0.1.0] — unreleased
+
+Initial open-source release candidate. Contents and verification status:
+`docs/project/CURRENT_STATE.md`, `docs/project/PROJECT_AUDIT.md` §10.
+Release checklist and known limitations accompany the 0.1.0 tag; no tag
+exists yet.

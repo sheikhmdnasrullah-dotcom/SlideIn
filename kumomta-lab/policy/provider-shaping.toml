@@ -1,0 +1,64 @@
+# Provider shaping + intelligence profiles (lab reference).
+#
+# In the hermetic lab, provider *behavior* is simulated by sink-mx via
+# sink-scenarios.yaml (recipient-domain -> SMTP script). These profiles are the
+# *KumoMTA-side* counterpart: the conservative per-destination limits we would
+# apply in production, and the expected lab behavior to assert against.
+#
+# Connection to init.lua: when provider-keyed Kumo shaping is enabled (see
+# NOTES in init.lua), look up the profile by recipient domain and feed the
+# fields below into kumo.make_egress_path{...}.
+
+[gmail]
+mx = ["alt1.gmail-smtp-in.l.google.com"]
+connection_limit = 10
+max_connection_rate = "3/min"
+max_message_rate = "20/min"
+max_deliveries_per_connection = 8
+expected_lab_scenario = "gmail-throttle"
+
+[yahoo]
+mx = ["mx1.mail.yahoo.com"]
+connection_limit = 8
+max_connection_rate = "2/min"
+max_message_rate = "15/min"
+max_deliveries_per_connection = 5
+expected_lab_scenario = "yahoo-tempfail"
+
+[microsoft]
+mx = ["outlook-com.olc.protection.outlook.com"]
+connection_limit = 8
+max_connection_rate = "2/min"
+max_message_rate = "15/min"
+max_deliveries_per_connection = 5
+expected_lab_scenario = "microsoft-tarpit"
+
+[apple]
+mx = ["mx1.mail.icloud.com"]
+connection_limit = 5
+max_connection_rate = "1/min"
+max_message_rate = "10/min"
+max_deliveries_per_connection = 4
+expected_lab_scenario = "apple-quarantine"
+
+[proton]
+mx = ["mail.protonmail.ch"]
+connection_limit = 5
+max_connection_rate = "1/min"
+max_message_rate = "8/min"
+max_deliveries_per_connection = 4
+expected_lab_scenario = "proton-defer"
+
+[generic]
+connection_limit = 10
+max_connection_rate = "5/min"
+max_message_rate = "25/min"
+max_deliveries_per_connection = 8
+expected_lab_scenario = "generic-accept"
+
+[global_governor]
+# Hard ceiling independent of provider (Contabo ~20-25 msg/min safety envelope).
+messages_per_minute = 20
+connections_per_minute = 10
+max_concurrent = 20
+# The application must never exceed this; enforced by Redis governor in compose.

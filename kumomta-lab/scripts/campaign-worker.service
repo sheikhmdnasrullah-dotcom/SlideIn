@@ -1,0 +1,16 @@
+[Unit]
+Description=Campaign Outreach Worker
+After=KumoMTA.service WarmupEngine.service
+Requires=KumoMTA.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/deliverability
+ExecStart=/usr/bin/python3 /opt/deliverability/campaign_worker.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

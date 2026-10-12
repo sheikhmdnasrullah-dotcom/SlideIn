@@ -1,0 +1,25 @@
+From: Nasrullah Tanim <hello@nasrullahtanim.me>
+To: nasrullahtanim@gmail.com
+Subject: inbox placement test
+Date: Mon, 08 Sep 2026 18:00:00 +0600
+Message-ID: <inboxtest20260908live01@nasrullahtanim.me>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="00000000inboxtest20260908"
+
+--00000000inboxtest20260908
+Content-Type: text/plain; charset="UTF-8"
+
+Hi,
+
+This is a live test send from the deliverability pipeline (KumoMTA transport).
+If you read this in the main inbox, the placement test passed.
+
+Thanks,
+Tanim
+
+--00000000inboxtest20260908
+Content-Type: text/html; charset="UTF-8"
+
+<div dir="ltr">Hi,<br><br>This is a live test send from the deliverability pipeline (KumoMTA transport).<br>If you read this in the main inbox, the placement test passed.<br><br>Thanks,<br>Tanim<br></div>
+
+--00000000inboxtest20260908--
