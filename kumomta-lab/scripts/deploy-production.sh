@@ -6,6 +6,7 @@
 set -euo pipefail
 
 VPS="${1:-root@169.58.207.75}"
+VPS_IP="${VPS##*@}"
 PASS="${VPS_PASS:?set VPS_PASS env var}"
 KUMO_AUTH_PASS="${KUMO_AUTH_PASS:?set KUMO_AUTH_PASS env var}"
 KUMO_ADMIN_PASS="${KUMO_ADMIN_PASS:-$KUMO_AUTH_PASS}"
@@ -13,6 +14,9 @@ LOCAL_ROOT="$(cd "$(dirname "$0")" && pwd)"
 LAB_ROOT="$(cd "$LOCAL_ROOT/.." && pwd)"
 REPO_ROOT="$(cd "$LOCAL_ROOT/../.." && pwd)"
 REMOTE="/opt"
+# GoPhish server binary for the target OS (override when deploying from macOS:
+# build with `docker run --rm -v $PWD:/src -w /src golang:1.26 go build -o /src/gophish-linux .`)
+GOPHISH_BIN="${GOPHISH_BIN:-$REPO_ROOT/gophish}"
 
 echo "================================================"
 echo "  Cold Email Deliverability - Production Deploy"
@@ -53,7 +57,7 @@ if [ -d "$LAB_ROOT/secrets" ]; then
     "$LAB_ROOT/secrets/" \
     "$VPS:$REMOTE/kumomta-lab/"
 fi
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "test -f $REMOTE/kumomta-lab/secrets/grafana_admin.txt || openssl rand -base64 24 > $REMOTE/kumomta-lab/secrets/grafana_admin.txt; chmod 600 $REMOTE/kumomta-lab/secrets/grafana_admin.txt"
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "test -f $REMOTE/kumomta-lab/secrets/grafana_admin.txt || openssl rand -base64 24 > $REMOTE/kumomta-lab/secrets/grafana_admin.txt; chmod 644 $REMOTE/kumomta-lab/secrets/grafana_admin.txt"
 
 sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
   "$LAB_ROOT/compose/docker-compose.production.yml" \
@@ -75,7 +79,7 @@ return {
   },
 }
 SECRETEOF
-chmod 600 $REMOTE/kumomta/etc/policy/secrets.lua"
+chmod 644 $REMOTE/kumomta/etc/policy/secrets.lua"
 
 # Generate DKIM keys for all domains
 DOMAINS=("nasrullahtanim.me" "tanim.social" "tanim.tech")
@@ -107,24 +111,55 @@ echo ""
 echo "==> PHASE 4: Deploying GoPhish with production config"
 echo "---"
 
-# Copy production GoPhish config and production profile config
-# (scp takes a single destination; one call per file)
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "mkdir -p $REMOTE/gophish /root/gophish"
+
+# Build the effective GoPhish config from the production template: fresh
+# SMTP credentials from env, localhost relay, sanitized origins. The local
+# template keeps stale values and is never copied verbatim.
+python3 - "$REPO_ROOT/gophish-config-production.json" > /tmp/gophish-effective-config.json << 'PYEOF'
+import json, os, sys
+cfg = json.load(open(sys.argv[1]))
+auth = os.environ["KUMO_AUTH_PASS"]
+cfg["smtp"]["host"] = "127.0.0.1"
+cfg["smtp"]["password"] = auth
+cfg["smtp"]["trusted_origins"] = ["127.0.0.1", "localhost"]
+cfg["admin_server"]["trusted_origins"] = ["127.0.0.1:8333", "localhost:8333", "127.0.0.1", "localhost"]
+for p in cfg.get("profiles", []):
+    p["smtp_host"] = "127.0.0.1"
+    p["smtp_password"] = auth
+json.dump(cfg, sys.stdout, indent=2)
+PYEOF
 sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
-  "$REPO_ROOT/config.json" \
+  /tmp/gophish-effective-config.json \
   "$VPS:/root/gophish/config.json"
-sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
-  "$REPO_ROOT/gophish-config-production.json" \
-  "$VPS:/root/gophish-config-production.json"
+rm -f /tmp/gophish-effective-config.json
 
 # Copy GoPhish binary and certs
+file "$GOPHISH_BIN" | grep -q 'ELF.*x86-64' || { echo "ERROR: $GOPHISH_BIN is not a Linux x86-64 binary"; exit 1; }
 sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
-  "$REPO_ROOT/gophish" \
+  "$GOPHISH_BIN" \
   "$REPO_ROOT/gophish_admin.crt" \
   "$REPO_ROOT/gophish_admin.key" \
   "$VPS:/root/gophish/"
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "mv /root/gophish/$(basename "$GOPHISH_BIN") /root/gophish/gophish 2>/dev/null; chmod +x /root/gophish/gophish; ls -la /root/gophish/gophish"
+# Runtime assets the binary reads from its working directory
+sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -r \
+  "$REPO_ROOT/VERSION" \
+  "$REPO_ROOT/static" \
+  "$REPO_ROOT/templates" \
+  "$REPO_ROOT/db" \
+  "$VPS:/root/gophish/"
 
 # Restart GoPhish
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "systemctl restart gophish 2>/dev/null || (cd /root/gophish && nohup ./gophish > /root/gophish/gophish.log 2>&1 &)"
+# Stable GoPhish API key (generated once, reused across reruns), injected
+# into the live config before first start.
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "test -f /root/gophish/api_key.txt || openssl rand -hex 32 > /root/gophish/api_key.txt; chmod 600 /root/gophish/api_key.txt; python3 -c 'import json; k=open(\"/root/gophish/api_key.txt\").read().strip(); p=\"/root/gophish/config.json\"; c=json.load(open(p)); c[\"api_key\"]=k; json.dump(c, open(p,\"w\"), indent=2)'"
+# Install the systemd unit first so `restart` succeeds; the nohup fallback
+# detaches stdin or the ssh session never returns (observed 20+ min hang).
+sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
+  "$LAB_ROOT/scripts/gophish.service" \
+  "$VPS:/etc/systemd/system/gophish.service"
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "systemctl daemon-reload && systemctl enable gophish 2>/dev/null; systemctl restart gophish 2>/dev/null || (cd /root/gophish && nohup ./gophish > /root/gophish/gophish.log 2>&1 < /dev/null & sleep 2)"
 
 sleep 3
 
@@ -145,7 +180,8 @@ echo "---"
 sshpass -p "$PASS" scp -o StrictHostKeyChecking=no \
   "$REPO_ROOT/deliverability/configure-gophish-profiles.py" \
   "$VPS:/tmp/configure-gophish-profiles.py"
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "KUMO_AUTH_PASS='$KUMO_AUTH_PASS' python3 /tmp/configure-gophish-profiles.py || echo 'Profile setup requires GoPhish API access'"
+# Profiles via authenticated localhost API (GoPhish was started in Phase 4).
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "for i in \$(seq 1 30); do (echo > /dev/tcp/127.0.0.1/8333) 2>/dev/null && break; sleep 2; done; GOPHISH_API_URL=http://127.0.0.1:8333/api GOPHISH_API_KEY=\$(cat /root/gophish/api_key.txt) KUMO_SMTP_HOST=127.0.0.1 KUMO_AUTH_PASS='$KUMO_AUTH_PASS' python3 /tmp/configure-gophish-profiles.py || echo 'Profile setup failed - check GoPhish API access'"
 
 # ============================================================
 # PHASE 6: Deploy Warmup Engine
@@ -188,11 +224,13 @@ echo ""
 echo "==> PHASE 8: Deploying Deliverability Pipeline"
 echo "---"
 
-sshpass -p "$PASS" scp -o StrictHostKeyChecking=no -r \
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "mkdir -p $REMOTE/deliverability"
+# rsync (not scp -r): trailing-slash copies *contents*, so reruns never nest.
+sshpass -p "$PASS" rsync -a --rsh="ssh -o StrictHostKeyChecking=no" \
   "$REPO_ROOT/deliverability/" \
   "$VPS:/opt/deliverability/"
 
-sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "cd /opt/deliverability && pip3 install -r requirements.txt 2>/dev/null || echo 'pip install skipped'"
+sshpass -p "$PASS" ssh -o StrictHostKeyChecking=no "$VPS" "cd /opt/deliverability && pip3 install --break-system-packages -r requirements.txt 2>/dev/null || echo 'pip install skipped'"
 
 # ============================================================
 # PHASE 9: Final verification
@@ -221,7 +259,7 @@ done
 
 echo "SPF:"
 for DOMAIN in "${DOMAINS[@]}"; do
-  echo "  $DOMAIN: v=spf1 ip4:169.58.207.75 mx -all"
+  echo "  $DOMAIN: v=spf1 ip4:$VPS_IP mx -all"
 done
 echo ""
 echo "DMARC:"
@@ -229,13 +267,13 @@ for DOMAIN in "${DOMAINS[@]}"; do
   echo "  _dmarc.$DOMAIN: v=DMARC1; p=quarantine; rua=mailto:dmarc@${DOMAIN}; adkim=s; aspf=s"
 done
 echo ""
-echo "PTR: 169.58.207.75 -> mail.nasrullahtanim.me (request from VPS host)"
+echo "PTR: $VPS_IP -> mail.nasrullahtanim.me (request from VPS host)"
 echo ""
-echo "SERVICES:"
-echo "  KumoMTA Admin API: http://169.58.207.75:8029"
-echo "  GoPhish Admin:     https://email.tanim.tech (or http://169.58.207.75:8333)"
-echo "  GoPhish Landing:   http://169.58.207.75:8080"
-echo "  Grafana Dashboard: http://169.58.207.75:3000"
+echo "SERVICES (loopback-bound; use ssh -L to reach from laptop):"
+echo "  KumoMTA Admin API: http://127.0.0.1:8029"
+echo "  GoPhish Admin:     http://127.0.0.1:8333"
+echo "  GoPhish Landing:   http://127.0.0.1:8080"
+echo "  Grafana Dashboard: http://127.0.0.1:3000"
 echo "  Warmup Engine:     pm2 start ecosystem.config.js"
 echo ""
 echo "NEXT STEPS:"

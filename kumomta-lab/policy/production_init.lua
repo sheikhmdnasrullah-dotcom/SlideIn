@@ -13,11 +13,17 @@ kumo.on('init', function()
 
   kumo.start_esmtp_listener {
     listen = '0.0.0.0:2587',
-    relay_hosts = { '127.0.0.1', '::1' },
+    -- Loopback + private docker networks (warmbly worker relays from
+    -- 172.20.0.0/24 via STARTTLS+AUTH). Port 2587 is loopback-published
+    -- and UFW-blocked, so no internet host can reach this listener.
+    relay_hosts = { '127.0.0.1', '::1', '172.16.0.0/12', '10.0.0.0/8' },
     banner = 'mail.nasrullahtanim.me ESMTP',
     max_messages_per_connection = 100,
     max_recipients_per_message = 50,
-    require_auth = true,
+    -- NOTE (2026-10-12): kumod 2026.09.x rejects `require_auth` (unknown
+    -- field), so it was removed. Relay is governed by `relay_hosts`
+    -- (loopback only) + loopback-only port publish + UFW. SMTP AUTH
+    -- (smtp_server_auth_plain) is still offered and honored.
   }
 
   kumo.start_http_listener {

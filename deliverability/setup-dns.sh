@@ -5,9 +5,9 @@
 # ============================================================
 set -euo pipefail
 
-VPS="${1:-169.58.207.75}"
+VPS="${1:-169.58.206.20}"
 DOMAINS=("nasrullahtanim.me" "tanim.social" "tanim.tech")
-IP="169.58.207.75"
+IP="${1:-169.58.206.20}"
 
 echo "================================================"
 echo "  DNS Configuration for Cold Email Deliverability"
