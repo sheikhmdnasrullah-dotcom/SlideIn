@@ -1,0 +1,8 @@
+# Attribution Notice — SlideIn
+
+The Go backend in this repository derives from Gophish Community Edition
+(MIT License, Copyright (c) 2013-2020 Jordan Wright). The original
+copyright and permission notices are preserved in `LICENSE`.
+
+The SlideIn modifications and all new components in this repository are
+Copyright (c) 2026 Nasrullah Tanim, likewise under the MIT License.
