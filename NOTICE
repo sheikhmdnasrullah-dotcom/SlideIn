@@ -6,3 +6,15 @@ copyright and permission notices are preserved in `LICENSE`.
 
 The SlideIn modifications and all new components in this repository are
 Copyright (c) 2026 Nasrullah Tanim, likewise under the MIT License.
+
+Third-party components used as separate services/images (not vendored):
+
+- Warmbly (https://github.com/warmbly/warmbly) — Apache License 2.0.
+  `warmbly/docker-compose.yml` is adapted from the upstream compose file
+  (ports bound to loopback, host-side remaps); upstream images are pulled
+  at deploy time.
+- check-if-email-exists (https://github.com/reacherhq/check-if-email-exists)
+  — MIT License, Copyright (c) Reacher. Used as the `reacherhq/backend`
+  image behind the local job API in `reacher/`.
+- Agent-Reach (https://github.com/Panniantong/Agent-Reach) — MIT License,
+  Copyright (c) Agent Eyes. Installed from upstream at deploy time.
