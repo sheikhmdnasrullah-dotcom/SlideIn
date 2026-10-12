@@ -14,7 +14,7 @@
     "bullmq": "^5.41.0",
     "ioredis": "^5.4.1",
     "nodemailer": "^6.9.16",
-    "imapflow": "^1.0.171",
+    "imapflow": "^2.3.0",
     "mailparser": "^3.7.2",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7"
