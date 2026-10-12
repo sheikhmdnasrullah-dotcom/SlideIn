@@ -8,6 +8,29 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Live production deployment on a single VPS (Ubuntu, Docker, Caddy):
+  KumoMTA, GoPhish (systemd), Prometheus/Grafana/Alertmanager/Loki/Redis,
+  Next.js dashboard, reacher verification backend, self-hosted Warmbly
+  (11 services), Agent-Reach research tooling.
+- Public HTTPS for 6 hosts (dashboard, tracking, warmup UI/API/pixels)
+  with auto-issued Let's Encrypt certificates.
+- Cloudflare DNS automation values for 3 mail domains (SPF/DKIM/DMARC)
+  plus 7 site records; `docs/deployment/DNS_RECORDS.md`.
+- Universal core Stage 1 (`product/core/`): tenant contexts, scoped
+  memory, versioned shared defaults, learning-candidate registry,
+  cross-business eval suites, industry-neutral workflow runner.
+- 22 DB-free architecture boundary tests
+  (`product/tests/test_core_boundaries.py`).
+- Boundary docs: core-vs-tenant, memory policy, learning pipeline,
+  config versioning, cross-business evaluation.
+- Lead verification service (`reacher/`): FastAPI job API (single,
+  bulk CSV, SSE, download) over `reacherhq/backend`, secret-gated.
+- Warmbly production overlay (`warmbly/`): loopback-bound compose,
+  KumoMTA relay networking, Caddy routes, owner bootstrap.
+- Dashboard open mode (`DISABLE_AUTH`, reversible) with anonymous
+  script-execution lock and SMTP-credential response sanitization.
+- Agent-Reach company page-read wired into lead research as a
+  best-effort snippet source alongside Tavily.
 - Publication preparation: credential scrub, hardened `.gitignore`,
   secret-hygiene gate (`scripts/check-secrets.sh`) in CI.
 - Canonical docs layout (`docs/project|architecture|development|deployment|

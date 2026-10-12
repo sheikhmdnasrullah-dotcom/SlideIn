@@ -1,49 +1,54 @@
 # Current State — SlideIn
 
-> Living snapshot, last updated 2026-10-12. Source of truth for "what works".
-> Detail and evidence: `PROJECT_AUDIT.md`. Debt register: `TECHNICAL_DEBT.md`.
+> Living snapshot, last updated 2026-10-12 (post-launch rewrite). Source of
+> truth for "what works". Detail and evidence: `PROJECT_AUDIT.md` (point-in-time,
+> pre-launch). Debt register: `TECHNICAL_DEBT.md`.
 
-SlideIn is a self-hosted email infrastructure and deliverability platform in
-**alpha**: a modified GoPhish campaign/admin backend (Go), a Python
-deliverability engine (gate, circuit breaker, placement risk, provider
-abstraction), a KumoMTA policy lab with compose stacks, and a Node warmup
-engine. A FastAPI product layer and a Next.js dashboard exist as early-stage,
-partially integrated layers. The production VPS was destroyed; rebuild assets
-are local. No multi-customer SaaS, billing, or human-approval queue exists.
+SlideIn is a self-hosted outreach platform in **beta**, live on a single VPS
+as an owner-operated reference deployment (`www.slideinventure.com` + API,
+tracking, and warmup hosts, all HTTPS). The stack: a modified GoPhish
+campaign/admin backend (Go), a Python deliverability engine (gate, circuit
+breaker, placement risk, provider abstraction), KumoMTA with a production Lua
+policy, a Next.js dashboard wired to local backends, a reacher-backed lead
+verification service, a self-hosted Warmbly warmup platform, Agent-Reach
+research tooling, and a universal multi-tenant core (`product/core/`) with
+enforced tenant/shared boundaries. No multi-customer SaaS, billing, or
+human-approval queue exists; the live deployment is single-tenant.
 
 ## Capability matrix
 
 | # | Capability | Status | Evidence |
 |---|---|---|---|
-| 1 | Go campaign/admin app | Implemented and verified | boots; `./doctor` HEALTHY 2026-10-12; 13 Go pkgs ok |
+| 1 | Go campaign/admin app | Implemented and verified | systemd; 13 Go pkgs ok; admin API live |
 | 2 | Deliverability pipeline + safety core | Implemented and verified | 103 Python tests OK; live e2e 8/8 |
-| 3 | KumoMTA lab policy + scenarios | Implemented but unverified | `kumomta-lab/policy/*.lua`; lab pytest 2 pass + 1 skip |
+| 3 | KumoMTA production policy | Implemented and verified | healthy container; STARTTLS+AUTH login verified; RCPT relay probes (zero-send) |
 | 4 | Local dev stack | Implemented and verified | `./dev` + `./doctor` FULLY OPERATIONAL 2026-10-12 |
 | 5 | End-to-end local send | Implemented and verified | e2e 8/8 + platform 8/8; DKIM verified at sink |
-| 6 | Warmup engine (BullMQ) | Implemented but unverified | installed, never run here |
-| 7 | Transactional CLI (`cli.py tx-*`) | Implemented but unverified | no live sends run |
-| 8 | Production deploy script + compose | Partially implemented | path bugs fixed + statically verified; no live run |
-| 9 | Monitoring stack config | Implemented but unverified | `kumomta-lab/monitoring/`; ran on old VPS only |
-| 10 | DNS/DMARC tooling | Implemented but unverified | `setup-dns.sh`, `precheck.py`, `dns_checks.py` |
-| 11 | Product API (FastAPI, tenant model) | Partially implemented, Blocked locally | needs PostgreSQL :5432; no alembic dir |
-| 12 | Next.js dashboard | Partially implemented | duplicated nested repos; boots; not wired to Go app |
-| 13 | AI agents (research/personalization) | Partially implemented | mock default; `real_agents.py` + `llm/llm.go` LLM variant |
-| 14 | Human-approval enforcement | Planned but not implemented | `Message.ai_approved` unset-at-send; no queue |
+| 6 | Production VPS deployment | Implemented and verified | 18 containers healthy; deploy script completed live runs; idempotent reruns |
+| 7 | Public HTTPS (6 hosts) + Caddy | Implemented and verified | 200s on www/app/warmbly/API; LE certs auto-issued |
+| 8 | Mail auth DNS (SPF/DKIM/DMARC ×3) | Implemented and verified | precheck green; Cloudflare API push 2026-10-12 |
+| 9 | GoPhish sending profiles (3/3) | Implemented and verified | via KumoMTA relay; dashboard reads live profiles (sanitized) |
+| 10 | Dashboard ↔ backend wiring | Implemented and verified | no-login open mode; live profile/verification/job proofs |
+| 11 | Lead verification (single + bulk) | Implemented and verified | job lifecycle: upload → SSE → download, real verdicts |
+| 12 | Warmup platform (Warmbly self-host) | Implemented, partially verified | 11/11 healthy; SMTP relay proven; mailbox connect is a manual UI step |
+| 13 | Research evidence (Agent-Reach) | Implemented and verified | jina page-read live in lead research; gh/bili/yt need logins |
+| 14 | Universal core Stage 1 | Implemented and verified | `product/core/` + 22 boundary tests green, DB-free |
 | 15 | Suppression on live paths | Implemented and verified | worker + submit gated (8 tests) + live platform pass |
-| 16 | HTTP auth/tenancy (deliverability) | Implemented and verified | 401/404 enforcement, 28 tests + live pass; S2–S6 fixed |
-| 17 | Billing / entitlements | Planned but not implemented | — |
-| 18 | Managed multi-tenant SaaS | Planned but not implemented | intent only (`managed-service-plan.md`) |
-| 19 | Production sending (live VPS) | Blocked | VPS destroyed; rebuild unexercised |
-| 20 | Open-source publication | Blocked pending preflight approval | `docs/security/PUBLICATION_CHECKLIST.md` |
+| 16 | HTTP auth/tenancy (deliverability) | Implemented and verified | 401/404 enforcement, 28 tests + live pass |
+| 17 | Monitoring (Prom/Grafana/AM/Loki) | Implemented, partially verified | all Up; alert routes untested; no notifier wired |
+| 18 | Warmup engine (BullMQ, legacy) | Implemented but unverified | installed; superseded by Warmbly for warmup |
+| 19 | Transactional CLI (`cli.py tx-*`) | Implemented but unverified | no live sends run |
+| 20 | Product API (FastAPI, tenant model) | Partially implemented | needs PostgreSQL; no alembic; roles unenforced |
+| 21 | AI agents (research/personalization) | Partially implemented | Tavily + agent-reach evidence live; mock default elsewhere |
+| 22 | Human-approval enforcement | Planned but not implemented | `Message.ai_approved` unset-at-send; no queue |
+| 23 | Receiving/IMAP mailboxes | Not implemented | mailcow era ended; replies go nowhere; MX points at dead host |
+| 24 | Billing / entitlements | Planned but not implemented | — |
+| 25 | Managed multi-tenant SaaS | Planned but not implemented | intent only (`managed-service-plan.md`); core Stage 1 is the foundation |
+| 26 | Backups rehearsed | Not implemented | `backup.sh/restore.sh` present, never rehearsed |
 
-## Data that survived (local, private)
+## Data on the live VPS (private, never in git)
 
-SQLite state (`gophish.db`, `deliverability_state.db`, `campaign_outreach.db`,
-`warmup.db`), lead lists + sent archive (excluded from publication), `.eml`
-samples, KumoMTA/GoPhish/DNS rebuild docs.
-
-## Data lost with the VPS
-
-mailcow (mailboxes, passwords, DKIM keys, stored mail), production GoPhish DB,
-KumoMTA DKIM private keys (regenerated by deploy design), mail logs,
-self-hosted Supabase, Caddy certs.
+GoPhish DB (`/root/gophish/gophish.db`), KumoMTA spool + DKIM private keys,
+job_api SQLite, Warmbly Postgres, app env (Appwrite/Supabase keys),
+Caddy certs, systemd/pm2 state. Secrets live in root-only files and
+environment, never in the repo.
