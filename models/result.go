@@ -7,7 +7,6 @@ import (
 	"net"
 	"time"
 
-	log "github.com/gophish/gophish/logger"
 	"github.com/jinzhu/gorm"
 	"github.com/oschwald/maxminddb-golang"
 )
@@ -150,10 +149,12 @@ func (r *Result) HandleEmailReport(details EventDetails) error {
 // UpdateGeo updates the latitude and longitude of the result in
 // the database given an IP address
 func (r *Result) UpdateGeo(addr string) error {
-	// Open a connection to the maxmind db
+	// Open a connection to the maxmind db. A missing database is a
+	// recoverable error (geo enrichment is skipped by the caller), never
+	// a reason to kill the process.
 	mmdb, err := maxminddb.Open("static/db/geolite2-city.mmdb")
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer mmdb.Close()
 	ip := net.ParseIP(addr)

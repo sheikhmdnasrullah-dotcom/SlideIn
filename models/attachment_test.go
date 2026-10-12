@@ -1,7 +1,9 @@
 package models
 
 import (
+	"archive/zip"
 	"bufio"
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
@@ -55,11 +57,48 @@ func (s *ModelsSuite) TestAttachment(c *check.C) {
 			if err != nil {
 				log.Fatalf("Failed to parse templated file '%s': %v\n", fname, err)
 			}
-			templatedFile := base64.StdEncoding.EncodeToString(tt)
 			expectedOutput := readFile("testdata/" + strings.TrimSuffix(ff.Name(), filepath.Ext(ff.Name())) + ".templated" + filepath.Ext(ff.Name())) // e.g text-file-with-vars.templated.txt
-			c.Assert(templatedFile, check.Equals, expectedOutput)
+			if isZipAttachment(fname) {
+				assertZipContentsEqual(c, tt, expectedOutput, fname)
+			} else {
+				templatedFile := base64.StdEncoding.EncodeToString(tt)
+				c.Assert(templatedFile, check.Equals, expectedOutput)
+			}
 		}
 	}
+}
+
+func isZipAttachment(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".docx", ".docm", ".pptx", ".xlsx", ".xlsm":
+		return true
+	}
+	return false
+}
+
+// assertZipContentsEqual compares two zip archives by entry names and
+// uncompressed contents instead of raw bytes: deflate output varies across
+// Go toolchains, but the templated content must be identical.
+func assertZipContentsEqual(c *check.C, obtained []byte, expectedB64, fname string) {
+	expectedRaw, err := base64.StdEncoding.DecodeString(strings.TrimSpace(expectedB64))
+	c.Assert(err, check.Equals, nil, check.Commentf("decoding fixture for %s", fname))
+	c.Assert(unzipToMap(c, obtained, fname), check.DeepEquals, unzipToMap(c, expectedRaw, fname),
+		check.Commentf("zip contents differ for %s", fname))
+}
+
+func unzipToMap(c *check.C, raw []byte, fname string) map[string]string {
+	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	c.Assert(err, check.Equals, nil, check.Commentf("unzipping %s", fname))
+	out := map[string]string{}
+	for _, f := range zr.File {
+		rc, err := f.Open()
+		c.Assert(err, check.Equals, nil, check.Commentf("opening entry in %s", fname))
+		content, err := ioutil.ReadAll(rc)
+		rc.Close()
+		c.Assert(err, check.Equals, nil, check.Commentf("reading entry in %s", fname))
+		out[f.Name] = string(content)
+	}
+	return out
 }
 
 func readFile(fname string) string {

@@ -172,7 +172,7 @@ class Content(TenantMixin, TimestampMixin, Base):
     title = Column(String(500), nullable=False)
     type = Column(String(50), nullable=False, index=True)
     body = Column(Text, nullable=False)
-    metadata = Column(JSON, default=dict, nullable=False)
+    extra_metadata = Column("metadata", JSON, default=dict, nullable=False)
     published = Column(Boolean, default=False, nullable=False)
     published_at = Column(DateTime, nullable=True)
     published_channels = Column(JSON, default=list, nullable=False)
@@ -283,7 +283,7 @@ class SystemActivity(TenantMixin, Base):
     description = Column(Text, nullable=False)
     entity_id = Column(String(255), nullable=True)
     entity_type = Column(String(100), nullable=True)
-    metadata = Column(JSON, default=dict, nullable=False)
+    extra_metadata = Column("metadata", JSON, default=dict, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     __table_args__ = (
@@ -341,7 +341,7 @@ class SentMessage(TenantMixin, Base):
     replied_at = Column(DateTime, nullable=True)
     bounced_at = Column(DateTime, nullable=True)
     complained_at = Column(DateTime, nullable=True)
-    metadata = Column(JSON, default=dict, nullable=False)
+    extra_metadata = Column("metadata", JSON, default=dict, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -362,7 +362,7 @@ class ContentAttribution(TenantMixin, Base):
     event_type = Column(String(100), nullable=False, index=True)
     value = Column(Float, nullable=True)
     occurred_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    metadata = Column(JSON, default=dict, nullable=False)
+    extra_metadata = Column("metadata", JSON, default=dict, nullable=False)
 
 
 class OnboardingStep(TenantMixin, Base):
