@@ -11,7 +11,7 @@
     "trigger": "node cli.js trigger"
   },
   "dependencies": {
-    "bullmq": "^5.41.0",
+    "bullmq": "^6.3.12",
     "ioredis": "^5.4.1",
     "nodemailer": "^6.9.16",
     "imapflow": "^1.0.171",
