@@ -401,7 +401,7 @@ dry "npm ci + build + pm2 start (open mode, loopback :3001)" || {
 # shellcheck disable=SC1090
 . "$SECRETS_FILE"
 rsync -a --delete --exclude .git --exclude node_modules --exclude .next \
-  --exclude .env.local --exclude .env.vercel --exclude knowledge/ \
+  --exclude .data/ --exclude .env.local --exclude .env.vercel --exclude knowledge/ \
   --exclude "AI Venture/" --exclude efa-results.json --exclude efa-run.log \
   --exclude Efa.csv "$APP_SRC/" "$APPDST/"
 cat > "$APPDST/.env.local" << ENVEOF
@@ -553,6 +553,8 @@ echo "  INSTALL COMPLETE"
 echo "================================================"
 echo ""
 echo "Dashboard:  https://$APP_HOST/  (also https://$BASE_DOMAIN/)"
+echo "  Instant local preview (before DNS): ssh -L 3001:localhost:3001 root@$PUBLIC_IP"
+echo "  then open http://localhost:3001 in your browser."
 echo "Console:    https://$CONSOLE_HOST/login  (user: admin — see temp password below)"
 echo "Tracking:   https://$TRACK_HOST/  (404 on / is correct)"
 [ "$MINIMAL" = 0 ] && echo "Warmbly:    https://$WARM_HOST/"
