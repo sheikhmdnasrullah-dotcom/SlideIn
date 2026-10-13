@@ -1,192 +1,188 @@
-# SlideIn — Self-Hosted Email Infrastructure & Outreach Platform
+# SlideIn — private outreach systems, installed with one command
 
-> **Beta.** An open-core platform for prospecting and personalized outreach
-> on your own infrastructure: authenticated sending, deliverability
-> engineering, lead verification, warmup, and a universal multi-tenant core
-> with governed product learning. Live reference deployment:
-> **https://www.slideinventure.com** (owner-operated, single tenant).
+> **Beta.** Prospecting, authenticated sending, and deliverability
+> engineering on infrastructure you own. One terminal command installs the
+> whole stack on a fresh VPS; the dashboard opens with a business intake
+> form, and research agents work from your profile from there.
 
-## The problem
+## Install on your VPS
 
-Sending email from your own infrastructure means owning the unglamorous
-parts: SPF/DKIM/DMARC alignment, bounce and complaint handling, suppression
-lists, warmup pacing, lead verification — and knowing whether a message was
-*accepted*, *delivered*, or actually *placed*. Scaling outreach beyond one
-business adds a harder problem: keeping every tenant's business knowledge
-private while still improving the shared product. SlideIn puts the transport,
-the safety gates, the verification, and the tenant/shared boundary in one
-inspectable stack.
+Prerequisites: Ubuntu 22.04/24.04 x86_64 VPS (4GB+ RAM) with **outbound
+port 25 open**, one base domain for the software, one or more sender
+domains, and DNS control. As root:
 
-## Who it's for
-
-Backend engineers and solo founders who want to self-host outreach
-infrastructure, learn deliverability engineering, or evaluate a documented
-reference implementation. Not for bulk unsolicited mail: suppression and
-consent hygiene are enforced, not optional.
-
-## How it works
-
-```
-                     one VPS (reference deployment)
-┌──────────────────────────────────────────────────────────────┐
-│ Caddy :80/:443 ──TLS──▶ www/app (dashboard :3001)            │
-│                      ▶ track (GoPhish landing :8080)         │
-│                      ▶ warmbly.* (warmup platform)           │
-│                                                              │
-│ dashboard ──localhost──▶ GoPhish :8333 ──SMTP AUTH──▶ KumoMTA │
-│   │                      (3 sending profiles)      :2587     │
-│   │                                                        DKIM + shaping
-│   ├──▶ job_api :8091 ──▶ reacher :8090 (lead verification)   │
-│   ├──▶ agent-reach CLI (research evidence: pages, GitHub)    │
-│   └──▶ product/core (tenant contexts, versioned defaults,    │
-│        scoped memory, learning candidates, eval suites)      │
-└──────────────────────────────────────────────────────────────┘
+```bash
+curl -fsSL https://raw.githubusercontent.com/sheikhmdnasrullah-dotcom/SlideIn/main/install.sh \
+  | bash -s -- --base-domain client.com \
+             --mail-domains send1.com,send2.com \
+             --admin-email you@client.com
 ```
 
-Every send passes eligibility checks (suppression, circuit breaker,
-authentication) before dispatch, and every outcome lands in a queryable
-event store. Every tenant's business knowledge stays tenant-private; shared
-behavior changes only through versioned, evaluated releases. Docs:
-`docs/architecture/OVERVIEW.md`,
+The installer (idempotent, dry-run with `--dry-run`) provisions Docker,
+Caddy + HTTPS, KumoMTA (per-domain DKIM), GoPhish (built + configured,
+`senders × domains` profiles), the Next.js dashboard, lead verification,
+Warmbly warmup, monitoring, and the deliverability CLI — then prints your
+exact DNS table and next steps. Full guide: `INSTALL.md`.
+
+**Instant local preview** (before DNS propagates):
+
+```bash
+ssh -L 3001:localhost:3001 root@<your-vps-ip>
+# open http://localhost:3001 — the dashboard, live from your VPS
+```
+
+After DNS: `https://app.<base>/` (dashboard),
+`https://console.<base>/login` (campaign console),
+`https://track.<base>/` (landing/pixels).
+
+## First run: how it actually works
+
+1. **Business setup (intake).** Fresh installs land on the intake form:
+   business identity, offers, and ideal-customer profile (titles,
+   industries, sizes, geographies, pains, disqualifiers). Saved on your
+   server only (`.data/business-profile.json`, validated + atomic
+   writes) — agents read it from there.
+2. **Research prospects.** Prospect Research enriches each lead with
+   sourced web evidence — and now judges offer-fit against your saved
+   business profile, so personalization references *your* offers only
+   when the evidence supports it.
+3. **Work opportunities.** Qualified prospects land in Opportunities;
+   lead verification (single + bulk) filters undeliverables first.
+4. **Run outreach.** Missions & Outreach sends through your KumoMTA
+   profiles with suppression, eligibility, and circuit-breaker gates.
+5. **Stay warm.** Warmbly warms mailboxes and the deliverability CLI
+   (`precheck`) keeps SPF/DKIM/DMARC green.
+
+## The problem it solves
+
+Sending from your own infrastructure means owning SPF/DKIM/DMARC
+alignment, bounces, suppression, warmup pacing, verification — and
+knowing whether a message was *accepted*, *delivered*, or *placed*.
+Scaling beyond one business adds tenant isolation: every client's
+knowledge stays private while the shared product improves through
+governed releases. SlideIn puts transport, safety gates, verification,
+and the tenant/shared boundary in one inspectable, self-hostable stack.
+
+Who it's for: engineers and founders who want private outreach
+infrastructure or a documented deliverability reference. Not for bulk
+unsolicited mail — suppression and consent hygiene are enforced.
+
+## What runs where
+
+```
+                 one VPS (per install — your IP, your reputation)
+┌────────────────────────────────────────────────────────────┐
+│ Caddy :80/:443 ──TLS──▶ app.<base> + apex (dashboard :3001)│
+│                      ▶ console.<base> (GoPhish UI :8333)    │
+│                      ▶ track.<base> (landing/pixels :8080)  │
+│                      ▶ warmbly.* (warmup platform)          │
+│                                                            │
+│ dashboard ──localhost──▶ GoPhish :8333 ──AUTH──▶ KumoMTA    │
+│   │ intake (.data)     (N sending profiles)      :2587     │
+│   │                                              DKIM+shaping│
+│   ├──▶ job_api :8091 ──▶ reacher :8090 (verification)      │
+│   ├──▶ agent-reach CLI (research evidence)                 │
+│   └──▶ product/core (tenant contexts, versioned defaults,  │
+│        scoped memory, learning candidates, eval suites)    │
+└────────────────────────────────────────────────────────────┘
+```
+
+Every send passes eligibility checks before dispatch; outcomes land in a
+queryable event store. Docs: `docs/architecture/OVERVIEW.md`,
 `docs/architecture/CORE_VS_TENANT_BOUNDARIES.md`.
 
-## Current status (verified 2026-10-12)
+## Current status (verified 2026-10-13)
 
 | Area | Status |
 |---|---|
-| Live VPS (single host, 18 containers + systemd + pm2) | ✅ Healthy |
-| Public HTTPS: dashboard, tracking, warmup UI/API | ✅ 200s, LE certs |
-| Mail auth (SPF/DKIM/DMARC, 3 domains) + precheck | ✅ Green |
-| SMTP AUTH over STARTTLS; GoPhish 3/3 profiles via KumoMTA | ✅ Verified, zero-send probes |
-| Lead verification (single + bulk CSV + SSE + download) | ✅ Verified live |
-| Universal core Stage 1 (isolation, versioning, scopes) | ✅ 22 boundary tests green |
-| Local stack (`./dev` + `./doctor`), e2e 8/8, platform 8/8 | ✅ Green |
-| Go suite (13 pkgs), deliverability suite (103 tests) | ✅ Green |
-| Warmup platform (self-hosted Warmbly, SMTP via KumoMTA) | ⚠️ Stack healthy; mailbox connect pending |
-| Receiving/IMAP for our domains (mailcow era ended) | ❌ Not hosted; replies go nowhere |
+| One-command installer v0.2.0 | ✅ Dry-run + 18/18 template checks green; blank-VPS proof pending |
+| Intake-first dashboard (profile → ICP → research) | ✅ Built; type + store + lint verified, deploy pending |
+| Live reference VPS (18 containers + systemd + pm2) | ✅ Healthy |
+| Public HTTPS: dashboard, console, tracking, warmup | ✅ 200s, LE certs |
+| Mail auth (SPF/DKIM/DMARC) + precheck | ✅ Green |
+| SMTP AUTH/STARTTLS; GoPhish 9/9 profiles via KumoMTA | ✅ Verified live sends |
+| Lead verification (single + bulk + SSE + download) | ✅ Verified live |
+| Universal core Stage 1 | ✅ 22 boundary tests green |
+| Go suite, deliverability suite (103), e2e 8/8 | ✅ Green |
+| Warmup platform (Warmbly via KumoMTA) | ⚠️ Healthy; mailbox connect is a manual UI step |
+| Receiving/IMAP for our domains | ❌ Not hosted |
 | Multi-customer SaaS, billing, human-approval queue | ❌ Planned, not implemented |
 
-Full matrix: `docs/project/CURRENT_STATE.md`. Debt register:
+Full matrix: `docs/project/CURRENT_STATE.md`. Debt:
 `docs/project/TECHNICAL_DEBT.md`.
 
 ## Tech stack
 
-Go (campaign/admin app, Warmbly platform) · Python (deliverability engine,
-FastAPI product layer, universal core, job_api, agent-reach) · Rust
-(reacher verification engine) · Lua (KumoMTA policy) · Node.js
-(warmup) · Next.js + TypeScript (dashboard) · Docker Compose, Caddy,
-PostgreSQL, SQLite, Redis, NATS, Prometheus/Grafana.
+Go (campaign/admin app) · Python (deliverability, product API,
+universal core, job_api, agent-reach) · Rust (reacher engine) · Lua
+(KumoMTA policy) · Next.js + TypeScript (dashboard) · Docker Compose,
+Caddy, PostgreSQL, SQLite, Redis, NATS, Prometheus/Grafana.
 
-## Quick start (tested)
-
-Prerequisites: Go 1.24+, Python 3.12+, Node.js 20+, Docker Desktop.
+## Local development
 
 ```bash
 git clone https://github.com/sheikhmdnasrullah-dotcom/SlideIn.git && cd SlideIn
 ./dev            # boots everything; ends with ./doctor (exit 0 = healthy)
 ./doctor         # re-check anytime
-python3 test_e2e_local_flow.py   # 8/8: gate → KumoMTA → Mailpit → trace
 ./stop           # clean shutdown
 ```
 
-Open: API `http://127.0.0.1:8088/?api_key=<key>`, Mailpit
-`http://127.0.0.1:8025`, Go admin `http://127.0.0.1:3333`.
-Details: `docs/development/LOCAL_SETUP.md`.
-
-Production (one VPS, port 25 open): `kumomta-lab/scripts/deploy-production.sh`
-(full script, idempotent), DNS via `docs/deployment/DNS_RECORDS.md`,
-verify with `precheck.py`. The script has completed live runs; see
-`docs/deployment/PRODUCTION_READINESS.md` for the honest remaining items.
+Details: `docs/development/LOCAL_SETUP.md`. Develop locally; send from
+the VPS (residential IPs are blocklisted).
 
 ## Configuration
 
-Copy `.env.example` to `.env` (gitignored) and fill placeholders:
+Service secrets are generated by the installer into root-only files and
+never enter git — CI enforces this (`scripts/check-secrets.sh`). Local
+dev copies `.env.example` to `.env` and fills placeholders.
 
-```bash
-KUMO_AUTH_PASS=        # KumoMTA submission password (env-provided, rotated)
-WEBHOOK_SECRET=        # required for provider webhook routes
-SLIDEIN_API_KEY=       # workspace key (or: python3 deliverability/cli.py show-key)
-```
-
-Per-service JSON configs (`config.json`, `warmup-engine/accounts.json`,
-…) are gitignored; examples live beside each service. Never commit real
-values — CI enforces this (`scripts/check-secrets.sh`).
-
-## Minimal example
-
-```bash
-KEY=$(python3 deliverability/cli.py show-key)
-curl -H "X-API-Key: $KEY" http://127.0.0.1:8088/v1/status
-curl -H "X-API-Key: $KEY" -X POST http://127.0.0.1:8088/v1/drafts/score \
-  -H 'Content-Type: application/json' \
-  -d '{"subject":"Intro","body_text":"Hello world"}'
-```
-
-API reference: `docs/api/API_OVERVIEW.md`.
-
-## Testing & development
+## Testing
 
 ```bash
 go test ./...
 python3 -m unittest discover -s deliverability/tests -p "test_*.py"
-.venv/bin/python -m pytest kumomta-lab/tests -q
-.venv/bin/python -m pytest product/tests/test_core_boundaries.py -q  # 22 boundary tests, DB-free
+.venv/bin/python -m pytest product/tests/test_core_boundaries.py -q
 bash scripts/check-secrets.sh
 ```
 
-Matrix, CI mapping, and last-verified results: `docs/development/TESTING.md`.
-(Product API tests need PostgreSQL; CI provides it.)
-
-## Self-hosting
-
-Designed for one host: `./dev` topology plus production KumoMTA policy,
-public DNS, and Caddy TLS. Guide: `docs/deployment/SELF_HOSTING.md`.
-Production readiness checklist: `docs/deployment/PRODUCTION_READINESS.md`.
-DNS record reference: `docs/deployment/DNS_RECORDS.md`.
+Matrix and last-verified results: `docs/development/TESTING.md`.
 
 ## Security & privacy
 
-- Workspace API keys (constant-time compare, rotation CLI), workspace-scoped
-  access, HMAC webhooks with fail-closed secrets, SSRF allowlists.
-- Suppression + circuit breaker enforced at every live send site.
-- Tenant isolation enforced in code: cross-tenant reads raise, global search
-  excludes tenant-private memory, agents cannot approve promotions, shared
-  changes are versioned + evaluated + rollback-able
-  (`docs/architecture/CORE_VS_TENANT_BOUNDARIES.md`).
+- Workspace API keys (constant-time compare, rotation CLI),
+  workspace-scoped access, HMAC webhooks, SSRF allowlists.
+- Suppression + circuit breaker at every live send site.
+- Tenant isolation in code: cross-tenant reads raise, global search
+  excludes tenant-private memory, shared changes are versioned +
+  evaluated + rollback-able.
+- Dashboard ships **open** (no login) for first-run simplicity — put
+  Caddy `basic_auth` in front before inviting users.
 - Threat model: `docs/security/THREAT_MODEL.md`. Report vulnerabilities
-  privately per `SECURITY.md` — never in a public issue.
+  privately per `SECURITY.md`.
 
 ## Limitations
 
-Single-host design; SQLite stores without cross-transactions; our domains
-have no receiving/IMAP mailboxes yet; Warmbly mailbox connection is a manual
-UI step; product API needs PostgreSQL; no human-approval queue yet; the live
-deployment is single-tenant (owner-operated), not multi-customer SaaS. Debt
-register: `docs/project/TECHNICAL_DEBT.md`.
+Single host per install; SQLite/file stores; no receiving/IMAP; Warmbly
+mailbox connect is manual; installer greenfield proof pending; no
+human-approval queue yet. Debt register:
+`docs/project/TECHNICAL_DEBT.md`.
 
-## Roadmap
+## Roadmap & contributing
 
-Staged plan with honest status labels: `ROADMAP.md`. Audit trail:
+Staged plan: `ROADMAP.md`. Audit trail:
 `docs/project/PROJECT_AUDIT.md`. Decisions: `docs/decisions/`.
-
-## Contributing
-
-Small, tested, documented PRs welcome. Read `CONTRIBUTING.md` and the
-[Contributor Covenant](CODE_OF_CONDUCT.md) first. Keep every suite green.
+Small, tested, documented PRs welcome — read `CONTRIBUTING.md` and the
+[Contributor Covenant](CODE_OF_CONDUCT.md) first.
 
 ## License
 
 MIT — see `LICENSE`. The Go backend derives from
-[Gophish](https://github.com/gophish/gophish) (MIT, © Jordan Wright);
-original copyright and permission notices are preserved. SlideIn
-modifications © Nasrullah Tanim. Warmbly (`warmbly/` overlay config only —
-upstream images), reacher (`reacherhq/backend` image), and Agent-Reach
-(upstream repo) retain their own licenses; see `NOTICE`.
+[Gophish](https://github.com/gophish/gophish) (MIT, © Jordan Wright).
+SlideIn modifications © Nasrullah Tanim. Warmbly, reacher, and
+Agent-Reach retain their own permissive licenses; see `NOTICE`.
 
-## Managed SaaS
+## Managed private installs — $350/mo
 
-No multi-customer hosted offering exists today. The live sites are the
-owner's own single-tenant deployment, not a product. The intent — open-core,
-paid hosting for convenience, self-hosting forever first-class — is
-documented in `docs/deployment/MANAGED_SERVICE_PLAN.md`. Nothing there is a
-product, price, or commitment.
+Don't want to operate this? Managed installs on **your own VPS**:
+setup, monitoring, deliverability reviews, and warmup guidance — your
+infrastructure and data stay yours. Open a GitHub issue to start.

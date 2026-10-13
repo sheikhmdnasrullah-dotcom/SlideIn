@@ -127,6 +127,9 @@
   wanted) needs history rewrite approval.
 - Installer `install.sh` v0.2.0: validated to dry-run + 18/18 template
   checks. True greenfield proof still needs a fresh test VPS (~$6).
+- GOTCHA (verified live): gate/decision pages MUST export
+  `force-dynamic` — Next prerendered `/` at build time and served the
+  baked redirect until a rebuild. Applies to any page reading `.data/`.
 - NOTE 2026-10-13: verifier.port25.com defers our DATA 3× (envelope 250s,
   zero fails) — receiver-side deferral consistent with missing PTR + cold
   IP, not a sending defect. Probe left in retry; a delayed NDR to
