@@ -43,8 +43,9 @@ Set PTR for `169.58.206.20` to `mail.nasrullahtanim.me`.
 | Type | Name | Value |
 |------|------|-------|
 | A | `@` | `169.58.206.20` |
-| A | `www` | `169.58.206.20` |
+| CNAME | `www` | `cname.vercel-dns.com` (marketing site — do not repoint) |
 | A | `app` | `169.58.206.20` |
+| A | `console` | `169.58.206.20` (GoPhish campaign console, DNS-only) |
 | A | `track` | `169.58.206.20` |
 | A | `warmbly` | `169.58.206.20` |
 | A | `warmbly-api` | `169.58.206.20` |

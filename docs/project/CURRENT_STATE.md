@@ -1,12 +1,13 @@
 # Current State — SlideIn
 
-> Living snapshot, last updated 2026-10-12 (post-launch rewrite). Source of
+> Living snapshot, last updated 2026-10-13 (campaign console live). Source of
 > truth for "what works". Detail and evidence: `PROJECT_AUDIT.md` (point-in-time,
 > pre-launch). Debt register: `TECHNICAL_DEBT.md`.
 
 SlideIn is a self-hosted outreach platform in **beta**, live on a single VPS
-as an owner-operated reference deployment (`www.slideinventure.com` + API,
-tracking, and warmup hosts, all HTTPS). The stack: a modified GoPhish
+as an owner-operated reference deployment (dashboard at `app`/apex, campaign
+console, tracking, and warmup hosts, all HTTPS; `www` is the Vercel marketing
+site, not served by the VPS). The stack: a modified GoPhish
 campaign/admin backend (Go), a Python deliverability engine (gate, circuit
 breaker, placement risk, provider abstraction), KumoMTA with a production Lua
 policy, a Next.js dashboard wired to local backends, a reacher-backed lead
@@ -21,13 +22,13 @@ human-approval queue exists; the live deployment is single-tenant.
 |---|---|---|---|
 | 1 | Go campaign/admin app | Implemented and verified | systemd; 13 Go pkgs ok; admin API live |
 | 2 | Deliverability pipeline + safety core | Implemented and verified | 103 Python tests OK; live e2e 8/8 |
-| 3 | KumoMTA production policy | Implemented and verified | healthy container; STARTTLS+AUTH login verified; RCPT relay probes (zero-send) |
+| 3 | KumoMTA production policy | Implemented and verified | kumod 2026.09.29; STARTTLS+AUTH verified; v4-only egress (sysctl pin); EHLO mail.nasrullahtanim.me; live delivery to Zoho confirmed |
 | 4 | Local dev stack | Implemented and verified | `./dev` + `./doctor` FULLY OPERATIONAL 2026-10-12 |
 | 5 | End-to-end local send | Implemented and verified | e2e 8/8 + platform 8/8; DKIM verified at sink |
 | 6 | Production VPS deployment | Implemented and verified | 18 containers healthy; deploy script completed live runs; idempotent reruns |
-| 7 | Public HTTPS (6 hosts) + Caddy | Implemented and verified | 200s on www/app/warmbly/API; LE certs auto-issued |
+| 7 | Public HTTPS (app/apex/console/track/warmbly×3) + Caddy | Implemented and verified | 200s live; LE certs auto-issued; www is Vercel (CNAME, never VPS) |
 | 8 | Mail auth DNS (SPF/DKIM/DMARC ×3) | Implemented and verified | precheck green; Cloudflare API push 2026-10-12 |
-| 9 | GoPhish sending profiles (3/3) | Implemented and verified | via KumoMTA relay; dashboard reads live profiles (sanitized) |
+| 9 | GoPhish sending profiles (9/9) | Implemented and verified | via KumoMTA relay; 3× nasrullahtanim.me + 6× tanim.social/tanim.tech; dashboard reads live profiles (sanitized) |
 | 10 | Dashboard ↔ backend wiring | Implemented and verified | no-login open mode; live profile/verification/job proofs |
 | 11 | Lead verification (single + bulk) | Implemented and verified | job lifecycle: upload → SSE → download, real verdicts |
 | 12 | Warmup platform (Warmbly self-host) | Implemented, partially verified | 11/11 healthy; SMTP relay proven; mailbox connect is a manual UI step |
@@ -45,6 +46,8 @@ human-approval queue exists; the live deployment is single-tenant.
 | 24 | Billing / entitlements | Planned but not implemented | — |
 | 25 | Managed multi-tenant SaaS | Planned but not implemented | intent only (`managed-service-plan.md`); core Stage 1 is the foundation |
 | 26 | Backups rehearsed | Not implemented | `backup.sh/restore.sh` present, never rehearsed |
+| 27 | Campaign console (public GoPhish UI) | Implemented and verified | `console.slideinventure.com/login` 200; loopback binds; CSRF origin fix (bare-host match); dry-run group+template created, zero sends |
+| 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR still provider-default (Contabo TODO); dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
 
 ## Data on the live VPS (private, never in git)
 

@@ -97,3 +97,46 @@
 - gophish/options credential leak → server-side sanitization (verified:
   SMTP password no longer leaves the backend).
 - Anonymous shell execution locked in open-dashboard mode (403).
+- Console CSRF: `trusted_origins` must be bare hosts (gorilla/csrf v1.6.2
+  exact-matches `referer.Host`); schemed entries silently break all logins.
+  Pinned in `deploy-production.sh` + `/root/gophish/config.json`.
+- ROTATE: KumoMTA `outbound` SMTP password + kumod `admin` password both
+  appeared in 2026-10-13 agent session transcripts (VPS config inspection;
+  a redaction regex missed single-quoted Lua strings). Values unchanged and
+  working; rotate both + GoPhish config/profiles + app env at next
+  maintenance window, then delete stale transcripts.
+- FIXED 2026-10-13: VPS has global IPv6 and Gmail/Microsoft MXs publish
+  AAAA, so outbound mail could egress via v6 while SPF authorizes only the
+  v4 address (SPF fail → spam). Pinned kumomta container to IPv4-only via
+  `net.ipv6.conf.all.disable_ipv6=1` (compose sysctl); host keeps IPv6.
+  Deliberate v6 sending needs ip6 SPF + v6 PTR first.
+- NOTE: `scheduled_queue_count` reads 1 at idle with empty spool and
+  balanced in/out counters — it counts an internal maintenance task, not a
+  stuck message. Do not chase it again.
+- URGENT ROTATE: live Appwrite API key was sitting in working
+  `workspace-app/.env.example` (scrubbed 2026-10-13) and also appears in an
+  agent session transcript. Rotate in the Appwrite console, then update
+  `.env.local`/`.env.vercel`/VPS copies. Never store live keys in *.example.
+- PUSH REQUIRED: nested dashboard repo `slideinventure-workspace` (public,
+  last push Oct 6) lacks this week's security fixes (SMTP sanitization,
+  tasks/execute lock, Caddy console block) — 5 files uncommitted. No client
+  may install from it until pushed.
+- PUBLIC EXPOSURE (user decision): `knowledge/` + `AI Venture/` + `Efa.*`
+  (strategy notes, playbooks, prospect research) are tracked in the public
+  nested repo. Installer excludes them from client copies; repo purge (if
+  wanted) needs history rewrite approval.
+- Installer `install.sh` v0.2.0: validated to dry-run + 18/18 template
+  checks. True greenfield proof still needs a fresh test VPS (~$6).
+- NOTE 2026-10-13: verifier.port25.com defers our DATA 3× (envelope 250s,
+  zero fails) — receiver-side deferral consistent with missing PTR + cold
+  IP, not a sending defect. Probe left in retry; a delayed NDR to
+  hello@tanim.social is possible and harmless. Independent auth proof now
+  comes from Zoho "Show Original" on delivered tests instead.
+- FIXED 2026-10-13: `deliverability/config.json` kumo.password had diverged
+  from the live KumoMTA secret (stale fp d417… vs live 91c0…), causing
+  `535 5.7.8 AUTH invalid` on submission and wrong passwords on 6 new
+  profiles. Resynced server + local configs and all 9 DB profiles to the
+  live secret; verified by fingerprint. Root cause: two sources of truth
+  (deploy env vs config file). Rule: live secret in
+  `/opt/kumomta/etc/policy/secrets.lua` wins; verify by `sha256[:12]`,
+  never by printing values.
