@@ -1,0 +1,42 @@
+# SlideIn Caddyfile template — placeholders (__APP__ etc.) are filled by
+# install.sh from --base-domain. Loopback services only; Caddy is the sole
+# public entrypoint and terminates TLS (Let's Encrypt, automatic).
+#
+# NOTE: never serve a marketing site from this file. If __BASE__ hosts a
+# marketing page elsewhere (e.g. Vercel), point only the dashboard hosts
+# here and keep marketing DNS separate.
+
+__APP__, __BASE__ {
+	reverse_proxy localhost:3001
+}
+
+# GoPhish campaign console (admin UI + API). GoPhish serves plain HTTP on
+# loopback; Caddy terminates public TLS. The console host must also be in
+# GoPhish admin_server.trusted_origins as a BARE host (no scheme) or all
+# logins fail CSRF with "Forbidden - referer invalid".
+__CONSOLE__ {
+	reverse_proxy localhost:8333
+}
+
+# GoPhish landing + tracking pixels. 404 on / is correct behavior.
+__TRACK__ {
+	reverse_proxy localhost:8080
+}
+
+# Warmbly self-hosted platform (loopback services in /opt/warmbly).
+__WARM__ {
+	reverse_proxy localhost:5173
+}
+
+__WARM_API__ {
+	handle /socket/* {
+		reverse_proxy localhost:4000
+	}
+	handle {
+		reverse_proxy localhost:8180
+	}
+}
+
+__WARM_TRACK__ {
+	reverse_proxy localhost:3200
+}

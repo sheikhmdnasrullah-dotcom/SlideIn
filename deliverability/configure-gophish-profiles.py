@@ -2,8 +2,11 @@
 """
 configure-gophish-profiles.py - Configure GoPhish sending profiles via API
 
-Configures all 3 sender profiles in GoPhish to use KumoMTA as the SMTP relay.
-Each profile authenticates as 'outbound' and sends as a different nasrullahtanim.me address.
+Configures all 9 sender profiles in GoPhish to use KumoMTA as the SMTP relay.
+Each profile authenticates as 'outbound' and sends as a different address.
+tanim.social / tanim.tech mailboxes stay on Zoho (MX + zmail DKIM untouched);
+these profiles only add the VPS as an additional authorized sender (SPF
+include + dkim-selector signing). Idempotent: reruns report 409 as done.
 """
 from __future__ import annotations
 import json
@@ -37,6 +40,42 @@ PROFILES = [
         "email": "connect@nasrullahtanim.me",
         "from_name": "Nasrullah Tanim",
         "reply_to": "connect@nasrullahtanim.me",
+    },
+    {
+        "name": "hello@tanim.social",
+        "email": "hello@tanim.social",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "hello@tanim.social",
+    },
+    {
+        "name": "talk@tanim.social",
+        "email": "talk@tanim.social",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "talk@tanim.social",
+    },
+    {
+        "name": "connect@tanim.social",
+        "email": "connect@tanim.social",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "connect@tanim.social",
+    },
+    {
+        "name": "hello@tanim.tech",
+        "email": "hello@tanim.tech",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "hello@tanim.tech",
+    },
+    {
+        "name": "talk@tanim.tech",
+        "email": "talk@tanim.tech",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "talk@tanim.tech",
+    },
+    {
+        "name": "connect@tanim.tech",
+        "email": "connect@tanim.tech",
+        "from_name": "Nasrullah Tanim",
+        "reply_to": "connect@tanim.tech",
     },
 ]
 
@@ -86,7 +125,22 @@ def configure_smtp_profile(profile: dict) -> bool:
         print(f"  [ERR] {profile['email']}: {e}")
         return False
 
+def load_profiles() -> list:
+    """Profile list: PROFILES_JSON env (installer) overrides the builtin list."""
+    override = os.environ.get("PROFILES_JSON", "")
+    if override:
+        profiles = json.loads(override)
+        assert isinstance(profiles, list) and profiles, "PROFILES_JSON must be a non-empty list"
+        for p in profiles:
+            assert p.get("name") and p.get("email"), f"profile needs name+email: {p}"
+            p.setdefault("from_name", "")
+            p.setdefault("reply_to", p["email"])
+        return profiles
+    return PROFILES
+
+
 def main():
+    profiles = load_profiles()
     if not os.environ.get("GOPHISH_API_KEY"):
         print("ERROR: GOPHISH_API_KEY is not set (refusing unauthenticated API calls).")
         print("Read it from the GoPhish host: cat /root/gophish/api_key.txt")
@@ -102,18 +156,18 @@ def main():
     print()
 
     success = 0
-    for profile in PROFILES:
+    for profile in profiles:
         if configure_smtp_profile(profile):
             success += 1
         time.sleep(0.5)
 
     print()
-    print(f"Configured {success}/{len(PROFILES)} profiles")
-    
-    if success == len(PROFILES):
+    print(f"Configured {success}/{len(profiles)} profiles")
+
+    if success == len(profiles):
         print("\nAll profiles ready. GoPhish is now sending via KumoMTA.")
         print("Profiles:")
-        for p in PROFILES:
+        for p in profiles:
             print(f"  - {p['email']} (as {p['from_name']})")
     else:
         print("\nSome profiles failed. Check GoPhish admin panel manually.")

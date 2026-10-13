@@ -123,7 +123,10 @@ auth = os.environ["KUMO_AUTH_PASS"]
 cfg["smtp"]["host"] = "127.0.0.1"
 cfg["smtp"]["password"] = auth
 cfg["smtp"]["trusted_origins"] = ["127.0.0.1", "localhost"]
-cfg["admin_server"]["trusted_origins"] = ["127.0.0.1:8333", "localhost:8333", "127.0.0.1", "localhost"]
+# NOTE: gorilla/csrf v1.6.2 matches `referer.Host == trustedOrigin` as an exact
+# string against the bare host (no scheme). "https://..." entries NEVER match
+# and break console logins with "Forbidden - referer invalid". Keep bare hosts.
+cfg["admin_server"]["trusted_origins"] = ["127.0.0.1:8333", "localhost:8333", "127.0.0.1", "localhost", "console.slideinventure.com"]
 for p in cfg.get("profiles", []):
     p["smtp_host"] = "127.0.0.1"
     p["smtp_password"] = auth

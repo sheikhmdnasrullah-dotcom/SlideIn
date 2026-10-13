@@ -29,6 +29,12 @@ services:
     container_name: kumomta
     hostname: mail.nasrullahtanim.me
     domainname: nasrullahtanim.me
+    # Pin outbound mail to IPv4: our SPF authorizes only the v4 address and
+    # the v6 PTR is provider-default, so any v6 egress (Gmail/Microsoft MXs
+    # have AAAA records) would fail SPF and hurt inbox placement. Deliberate
+    # v6 enablement needs ip6 SPF + v6 PTR first. Host keeps IPv6.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: "1"
     networks:
       production:
         aliases:
