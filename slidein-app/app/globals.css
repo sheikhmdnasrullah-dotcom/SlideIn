@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SLIDEIN CLIENT WORKSPACE: TOKEN LAYER
+   ---------------------------------------------------------------------------
+   Ported from workspace-app (the design reference). Same material, same
+   discipline: a raw hex / px / ms literal in a .tsx file is a bug. OKLCH
+   throughout so day and night read as one surface under different light.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── PAPER RAMP: day surfaces ─────────────────────────────────────────── */
+  --color-paper-25: oklch(0.978 0.004 85);
+  --color-paper-50: oklch(0.968 0.006 85);
+  --color-paper-100: oklch(0.945 0.008 84);
+  --color-paper-200: oklch(0.915 0.010 83);
+  --color-bone-300: oklch(0.868 0.012 82);
+  --color-bone-400: oklch(0.790 0.014 80);
+
+  /* ── INK / DARK RAMP ──────────────────────────────────────────────────── */
+  --color-slate-500: oklch(0.545 0.016 75);
+  --color-slate-600: oklch(0.470 0.018 74);
+  --color-graphite-700: oklch(0.290 0.013 72);
+  --color-graphite-800: oklch(0.235 0.012 70);
+  --color-graphite-900: oklch(0.185 0.011 68);
+  --color-ink: oklch(0.155 0.010 66);
+  --color-ink-deep: oklch(0.115 0.009 64);
+
+  /* ── ASH RAMP: muted text on dark tones ───────────────────────────────── */
+  --color-ash-200: oklch(0.850 0.010 80);
+  --color-ash-300: oklch(0.780 0.010 80);
+  --color-ash-400: oklch(0.720 0.010 80);
+  --color-ash-500: oklch(0.620 0.012 80);
+
+  /* ── BRAND: hue 42.28 held constant across every derived token ────────── */
+  --color-brand: oklch(0.691 0.207 42.28);
+  --color-brand-hi: oklch(0.700 0.198 42.28);
+  --color-brand-soft: oklch(0.691 0.207 42.28 / 8%);
+  --color-signal: oklch(0.563 0.168 42.28);
+  --color-signal-deep: oklch(0.542 0.163 42.28);
+  --color-ember: oklch(0.380 0.120 42.28);
+  --color-brand-lift: oklch(0.760 0.170 42.28);
+  --color-brand-pale: oklch(0.855 0.098 42.28);
+
+  /* ── STATUS ───────────────────────────────────────────────────────────── */
+  --color-live: oklch(0.530 0.148 149);
+  --color-live-deep: oklch(0.430 0.120 149);
+  --color-live-hi: oklch(0.780 0.130 149);
+  --color-info: oklch(0.530 0.128 255);
+  --color-info-deep: oklch(0.460 0.110 255);
+  --color-info-hi: oklch(0.790 0.085 255);
+  --color-warn: oklch(0.610 0.150 70);
+  --color-warn-deep: oklch(0.500 0.120 70);
+  --color-danger: oklch(0.577 0.245 27.325);
+  --color-danger-hi: oklch(0.708 0.180 20);
+
+  /* ── RADII: four values, tighter than marketing ───────────────────────── */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  /* ── MOTION ───────────────────────────────────────────────────────────── */
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* ── TYPE ─────────────────────────────────────────────────────────────── */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  --shadow-raised: 0 1px 2px oklch(0.155 0.010 66 / 6%), 0 1px 1px oklch(0.155 0.010 66 / 4%);
+  --shadow-contact: 0 6px 16px -6px oklch(0.155 0.010 66 / 14%);
+  --shadow-float: 0 16px 40px -12px oklch(0.155 0.010 66 / 22%);
+}
+
+/* ── Semantic contract: --surface / --text-* / --rule / --accent-* ─────────
+   Unlayered: a theme token must beat any stray utility in @layer base. */
+:root {
+  --page-fill: var(--color-paper-50);
+  --surface: var(--color-paper-25);
+  --surface-2: var(--color-paper-100);
+  --surface-glass: oklch(0.968 0.006 85 / 82%);
+  --rule: oklch(0.155 0.010 66 / 10%);
+  --rule-strong: oklch(0.155 0.010 66 / 16%);
+  --on-surface: var(--color-ink);
+  --text-strong: var(--color-ink);
+  --text-muted: var(--color-slate-600);
+  --text-faint: var(--color-slate-500);
+  --text-accent: var(--color-signal-deep);
+  --accent-vivid: var(--color-brand);
+  --accent-wash: oklch(0.691 0.207 42.28 / 8%);
+  --accent-ring: oklch(0.691 0.207 42.28 / 24%);
+  --on-accent: var(--color-paper-25);
+  --status-live: var(--color-live-deep);
+  --status-info: var(--color-info-deep);
+  --status-warn: var(--color-warn-deep);
+  --status-danger: var(--color-danger);
+  --scrim: oklch(0.115 0.009 64 / 40%);
+}
+
+.dark {
+  --page-fill: var(--color-ink-deep);
+  --surface: var(--color-graphite-900);
+  --surface-2: var(--color-graphite-800);
+  --surface-glass: oklch(0.185 0.011 68 / 82%);
+  --rule: oklch(0.850 0.010 80 / 12%);
+  --rule-strong: oklch(0.850 0.010 80 / 20%);
+  --on-surface: var(--color-ash-200);
+  --text-strong: var(--color-ash-200);
+  --text-muted: var(--color-ash-400);
+  --text-faint: var(--color-ash-500);
+  --text-accent: var(--color-brand-hi);
+  --accent-vivid: var(--color-brand-hi);
+  --accent-wash: oklch(0.700 0.198 42.28 / 12%);
+  --accent-ring: oklch(0.700 0.198 42.28 / 30%);
+  --on-accent: var(--color-ink-deep);
+  --status-live: var(--color-live-hi);
+  --status-info: var(--color-info-hi);
+  --status-warn: var(--color-warn);
+  --status-danger: var(--color-danger-hi);
+  --scrim: oklch(0.115 0.009 64 / 62%);
+}
+
+/* ── Map the contract onto Tailwind's palette ───────────────────────────── */
+@theme inline {
+  --color-background: var(--page-fill);
+  --color-foreground: var(--text-strong);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-on-surface: var(--on-surface);
+  --color-ink-strong: var(--text-strong);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-faint: var(--text-faint);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-flame: var(--text-accent);
+  --color-flame-vivid: var(--accent-vivid);
+  --color-flame-wash: var(--accent-wash);
+  --color-flame-ring: var(--accent-ring);
+  --color-on-flame: var(--on-accent);
+  --color-surface-glass: var(--surface-glass);
+  --color-status-live: var(--status-live);
+  --color-status-info: var(--status-info);
+  --color-status-warn: var(--status-warn);
+  --color-status-danger: var(--status-danger);
+  --color-scrim: var(--scrim);
+
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+}
+
+@layer base {
+  * {
+    @apply border-rule;
+  }
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+/* ── TYPE ROLES. Unlayered so a role class beats a stray Tailwind utility. */
+.font-display {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.font-display-soft {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+.font-label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.font-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.font-body {
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+/* ── Focus: one ring language everywhere. ───────────────────────────────── */
+@layer utilities {
+  .focus-ring {
+    @apply outline-none ring-offset-0;
+  }
+  .focus-ring:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--page-fill),
+      0 0 0 4px var(--accent-ring);
+  }
+}
+
+/* Motion: clickable rows lift and settle. Transform only — never layout. */
+@layer components {
+  .motion-card {
+    transition:
+      transform var(--dur-fast) var(--ease-std),
+      box-shadow var(--dur-fast) var(--ease-std),
+      border-color var(--dur-fast) var(--ease-std);
+  }
+  .motion-card:hover {
+    transform: translateY(-1px);
+  }
+  .motion-card:active {
+    transform: translateY(0);
+  }
+
+  [data-slot="sidebar-menu-button"] {
+    transition:
+      background-color var(--dur-fast) var(--ease-std),
+      color var(--dur-fast) var(--ease-std);
+  }
+}

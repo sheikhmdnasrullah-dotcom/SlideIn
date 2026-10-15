@@ -1,0 +1,10 @@
+# Local SQLite databases (one per run, disposable)
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
