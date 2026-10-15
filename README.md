@@ -1,9 +1,33 @@
-# SlideIn — private outreach systems, installed with one command
+# SlideIn
 
-> **Beta.** Prospecting, authenticated sending, and deliverability
-> engineering on infrastructure you own. One terminal command installs the
-> whole stack on a fresh VPS; the dashboard opens with a business intake
-> form, and research agents work from your profile from there.
+> **An agentic system that finds prospects, captures leads, and reaches out to them.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.13%2B-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+
+One self-hosted stack for the entire outbound motion: prospect research,
+lead qualification, personalized outreach, campaign management, and the
+deliverability infrastructure to land it — on a VPS and sender domains you
+own. **Beta.**
+
+## The loop
+
+Everything in the repo serves one pipeline with three jobs:
+
+1. **Find prospects.** Research agents enrich each lead with sourced web
+   evidence, then judge offer-fit against your saved business profile — so
+   personalization references *your* offers only when the evidence
+   supports it.
+2. **Capture leads.** Qualified prospects land in Opportunities. Lead
+   verification (single + bulk) filters undeliverable addresses before a
+   single send, and every qualification decision is recorded with
+   provenance.
+3. **Reach out.** Missions & Outreach dispatches through your KumoMTA
+   sending profiles with suppression, eligibility, and circuit-breaker
+   gates. Warmbly keeps mailbox reputation warm; inbound replies are
+   stitched, classified by intent, and routed back into the loop.
 
 ## Install on your VPS
 
@@ -35,61 +59,85 @@ After DNS: `https://app.<base>/` (dashboard),
 `https://console.<base>/login` (campaign console),
 `https://track.<base>/` (landing/pixels).
 
-## First run: how it actually works
+## Architecture
 
-1. **Business setup (intake).** Fresh installs land on the intake form:
-   business identity, offers, and ideal-customer profile (titles,
-   industries, sizes, geographies, pains, disqualifiers). Saved on your
-   server only (`.data/business-profile.json`, validated + atomic
-   writes) — agents read it from there.
-2. **Research prospects.** Prospect Research enriches each lead with
-   sourced web evidence — and now judges offer-fit against your saved
-   business profile, so personalization references *your* offers only
-   when the evidence supports it.
-3. **Work opportunities.** Qualified prospects land in Opportunities;
-   lead verification (single + bulk) filters undeliverables first.
-4. **Run outreach.** Missions & Outreach sends through your KumoMTA
-   profiles with suppression, eligibility, and circuit-breaker gates.
-5. **Stay warm.** Warmbly warms mailboxes and the deliverability CLI
-   (`precheck`) keeps SPF/DKIM/DMARC green.
+### One VPS, six planes
 
-## The problem it solves
-
-Sending from your own infrastructure means owning SPF/DKIM/DMARC
-alignment, bounces, suppression, warmup pacing, verification — and
-knowing whether a message was *accepted*, *delivered*, or *placed*.
-Scaling beyond one business adds tenant isolation: every client's
-knowledge stays private while the shared product improves through
-governed releases. SlideIn puts transport, safety gates, verification,
-and the tenant/shared boundary in one inspectable, self-hostable stack.
-
-Who it's for: engineers and founders who want private outreach
-infrastructure or a documented deliverability reference. Not for bulk
-unsolicited mail — suppression and consent hygiene are enforced.
-
-## What runs where
+Every install is a single-tenant stack on one VPS — your IP, your
+reputation, your data. Nothing phones home.
 
 ```
-                 one VPS (per install — your IP, your reputation)
-┌────────────────────────────────────────────────────────────┐
-│ Caddy :80/:443 ──TLS──▶ app.<base> + apex (dashboard :3001)│
-│                      ▶ console.<base> (GoPhish UI :8333)    │
-│                      ▶ track.<base> (landing/pixels :8080)  │
-│                      ▶ warmbly.* (warmup platform)          │
-│                                                            │
-│ dashboard ──localhost──▶ GoPhish :8333 ──AUTH──▶ KumoMTA    │
-│   │ intake (.data)     (N sending profiles)      :2587     │
-│   │                                              DKIM+shaping│
-│   ├──▶ job_api :8091 ──▶ reacher :8090 (verification)      │
-│   ├──▶ agent-reach CLI (research evidence)                 │
-│   └──▶ product/core (tenant contexts, versioned defaults,  │
-│        scoped memory, learning candidates, eval suites)    │
-└────────────────────────────────────────────────────────────┘
+┌──────────────────────────── ONE VPS PER INSTALL ────────────────────────────┐
+│                                                                              │
+│  AGENT LAYER         configure → discover → research → qualify →             │
+│  slidein-api :8100   personalize → outreach → converse                       │
+│  (FastAPI · explicit stage contracts · stage_runs + activity audit)          │
+│                                                                              │
+│  CONTROL PLANE       workspaces · domains · profiles · campaigns · RBAC      │
+│  Go app :3333 / GoPhish :8333            (SQLite gophish.db)                 │
+│                                                                              │
+│  DELIVERABILITY      gate → placement risk → circuit breaker → suppression   │
+│  engine :8088        ├─▶ KumoMTA :2587 (AUTH/TLS · DKIM) ──▶ recipient MX    │
+│                      └─▶ Mailpit :1025 (dev only — local stacks never        │
+│                          reach the internet)                                 │
+│                                                                              │
+│  WARMTH &            warmup-engine (BullMQ/Redis) · reacher :8090/:8091      │
+│  VERIFICATION        (email verification, single + bulk)                     │
+│                                                                              │
+│  FRONTENDS           dashboard :3001 · slidein-app :3200 · GoPhish console   │
+│  Caddy :443 (TLS) ─▶ app · console · track · warmbly.<base>                  │
+│                                                                              │
+│  OBSERVABILITY       Prometheus · Grafana · queryable send-event store ·     │
+│                      inbound webhooks                                        │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Every send passes eligibility checks before dispatch; outcomes land in a
-queryable event store. Docs: `docs/architecture/OVERVIEW.md`,
-`docs/architecture/CORE_VS_TENANT_BOUNDARIES.md`.
+Design properties: one approved outbound path per runtime with
+fail-closed safety checks; no shared transactions across stores
+(`docs/architecture/COMPONENTS.md`); tenant-private knowledge stays
+private while shared defaults are versioned, evaluated, and rollback-able
+(`docs/architecture/CORE_VS_TENANT_BOUNDARIES.md`).
+
+### The agent workflow
+
+```
+configure ──▶ discover ──▶ research ──▶ qualify ──▶ personalize ──▶ outreach ──▶ converse
+   │             │            │            │             │             │            │
+ profile      prospects    evidence    qualification   drafts      sent mails   replies
+ offers       provenance  provenance   offer match   (versioned)   + policy   + intent
+ icps                                                                             │
+                                                        overview ◀── activity ◀──┘
+```
+
+Every arrow is a declared contract (`slidein-api/slidein_api/contracts.py`):
+required inputs, produced outputs, permitted status transitions, failure
+codes with retry behaviour, and the recovery action to surface. Nothing
+advances implicitly — `StageRunner` validates each call and records a
+`stage_runs` row before and after.
+
+### Repository map
+
+| Component | Directory | Entrypoint |
+|---|---|---|
+| Agent workflow API | `slidein-api/` | `python run.py` → `:8100` (`/docs`) |
+| Client workspace UI | `slidein-app/` (Next.js 16, App Router) | `npm run dev` → `:3200` |
+| Dashboard | `workspace-app/` | `npm run dev` → `:3001` |
+| Go campaign/admin app | `controllers/`, `models/`, `worker/`, `gophish.go` | `./gophish_local --config=config.local.json` → `:3333` |
+| Campaign console (GoPhish) | `gophish-config-production.json` + `kumomta-lab/` | `:8333` (loopback) |
+| Deliverability engine | `deliverability/` (`core/`, `server.py`) | `python3 deliverability/server.py` → `:8088` |
+| Universal multi-tenant core | `product/` (FastAPI) | `:8000` (needs PostgreSQL) |
+| KumoMTA policy lab | `kumomta-lab/` (`policy/*.lua`, `compose/`) | `docker-compose.local.yml` |
+| Warmup engine | `warmup-engine/` | `npm start` |
+| Lead verification | `reacher/` (Rust engine + job_api) | `:8090` / `:8091` |
+| Warmup platform overlay | `warmbly/` | `docker-compose.yml` |
+| Local stack | repo root | `./dev`, `./doctor`, `./stop` |
+
+Stores: `gophish.db` (campaigns), `deliverability_state.db`
+(gate/circuit/events), `campaign_outreach.db`, `warmup.db` (all SQLite);
+PostgreSQL (product + agent layer); Redis (queues/cache).
+
+Full docs: `docs/architecture/OVERVIEW.md` (as-built),
+`docs/architecture/SYSTEM_ARCHITECTURE.md` (authoritative spec).
 
 ## Current status (verified 2026-10-13)
 
@@ -97,6 +145,7 @@ queryable event store. Docs: `docs/architecture/OVERVIEW.md`,
 |---|---|
 | One-command installer v0.2.0 | ✅ Dry-run + 18/18 template checks green; blank-VPS proof pending |
 | Intake-first dashboard (profile → ICP → research) | ✅ Built; type + store + lint verified, deploy pending |
+| Agent workflow API (slidein-api) + client workspace (slidein-app) | ✅ Built; contracts + stage runs + activity audit |
 | Live reference VPS (18 containers + systemd + pm2) | ✅ Healthy |
 | Public HTTPS: dashboard, console, tracking, warmup | ✅ 200s, LE certs |
 | Mail auth (SPF/DKIM/DMARC) + precheck | ✅ Green |
@@ -113,10 +162,11 @@ Full matrix: `docs/project/CURRENT_STATE.md`. Debt:
 
 ## Tech stack
 
-Go (campaign/admin app) · Python (deliverability, product API,
-universal core, job_api, agent-reach) · Rust (reacher engine) · Lua
-(KumoMTA policy) · Next.js + TypeScript (dashboard) · Docker Compose,
-Caddy, PostgreSQL, SQLite, Redis, NATS, Prometheus/Grafana.
+Go (campaign/admin app) · Python (deliverability, product API, universal
+core, slidein-api agent workflow, job_api) · Rust (reacher engine) · Lua
+(KumoMTA policy) · Next.js + TypeScript (dashboard, client workspace) ·
+Docker Compose, Caddy, PostgreSQL, SQLite, Redis, NATS,
+Prometheus/Grafana.
 
 ## Local development
 
