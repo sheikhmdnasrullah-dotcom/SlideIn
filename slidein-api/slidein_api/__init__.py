@@ -1,0 +1,102 @@
+"""Slidein — the connected prospect-to-conversation workflow backend.
+
+Exposes the canonical domain model, explicit stage contracts, the
+workflow runtime, and the shared services the client workspace reads.
+"""
+
+from .contracts import CONTRACTS, HANDOFFS, StageContract, StageName, contract_for
+from .errors import RETRYABLE, RECOVERY_ACTION, FailureCode, SlideinError
+from .lifecycle import (
+    DRAFT_TRANSITIONS,
+    PROSPECT_TRANSITIONS,
+    SENT_TRANSITIONS,
+    check_transition,
+)
+from .models import (
+    BusinessProfile,
+    Conversation,
+    DeliveryEvent,
+    DraftStatus,
+    DraftVersion,
+    EvidenceItem,
+    IcpDefinition,
+    InboundReply,
+    MessageDraft,
+    Offer,
+    OfferMatch,
+    Prospect,
+    ProspectStatus,
+    QualificationResult,
+    RunStatus,
+    SentMessage,
+    SentStatus,
+    StageRun,
+    SuppressionRecord,
+    Tenant,
+)
+from .runtime import StageOutcome, StageRunner
+from .security import AuthContext, get_key_store, resolve_workspace
+from .services import (
+    ActivityService,
+    ConfigService,
+    ConversationService,
+    DiscoveryService,
+    DryRunTransport,
+    OutreachService,
+    OverviewService,
+    PersonalizationService,
+    QualificationService,
+    ResearchService,
+    SuppressionService,
+)
+
+__all__ = [
+    "CONTRACTS",
+    "DRAFT_TRANSITIONS",
+    "HANDOFFS",
+    "PROSPECT_TRANSITIONS",
+    "RECOVERY_ACTION",
+    "RETRYABLE",
+    "SENT_TRANSITIONS",
+    "ActivityService",
+    "AuthContext",
+    "BusinessProfile",
+    "ConfigService",
+    "Conversation",
+    "ConversationService",
+    "DeliveryEvent",
+    "DiscoveryService",
+    "DraftStatus",
+    "DraftVersion",
+    "DryRunTransport",
+    "EvidenceItem",
+    "FailureCode",
+    "IcpDefinition",
+    "InboundReply",
+    "MessageDraft",
+    "Offer",
+    "OfferMatch",
+    "OutreachService",
+    "OverviewService",
+    "PersonalizationService",
+    "Prospect",
+    "ProspectStatus",
+    "QualificationResult",
+    "QualificationService",
+    "ResearchService",
+    "RunStatus",
+    "SentMessage",
+    "SentStatus",
+    "SlideinError",
+    "StageContract",
+    "StageName",
+    "StageOutcome",
+    "StageRunner",
+    "SuppressionRecord",
+    "SuppressionService",
+    "Tenant",
+    "check_transition",
+    "contract_for",
+    "get_key_store",
+    "resolve_workspace",
+]

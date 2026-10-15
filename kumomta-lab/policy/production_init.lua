@@ -67,7 +67,7 @@ end
 local function dkim_sign(msg, domain)
   local key_path, err = get_dkim_key(domain)
   if not key_path then
-    kumo.log('DKIM key missing for ' .. domain .. ': ' .. err)
+    print('DKIM key missing for ' .. domain .. ': ' .. (err or 'unknown'))
     return false
   end
 
@@ -84,7 +84,7 @@ local function dkim_sign(msg, domain)
     msg:dkim_sign(signer)
     return true
   else
-    kumo.log('DKIM sign failed for ' .. domain .. ': ' .. tostring(signer))
+    print('DKIM sign failed for ' .. domain .. ': ' .. tostring(signer))
     return false
   end
 end
@@ -180,8 +180,9 @@ kumo.on('smtp_server_message_received', function(msg)
 
   local from_domain = from.domain or 'nasrullahtanim.me'
 
-  if not get_dkim_key(from_domain) then
-    kumo.log('No DKIM key for ' .. from_domain .. ', using default')
+  local key_path = get_dkim_key(from_domain)
+  if not key_path then
+    print('No DKIM key for ' .. from_domain .. ', using default')
     from_domain = 'nasrullahtanim.me'
   end
 
@@ -220,14 +221,5 @@ kumo.on('get_egress_path_config', function(routing_domain, egress_source, site_n
     max_connection_rate = config.max_connection_rate,
     max_deliveries_per_connection = config.max_deliveries_per_connection,
     refresh_strategy = 'Epoch',
-    connection_max_idle_time = '30s',
-  }
-end)
-
-kumo.on('get_connection_config', function(remote_host, _egress_source, _site_name)
-  return kumo.make_connection_config {
-    tls = { mode = 'opportunistic', min_version = '1.2' },
-    max_messages = 100,
-    max_idle_time = '30s',
   }
 end)

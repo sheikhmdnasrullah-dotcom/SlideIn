@@ -47,7 +47,7 @@ human-approval queue exists; the live deployment is single-tenant.
 | 25 | Managed multi-tenant SaaS | Planned but not implemented | intent only (`managed-service-plan.md`); core Stage 1 is the foundation |
 | 26 | Backups rehearsed | Not implemented | `backup.sh/restore.sh` present, never rehearsed |
 | 27 | Campaign console (public GoPhish UI) | Implemented and verified | `console.slideinventure.com/login` 200; loopback binds; CSRF origin fix (bare-host match); dry-run group+template created, zero sends |
-| 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR still provider-default (Contabo TODO); dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
+| 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR mail.nasrullahtanim.me forward-confirmed; dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
 | 29 | Intake-first onboarding (profile → ICP → research) | Implemented and verified | `/intake` form + file store + API live; gate flips verified both ways; research prompts consume business context |
 
 ## Data on the live VPS (private, never in git)

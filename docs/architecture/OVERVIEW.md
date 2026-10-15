@@ -1,11 +1,13 @@
 # Architecture Overview — SlideIn
 
-> As-built description, verified 2026-10-12. Design rationale: `../decisions/ADR-0001-initial-architecture.md`.
+> As-built description, verified 2026-10-16. Design rationale: `../decisions/ADR-0001-initial-architecture.md`.
 
-SlideIn is a **modular monolith per runtime**: a Go campaign/admin app, a
-Python deliverability engine, KumoMTA as the outbound MTA, Redis for queues,
-and SQLite stores per component. Default deployment is three processes plus
-containers on one machine; production design targets a single VPS.
+SlideIn is a **modular monolith per runtime**: an agentic workflow API
+(`slidein-api/`: configure → discover → research → qualify → personalize →
+outreach → converse), a Go campaign/admin app, a Python deliverability
+engine, KumoMTA as the outbound MTA, Redis for queues, and SQLite stores
+per component. Default deployment is three processes plus containers on
+one machine; production design targets a single VPS.
 
 ```
 operator ──browser──▶ Go admin app :3333 (campaigns, profiles, templates, RBAC)
@@ -39,6 +41,8 @@ OBSERVABILITY:   Send events · Webhook ingest · Circuit breaker
 
 | Component | Directory | Entrypoint |
 |---|---|---|
+| Agent workflow API | `slidein-api/` (FastAPI) | `python run.py` → `:8100` |
+| Client workspace UI | `slidein-app/` (Next.js) | `npm run dev` → `:3200` |
 | Go admin/API backend | `controllers/`, `models/`, `worker/`, `gophish.go` | `./gophish_local --config=config.local.json` → `:3333` |
 | Deliverability engine | `deliverability/` (`core/`, `server.py`) | `python3 deliverability/server.py` → `:8088` |
 | KumoMTA policy lab | `kumomta-lab/` (`policy/*.lua`, `compose/`) | `docker-compose.local.yml` |
