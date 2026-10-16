@@ -33,14 +33,6 @@ function cleanHex(value: unknown): string | null {
   return HEX_RE.test(text) ? text.toLowerCase() : null;
 }
 
-function withAlpha(hex: string, alpha: string): string {
-  const full =
-    hex.length === 4
-      ? `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`
-      : hex;
-  return `${full}${alpha}`;
-}
-
 /**
  * Tenant theme overrides for the semantic token contract in globals.css.
  * Returns `{}` when branding is absent or invalid, so the default Slidein
@@ -48,16 +40,14 @@ function withAlpha(hex: string, alpha: string): string {
  */
 export function themeStyle(branding: Branding | null | undefined): React.CSSProperties {
   if (!branding) return {};
-  const primary = cleanHex(branding.colors?.primary);
   const surface = cleanHex(branding.colors?.surface);
   const ink = cleanHex(branding.colors?.ink);
   const style: Record<string, string> = {};
-  if (primary) {
-    style["--accent-vivid"] = primary;
-    style["--text-accent"] = primary;
-    style["--accent-wash"] = withAlpha(primary, "14");
-    style["--accent-ring"] = withAlpha(primary, "3d");
-  }
+  // NOTE (visual redesign): the tenant accent override is intentionally
+  // removed. The dashboard spec pins selection, focus, and dots to the
+  // single marketing orange in every workspace so both dashboards match
+  // each other. Tenant surface/ink overrides below still apply, and the
+  // branding settings form keeps saving normally.
   if (surface) {
     style["--surface"] = surface;
     style["--page-fill"] = surface;

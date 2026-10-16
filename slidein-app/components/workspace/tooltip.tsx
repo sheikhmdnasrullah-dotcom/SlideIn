@@ -17,7 +17,7 @@ export function TooltipProvider({ children }: { children: React.ReactNode }) {
       {node && (
         <div
           role="tooltip"
-          className="pointer-events-none fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-xs bg-ink px-2 py-1 text-2xs text-paper-25 shadow-float"
+          className="pointer-events-none fixed bottom-4 left-1/2 z-[60] -translate-x-1/2 rounded-pill bg-ink px-3 py-1.5 font-sans text-xs font-medium text-paper-25 shadow-float"
         >
           {node}
         </div>

@@ -26,8 +26,8 @@ const QUEUE_COLUMNS: Column<Prospect>[] = [
     header: "Prospect",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">{row.full_name || row.email}</span>
-        <span className="block text-2xs text-ink-faint">
+        <span className="block font-medium text-ink-strong">{row.full_name || row.email}</span>
+        <span className="block text-[13px] text-ink-muted">
           {row.company_name} · score {row.qualification_score}
         </span>
       </span>
@@ -45,7 +45,7 @@ const DRAFT_COLUMNS: Column<Draft>[] = [
   {
     key: "subject",
     header: "Subject",
-    render: (row) => <span className="text-ink-strong">{row.subject}</span>,
+    render: (row) => <span className="font-medium text-ink-strong">{row.subject}</span>,
   },
   {
     key: "status",
@@ -110,7 +110,7 @@ export default async function PersonalizationPage({
             keyOf={(row) => row.id}
             rowHref={(row) => `/discovery/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="document"
                 title="Queue is clear"
                 description="Qualify prospects first; they arrive here draft-ready."
               />
@@ -121,15 +121,15 @@ export default async function PersonalizationPage({
 
       <Section title="Drafts" meta={`${drafts.data.length} shown`}>
         <Surface variant="raised">
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-4 py-2.5">
+          <div className="mb-4 flex w-fit max-w-full flex-wrap items-center gap-1 rounded-pill bg-status-neutral-bg p-1">
             <Link
               href="/personalization"
               aria-current={!status || undefined}
               className={cn(
-                "rounded-sm px-2 py-1 text-2xs transition-colors",
+                "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                 !status
-                  ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                  : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                  ? "bg-surface text-ink-strong shadow-raised"
+                  : "text-ink-muted hover:text-ink-strong",
               )}
             >
               All
@@ -140,10 +140,10 @@ export default async function PersonalizationPage({
                 href={`/personalization?status=${value}`}
                 aria-current={status === value || undefined}
                 className={cn(
-                  "rounded-sm px-2 py-1 text-2xs transition-colors",
+                  "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                   status === value
-                    ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                    : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                    ? "bg-surface text-ink-strong shadow-raised"
+                    : "text-ink-muted hover:text-ink-strong",
                 )}
               >
                 {DRAFT_STATUS_LABELS[value as Draft["status"]] ?? value}
@@ -155,7 +155,7 @@ export default async function PersonalizationPage({
             rows={drafts.data}
             keyOf={(row) => row.id}
             rowHref={(row) => `/outreach/${row.id}`}
-            empty={<EmptyState title="No drafts" description="Prepare a draft above." />}
+            empty={<EmptyState icon="document" title="No drafts" description="Prepare a draft above." />}
           />
         </Surface>
       </Section>

@@ -28,8 +28,8 @@ const COLUMNS: Column<Prospect>[] = [
     header: "Prospect",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">{row.full_name || row.email}</span>
-        <span className="block text-2xs text-ink-faint">{row.email}</span>
+        <span className="block font-medium text-ink-strong">{row.full_name || row.email}</span>
+        <span className="block text-[13px] text-ink-muted">{row.email}</span>
       </span>
     ),
   },
@@ -39,7 +39,7 @@ const COLUMNS: Column<Prospect>[] = [
     render: (row) => (
       <span>
         <span className="block text-ink-strong">{row.company_name || "—"}</span>
-        <span className="block text-2xs text-ink-faint">{row.job_title}</span>
+        <span className="block text-[13px] text-ink-muted">{row.job_title}</span>
       </span>
     ),
   },
@@ -100,7 +100,7 @@ export default async function DiscoveryPage({
 
       <Section title="Prospects" meta={`${page.data.length} shown`}>
         <Surface variant="raised">
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-4 py-2.5">
+          <div className="mb-4 flex w-fit max-w-full flex-wrap items-center gap-1 rounded-pill bg-status-neutral-bg p-1">
             <FilterChip href="/discovery" active={!status} label="All" />
             {STATUSES.map((value) => (
               <FilterChip
@@ -117,7 +117,7 @@ export default async function DiscoveryPage({
             keyOf={(row) => row.id}
             rowHref={(row) => `/discovery/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="search"
                 title="No prospects match"
                 description="Ingest above, or clear the filter."
               />
@@ -135,10 +135,10 @@ function FilterChip({ href, active, label }: { href: string; active: boolean; la
       href={href}
       aria-current={active || undefined}
       className={cn(
-        "rounded-sm px-2 py-1 text-2xs transition-colors",
+        "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
         active
-          ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-          : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+          ? "bg-surface text-ink-strong shadow-raised"
+          : "text-ink-muted hover:text-ink-strong",
       )}
     >
       {label}

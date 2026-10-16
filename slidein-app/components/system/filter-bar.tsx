@@ -42,14 +42,14 @@ export function FilterBar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2 border-b border-rule px-4 py-2.5",
+        "flex flex-wrap items-center gap-2 border-b border-rule px-6 py-3",
         className,
       )}
     >
       {onSearchChange && (
         <div className="relative">
           <Search
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-ink-faint"
+            className="pointer-events-none absolute left-3.5 top-1/2 size-[18px] -translate-y-1/2 text-ink-faint"
             aria-hidden
           />
           <Input
@@ -57,7 +57,7 @@ export function FilterBar({
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
-            className="w-56 pl-8"
+            className="w-56 pl-10"
           />
         </div>
       )}
@@ -78,7 +78,7 @@ export function FilterBar({
         </Select>
       ))}
       {typeof resultCount === "number" && (
-        <span className="font-label text-ink-faint">{resultCount} shown</span>
+        <span className="font-label text-ink-muted">{resultCount} shown</span>
       )}
       <div className="ml-auto flex items-center gap-2">
         {actions}
@@ -87,7 +87,7 @@ export function FilterBar({
             variant="ghost"
             size="sm"
             onClick={onReset}
-            className="text-ink-faint"
+            className="text-ink-muted"
             type="button"
           >
             <X className="size-3.5" aria-hidden />

@@ -33,8 +33,8 @@ export default async function OverviewPage() {
       <Section title="Pipeline" tone="raised">
         <MetricRow>
           <Metric label="Prospects" value={overview.total_prospects} />
-          <Metric label="Replies received" value={overview.replies_received} tone="live" />
-          <Metric label="Open conversations" value={overview.open_conversations} tone="flame" />
+          <Metric label="Replies received" value={overview.replies_received} />
+          <Metric label="Open conversations" value={overview.open_conversations} />
           <Metric
             label="Discovered → replied"
             value={`${Math.round(overview.conversion.discovered_to_replied * 100)}%`}
@@ -45,7 +45,7 @@ export default async function OverviewPage() {
           <div className="flex flex-wrap gap-x-6 gap-y-2">
             {overview.funnel.map((step) => (
               <span key={step.status} className="flex items-baseline gap-2 text-2xs">
-                <span className="text-ink-faint">{step.label}</span>
+                <span className="text-ink-muted">{step.label}</span>
                 <span className="font-value tabular-nums text-ink-strong">{step.count}</span>
               </span>
             ))}
@@ -59,24 +59,26 @@ export default async function OverviewPage() {
         meta={`${overview.attention.length} open`}
       >
         {overview.attention.length === 0 ? (
-          <EmptyState
-            title="Nothing needs attention"
-            description="Failures, pending approvals, and unhandled replies will queue here."
-          />
+          <Surface variant="raised">
+            <EmptyState icon="inbox"
+              title="Nothing needs attention"
+              description="Failures, pending approvals, and unhandled replies will queue here."
+            />
+          </Surface>
         ) : (
           <Surface variant="raised" className="divide-y divide-rule">
             {overview.attention.map((item, index) => (
               <Link
                 key={`${item.subject_id}-${index}`}
                 href={resolveHref(item.href)}
-                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2"
+                className="flex items-center gap-3 px-6 py-3.5 transition-colors duration-[150ms] hover:bg-surface-2 focus-ring"
               >
                 <StatusBadge tone={ATTENTION_TONES[item.severity] ?? "info"} label={item.stage_label} />
                 <span className="min-w-0">
-                  <span className="block truncate text-[0.8125rem] text-ink-strong">
+                  <span className="block truncate text-sm font-medium text-ink-strong">
                     {item.title}
                   </span>
-                  <span className="block truncate text-2xs text-ink-faint">{item.detail}</span>
+                  <span className="block truncate text-[13px] text-ink-muted">{item.detail}</span>
                 </span>
               </Link>
             ))}
@@ -86,23 +88,25 @@ export default async function OverviewPage() {
 
       <Section title="Next actions" description="The highest-leverage step per prospect, in pipeline order.">
         {overview.next_actions.length === 0 ? (
-          <EmptyState
-            title="No next actions"
-            description="Ingest prospects under Discovery and actions will appear here."
-          />
+          <Surface variant="raised">
+            <EmptyState icon="inbox"
+              title="No next actions"
+              description="Ingest prospects under Discovery and actions will appear here."
+            />
+          </Surface>
         ) : (
           <Surface variant="raised" className="divide-y divide-rule">
             {overview.next_actions.map((action) => (
               <Link
                 key={action.prospect_id}
                 href={resolveHref(action.href)}
-                className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-surface-2"
+                className="flex items-center gap-3 px-6 py-3.5 transition-colors duration-[150ms] hover:bg-surface-2 focus-ring"
               >
                 <span className="min-w-0 grow">
-                  <span className="block truncate text-[0.8125rem] text-ink-strong">
-                    {action.name} <span className="text-ink-faint">· {action.company}</span>
+                  <span className="block truncate text-sm font-medium text-ink-strong">
+                    {action.name} <span className="text-ink-muted">· {action.company}</span>
                   </span>
-                  <span className="block text-2xs text-ink-faint">
+                  <span className="block text-[13px] text-ink-muted">
                     {prospectStatusLabel(action.status)} · score {action.score}
                   </span>
                 </span>
@@ -117,14 +121,14 @@ export default async function OverviewPage() {
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {Object.entries(overview.stage_health).map(([stage, health]) => (
             <span key={stage} className="flex items-baseline gap-2 text-2xs">
-              <span className="text-ink-faint">{stage}</span>
+              <span className="text-ink-muted">{stage}</span>
               <span className="font-value tabular-nums text-status-live">{health.succeeded}</span>
               <span className="font-value tabular-nums text-status-warn">{health.needs_review}</span>
               <span className="font-value tabular-nums text-status-danger">{health.failed}</span>
             </span>
           ))}
           {Object.keys(overview.stage_health).length === 0 && (
-            <span className="text-2xs text-ink-faint">No stage runs yet.</span>
+            <span className="text-2xs text-ink-muted">No stage runs yet.</span>
           )}
         </div>
       </Section>
@@ -133,12 +137,12 @@ export default async function OverviewPage() {
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {overview.sources.map((source) => (
             <span key={source.source} className="flex items-baseline gap-2 text-2xs">
-              <span className="text-ink-faint">{source.source || "unknown"}</span>
+              <span className="text-ink-muted">{source.source || "unknown"}</span>
               <span className="font-value tabular-nums text-ink-strong">{source.count}</span>
             </span>
           ))}
           {overview.sources.length === 0 && (
-            <span className="text-2xs text-ink-faint">No sources yet.</span>
+            <span className="text-2xs text-ink-muted">No sources yet.</span>
           )}
         </div>
       </Section>

@@ -3,126 +3,192 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    SLIDEIN CLIENT WORKSPACE: TOKEN LAYER
    ---------------------------------------------------------------------------
-   Ported from workspace-app (the design reference). Same material, same
-   discipline: a raw hex / px / ms literal in a .tsx file is a bug. OKLCH
-   throughout so day and night read as one surface under different light.
+   Shared with the marketing site and the OS console: verbatim copies of the
+   approved scaffold values (marketing-site/app/styles/assemble.css), plus the
+   dashboard spec (page #FAFAFA, sidebar #FDFDFD, semantic tints). The three
+   apps live in separate repos/builds and cannot share one file, so the values
+   are copied here — see design-reference/INVENTORY.md. A raw hex / px / ms
+   literal in a .tsx file is a bug.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @theme {
-  /* ── PAPER RAMP: day surfaces ─────────────────────────────────────────── */
-  --color-paper-25: oklch(0.978 0.004 85);
-  --color-paper-50: oklch(0.968 0.006 85);
-  --color-paper-100: oklch(0.945 0.008 84);
-  --color-paper-200: oklch(0.915 0.010 83);
-  --color-bone-300: oklch(0.868 0.012 82);
-  --color-bone-400: oklch(0.790 0.014 80);
+  /* ── NEUTRAL RAMP: day surfaces. No cream, no beige, no warm hue. ──────── */
+  --color-paper-25: #ffffff;
+  --color-paper-50: #fafafa;
+  --color-paper-100: #f4f4f5;
+  --color-paper-200: #e9e9eb;
+  --color-bone-300: rgb(10 10 10 / 7%);
+  --color-bone-400: rgb(10 10 10 / 38%);
 
-  /* ── INK / DARK RAMP ──────────────────────────────────────────────────── */
-  --color-slate-500: oklch(0.545 0.016 75);
-  --color-slate-600: oklch(0.470 0.018 74);
-  --color-graphite-700: oklch(0.290 0.013 72);
-  --color-graphite-800: oklch(0.235 0.012 70);
-  --color-graphite-900: oklch(0.185 0.011 68);
-  --color-ink: oklch(0.155 0.010 66);
-  --color-ink-deep: oklch(0.115 0.009 64);
+  /* ── INK ───────────────────────────────────────────────────────────────── */
+  --color-slate-500: rgb(10 10 10 / 58%);
+  --color-slate-600: rgb(10 10 10 / 58%);
+  --color-graphite-700: #3f3f46;
+  --color-graphite-800: #27272a;
+  --color-graphite-900: #18181b;
+  --color-ink: #0a0a0a;
+  --color-ink-deep: #09090b;
 
-  /* ── ASH RAMP: muted text on dark tones ───────────────────────────────── */
-  --color-ash-200: oklch(0.850 0.010 80);
-  --color-ash-300: oklch(0.780 0.010 80);
-  --color-ash-400: oklch(0.720 0.010 80);
-  --color-ash-500: oklch(0.620 0.012 80);
+  /* ── ASH RAMP: muted text on dark tones ────────────────────────────────── */
+  --color-ash-200: #e4e4e7;
+  --color-ash-300: #d4d4d8;
+  --color-ash-400: #a1a1aa;
+  --color-ash-500: #71717a;
 
-  /* ── BRAND: hue 42.28 held constant across every derived token ────────── */
-  --color-brand: oklch(0.691 0.207 42.28);
-  --color-brand-hi: oklch(0.700 0.198 42.28);
-  --color-brand-soft: oklch(0.691 0.207 42.28 / 8%);
-  --color-signal: oklch(0.563 0.168 42.28);
-  --color-signal-deep: oklch(0.542 0.163 42.28);
-  --color-ember: oklch(0.380 0.120 42.28);
-  --color-brand-lift: oklch(0.760 0.170 42.28);
-  --color-brand-pale: oklch(0.855 0.098 42.28);
+  /* ── BRAND: the SAME orange as the marketing site. #FF6200 exactly. ─────── */
+  --color-brand: #ff6200;
+  --color-brand-hi: #ff7a29;
+  --color-brand-soft: rgb(255 98 0 / 8%);
+  --color-signal: #b34a00;
+  --color-signal-deep: #a54300;
+  --color-ember: #7a3200;
+  --color-brand-lift: #ff8a3d;
+  --color-brand-pale: #ffc49c;
 
-  /* ── STATUS ───────────────────────────────────────────────────────────── */
-  --color-live: oklch(0.530 0.148 149);
-  --color-live-deep: oklch(0.430 0.120 149);
-  --color-live-hi: oklch(0.780 0.130 149);
-  --color-info: oklch(0.530 0.128 255);
-  --color-info-deep: oklch(0.460 0.110 255);
-  --color-info-hi: oklch(0.790 0.085 255);
-  --color-warn: oklch(0.610 0.150 70);
-  --color-warn-deep: oklch(0.500 0.120 70);
-  --color-danger: oklch(0.577 0.245 27.325);
-  --color-danger-hi: oklch(0.708 0.180 20);
+  /* ── STATUS: semantic colors, separate from the brand accent. ──────────── */
+  --color-live: #1f7a4d;
+  --color-live-deep: #1f7a4d;
+  --color-live-hi: #4ade80;
+  --color-live-tint: #e8f4ec;
+  --color-info: #0a0a0a;
+  --color-info-deep: #0a0a0a;
+  --color-info-hi: #e4e4e7;
+  --color-info-tint: #f1f1f2;
+  --color-warn: #a15c07;
+  --color-warn-deep: #a15c07;
+  --color-warn-tint: #fdf1dc;
+  --color-danger: #b42318;
+  --color-danger-hi: #f87171;
+  --color-danger-tint: #fdecea;
+  --color-neutral-ink: #52525b;
+  --color-neutral-tint: #f1f1f2;
 
-  /* ── RADII: four values, tighter than marketing ───────────────────────── */
-  --radius-xs: 3px;
-  --radius-sm: 5px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
+  /* ── RADII — 4 / 10 / 14 / 20 / 28 / pill ──────────────────────────────── */
+  --radius-xs: 4px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
 
-  /* ── MOTION ───────────────────────────────────────────────────────────── */
+  /* ── MOTION — one easing, the marketing scaffold ease ──────────────────── */
   --ease-std: cubic-bezier(0.2, 0, 0, 1);
-  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --dur-fast: 120ms;
-  --dur-base: 200ms;
+  --dur-base: 220ms;
   --dur-slow: 320ms;
+  --dur-page: 240ms;
 
-  /* ── TYPE ─────────────────────────────────────────────────────────────── */
-  --text-2xs: 0.6875rem;
+  /* ── TYPE ──────────────────────────────────────────────────────────────── */
+  --text-2xs: 0.75rem;
   --text-2xs--line-height: 1rem;
 
-  --shadow-raised: 0 1px 2px oklch(0.155 0.010 66 / 6%), 0 1px 1px oklch(0.155 0.010 66 / 4%);
-  --shadow-contact: 0 6px 16px -6px oklch(0.155 0.010 66 / 14%);
-  --shadow-float: 0 16px 40px -12px oklch(0.155 0.010 66 / 22%);
+  /* ── ELEVATION — verbatim marketing scaffold shadows ───────────────────── */
+  --shadow-contact:
+    0 1px 2px rgb(0 0 0 / 4%);
+  --shadow-raised:
+    0 1px 2px rgb(0 0 0 / 4%),
+    0 8px 24px -8px rgb(0 0 0 / 8%);
+  --shadow-float:
+    0 2px 4px rgb(0 0 0 / 4%),
+    0 18px 36px -12px rgb(0 0 0 / 16%);
+  --shadow-tile:
+    0 2px 4px rgb(0 0 0 / 4%),
+    0 18px 36px -12px rgb(0 0 0 / 18%),
+    0 40px 60px -30px rgb(0 0 0 / 12%);
+  --shadow-button:
+    0 8px 16px -8px rgb(0 0 0 / 35%);
 }
 
 /* ── Semantic contract: --surface / --text-* / --rule / --accent-* ─────────
    Unlayered: a theme token must beat any stray utility in @layer base. */
 :root {
-  --page-fill: var(--color-paper-50);
-  --surface: var(--color-paper-25);
-  --surface-2: var(--color-paper-100);
-  --surface-glass: oklch(0.968 0.006 85 / 82%);
-  --rule: oklch(0.155 0.010 66 / 10%);
-  --rule-strong: oklch(0.155 0.010 66 / 16%);
-  --on-surface: var(--color-ink);
-  --text-strong: var(--color-ink);
-  --text-muted: var(--color-slate-600);
-  --text-faint: var(--color-slate-500);
+  --page-fill: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #fafafa;
+  --surface-glass: rgb(255 255 255 / 82%);
+  --sidebar-fill: #fdfdfd;
+  --table-header-fill: #fdfdfd;
+  --hover-tint: rgb(10 10 10 / 4%);
+  --rule: rgb(10 10 10 / 7%);
+  --rule-soft: rgb(10 10 10 / 6%);
+  --rule-strong: rgb(10 10 10 / 14%);
+  --on-surface: #0a0a0a;
+  --text-strong: #0a0a0a;
+  --text-muted: rgb(10 10 10 / 58%);
+  --text-faint: rgb(10 10 10 / 38%);
   --text-accent: var(--color-signal-deep);
   --accent-vivid: var(--color-brand);
-  --accent-wash: oklch(0.691 0.207 42.28 / 8%);
-  --accent-ring: oklch(0.691 0.207 42.28 / 24%);
-  --on-accent: var(--color-paper-25);
+  --accent-wash: rgb(255 98 0 / 10%);
+  --accent-highlight: rgb(255 98 0 / 18%);
+  --accent-ring: rgb(255 98 0 / 24%);
+  --accent-focus: rgb(255 98 0 / 60%);
+  --on-accent: #ffffff;
+  --button-primary: #151515;
+  --on-button-primary: #ffffff;
   --status-live: var(--color-live-deep);
+  --status-live-bg: var(--color-live-tint);
   --status-info: var(--color-info-deep);
+  --status-info-bg: var(--color-info-tint);
   --status-warn: var(--color-warn-deep);
+  --status-warn-bg: var(--color-warn-tint);
   --status-danger: var(--color-danger);
-  --scrim: oklch(0.115 0.009 64 / 40%);
+  --status-danger-bg: var(--color-danger-tint);
+  --status-neutral: var(--color-neutral-ink);
+  --status-neutral-bg: var(--color-neutral-tint);
+  --scrim: rgb(10 10 10 / 32%);
+  --backdrop-soft: rgb(10 10 10 / 24%);
+  --skeleton: rgb(10 10 10 / 6%);
+  --input-focus-ring: rgb(255 98 0 / 14%);
+  --input-focus-border: rgb(10 10 10 / 60%);
+
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+  --dur-slow: 320ms;
+  --dur-page: 240ms;
+  --ease-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
 }
 
 .dark {
   --page-fill: var(--color-ink-deep);
   --surface: var(--color-graphite-900);
   --surface-2: var(--color-graphite-800);
-  --surface-glass: oklch(0.185 0.011 68 / 82%);
-  --rule: oklch(0.850 0.010 80 / 12%);
-  --rule-strong: oklch(0.850 0.010 80 / 20%);
+  --surface-glass: rgb(24 24 27 / 82%);
+  --sidebar-fill: #101013;
+  --table-header-fill: #1c1c1f;
+  --hover-tint: rgb(255 255 255 / 6%);
+  --rule: rgb(228 228 231 / 12%);
+  --rule-soft: rgb(228 228 231 / 8%);
+  --rule-strong: rgb(228 228 231 / 20%);
   --on-surface: var(--color-ash-200);
   --text-strong: var(--color-ash-200);
   --text-muted: var(--color-ash-400);
   --text-faint: var(--color-ash-500);
   --text-accent: var(--color-brand-hi);
   --accent-vivid: var(--color-brand-hi);
-  --accent-wash: oklch(0.700 0.198 42.28 / 12%);
-  --accent-ring: oklch(0.700 0.198 42.28 / 30%);
+  --accent-wash: rgb(255 122 41 / 14%);
+  --accent-highlight: rgb(255 122 41 / 22%);
+  --accent-ring: rgb(255 122 41 / 32%);
+  --accent-focus: rgb(255 122 41 / 70%);
   --on-accent: var(--color-ink-deep);
+  --button-primary: #f4f4f5;
+  --on-button-primary: #0a0a0a;
   --status-live: var(--color-live-hi);
+  --status-live-bg: rgb(74 222 128 / 14%);
   --status-info: var(--color-info-hi);
-  --status-warn: var(--color-warn);
+  --status-info-bg: rgb(228 228 231 / 12%);
+  --status-warn: #fbbf24;
+  --status-warn-bg: rgb(251 191 36 / 14%);
   --status-danger: var(--color-danger-hi);
-  --scrim: oklch(0.115 0.009 64 / 62%);
+  --status-danger-bg: rgb(248 113 113 / 14%);
+  --status-neutral: var(--color-ash-400);
+  --status-neutral-bg: rgb(228 228 231 / 10%);
+  --scrim: rgb(9 9 11 / 62%);
+  --backdrop-soft: rgb(9 9 11 / 50%);
+  --skeleton: rgb(255 255 255 / 10%);
+  --input-focus-ring: rgb(255 122 41 / 22%);
+  --input-focus-border: rgb(228 228 231 / 60%);
 }
 
 /* ── Map the contract onto Tailwind's palette ───────────────────────────── */
@@ -131,27 +197,39 @@
   --color-foreground: var(--text-strong);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-sidebar-fill: var(--sidebar-fill);
   --color-on-surface: var(--on-surface);
   --color-ink-strong: var(--text-strong);
   --color-ink-muted: var(--text-muted);
   --color-ink-faint: var(--text-faint);
   --color-rule: var(--rule);
+  --color-rule-soft: var(--rule-soft);
   --color-rule-strong: var(--rule-strong);
+  --color-hover-tint: var(--hover-tint);
+  --color-table-header: var(--table-header-fill);
+  --color-backdrop-soft: var(--backdrop-soft);
+  --color-skeleton: var(--skeleton);
   --color-flame: var(--text-accent);
   --color-flame-vivid: var(--accent-vivid);
   --color-flame-wash: var(--accent-wash);
   --color-flame-ring: var(--accent-ring);
   --color-on-flame: var(--on-accent);
+  --color-button-primary: var(--button-primary);
+  --color-on-button-primary: var(--on-button-primary);
   --color-surface-glass: var(--surface-glass);
   --color-status-live: var(--status-live);
+  --color-status-live-bg: var(--status-live-bg);
   --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
   --color-status-warn: var(--status-warn);
+  --color-status-warn-bg: var(--status-warn-bg);
   --color-status-danger: var(--status-danger);
+  --color-status-danger-bg: var(--status-danger-bg);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-bg: var(--status-neutral-bg);
   --color-scrim: var(--scrim);
 
-  --font-sans:
-    ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-sans: var(--font-app-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono:
     ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
     monospace;
@@ -167,45 +245,249 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
   }
+  table,
+  .font-value,
+  [data-metric] {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* ── TYPE ROLES. Unlayered so a role class beats a stray Tailwind utility. */
+/* ── TYPE ROLES. Unlayered so a role class beats a stray Tailwind utility. ──
+   Sentence case everywhere. No uppercase transform in the dashboards. */
 .font-display {
   font-family: var(--font-sans);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 .font-display-soft {
   font-family: var(--font-sans);
   font-weight: 600;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.01em;
 }
+/* Table headers, eyebrows, section labels: 12/16/500, muted, sans. */
 .font-label {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  line-height: 1rem;
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
+/* Metrics, counts, KPI figures: tabular sans, never mono. */
 .font-value {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+/* Literal code, IDs, API keys, credential values ONLY. */
+.font-code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
 .font-body {
-  font-size: 0.8125rem;
-  line-height: 1.55;
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
-/* ── Focus: one ring language everywhere. ───────────────────────────────── */
-@layer utilities {
-  .focus-ring {
-    @apply outline-none ring-offset-0;
+/* ── Icons: one set, 1.5px stroke, round caps. Sizes stay on the call site. ─ */
+svg.lucide {
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Focus: 2px solid accent at 60%, 2px offset, keyboard only. ──────────── */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent-focus);
+    outline-offset: 2px;
   }
-  .focus-ring:focus-visible {
-    box-shadow:
-      0 0 0 2px var(--page-fill),
-      0 0 0 4px var(--accent-ring);
+}
+
+/* ── Page entrance: fade + 8px rise over 240ms, children stagger 40ms. ───── */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-enter {
+  animation: page-enter var(--dur-page) var(--ease-expo) both;
+}
+.page-enter > * {
+  animation: page-enter var(--dur-page) var(--ease-expo) both;
+}
+.page-enter > *:nth-child(1) { animation-delay: 0ms; }
+.page-enter > *:nth-child(2) { animation-delay: 40ms; }
+.page-enter > *:nth-child(3) { animation-delay: 80ms; }
+.page-enter > *:nth-child(4) { animation-delay: 120ms; }
+.page-enter > *:nth-child(5) { animation-delay: 160ms; }
+.page-enter > *:nth-child(6) { animation-delay: 200ms; }
+
+/* ── First-paint list stagger. The .is-live guard is added once after mount
+   so filtering, sorting, typing or polling never replays the entrance. ──── */
+@keyframes row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.stagger-group.is-live > *:nth-child(1) { animation: row-enter 220ms var(--ease-expo) both; }
+.stagger-group.is-live > *:nth-child(2) { animation: row-enter 220ms var(--ease-expo) 30ms both; }
+.stagger-group.is-live > *:nth-child(3) { animation: row-enter 220ms var(--ease-expo) 60ms both; }
+.stagger-group.is-live > *:nth-child(4) { animation: row-enter 220ms var(--ease-expo) 90ms both; }
+.stagger-group.is-live > *:nth-child(5) { animation: row-enter 220ms var(--ease-expo) 120ms both; }
+.stagger-group.is-live > *:nth-child(6) { animation: row-enter 220ms var(--ease-expo) 150ms both; }
+.stagger-group.is-live > *:nth-child(n + 7) { animation: row-enter 220ms var(--ease-expo) 180ms both; }
+
+/* ── Skeleton shimmer: slow 1.6s sweep of a 40% highlight. ───────────────── */
+@keyframes skeleton-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgb(10 10 10 / 8%), transparent);
+  animation: skeleton-sweep 1.6s var(--ease-std) infinite;
+}
+.dark .skeleton-shimmer::after {
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 10%), transparent);
+}
+
+/* ── Empty-state tile float: ±4px over 8s. Nothing else loops. ───────────── */
+@keyframes tile-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-6deg);
+  }
+}
+.tile-float {
+  animation: tile-float 8s ease-in-out infinite;
+}
+
+/* ── Section header / table divider: a hairline separates a section header
+   from its body only when the body is a table. ─────────────────────────── */
+[data-slot="section"] > header:has(+ div table) {
+  border-bottom: 1px solid var(--rule);
+}
+
+/* ── Tables below 768px: rows become stacked blocks inside the card. The
+   thead stays in the accessibility tree (clipped, not display:none) and each
+   cell shows its column label from data-label. No horizontal page scroll. ── */
+@media (max-width: 767px) {
+  [data-slot="table-card"] {
+    overflow: hidden;
+  }
+  [data-slot="table"] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [data-slot="table"] tbody {
+    display: flex;
+    flex-direction: column;
+  }
+  [data-slot="table"] tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  [data-slot="table"] tbody tr:last-child {
+    border-bottom: 0;
+  }
+  [data-slot="table"] tbody td {
+    flex: 1 1 100%;
+    padding: 0;
+    border: 0;
+  }
+  [data-slot="table"] tbody td:nth-last-child(2),
+  [data-slot="table"] tbody td:last-child {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  [data-slot="table"] tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+  [data-slot="table"] tbody td:first-child::before {
+    display: none;
+  }
+}
+
+/* ── Textarea: vertical resize only. ────────────────────────────────────── */
+textarea[data-slot="textarea"] {
+  resize: vertical;
+}
+
+/* ── Dialog entrance: opacity + scale 0.98→1 over 200ms. ─────────────────── */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.dialog-enter {
+  animation: still-fade-base 200ms var(--ease-expo) both;
+}
+.dialog-enter .dialog-panel {
+  animation: dialog-in 200ms var(--ease-expo) both;
+}
+@keyframes still-fade-base {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -226,7 +508,39 @@
 
   [data-slot="sidebar-menu-button"] {
     transition:
-      background-color var(--dur-fast) var(--ease-std),
-      color var(--dur-fast) var(--ease-std);
+      background-color var(--dur-base) var(--ease-std),
+      color var(--dur-base) var(--ease-std);
+  }
+}
+
+/* ── Reduced motion: instant state changes, 100ms opacity at most. ───────── */
+@media (prefers-reduced-motion: reduce) {
+  @keyframes still-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .page-enter,
+  .page-enter > *,
+  .stagger-group.is-live > *,
+  .dialog-enter,
+  .dialog-enter .dialog-panel {
+    animation: still-fade 100ms linear both;
+  }
+  .tile-float {
+    animation: none;
+  }
+  .skeleton-shimmer::after {
+    animation: none;
+    display: none;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 100ms !important;
+    scroll-behavior: auto !important;
   }
 }

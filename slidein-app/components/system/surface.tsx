@@ -2,19 +2,18 @@ import { cn } from "@/lib/utils";
 
 /**
  * Surface: the non-card container. A sectioned container holds a list
- * divided by hairlines, a table, or a metric row — without boxing each
- * child in its own rounded rectangle.
+ * divided by hairlines, a table, or a metric row.
  *
  *   flat    inherits the section tone; no border
- *   inset   a well: surface-2 with a hairline rule. Grouping without boxes.
- *   raised  surface with a stronger rule. One panel, not a rectangle per datum.
+ *   inset   a nested panel: #FAFAFA with a hairline, never a second shadow
+ *   raised  a card: white, hairline, 20px radius, soft shadow, 24px padding
  */
 export type SurfaceVariant = "flat" | "inset" | "raised";
 
 const VARIANT_CLASS: Record<SurfaceVariant, string> = {
   flat: "bg-transparent",
-  inset: "bg-surface-2 ring-1 ring-rule rounded-md",
-  raised: "bg-surface ring-1 ring-rule-strong rounded-md shadow-raised",
+  inset: "rounded-md border border-rule bg-surface-2 p-4",
+  raised: "rounded-lg border border-rule bg-surface p-6 shadow-raised",
 };
 
 export function Surface({

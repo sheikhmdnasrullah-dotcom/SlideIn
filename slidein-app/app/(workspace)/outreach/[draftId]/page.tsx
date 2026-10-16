@@ -31,7 +31,7 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
   const prospect = draft.prospect;
 
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
       <PageHeader
         eyebrow="Workflow · draft review"
         title={draft.subject || "Untitled draft"}
@@ -46,7 +46,7 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
 
       <Section title="Message" tone="raised">
         {prospect && (
-          <p className="pb-3 text-2xs text-ink-faint">
+          <p className="pb-3 text-2xs text-ink-muted">
             To{" "}
             <Link href={`/discovery/${prospect.id}`} className="underline underline-offset-2 hover:text-ink-strong">
               {prospect.full_name} · {prospect.email}
@@ -71,10 +71,10 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
       {draft.status === "pending_review" && (
         <Section title="Review" description="Approve to allow sending, or reject with a reason.">
           <div className="grid gap-4 lg:grid-cols-2">
-            <Surface variant="inset" className="px-4 py-3">
+            <Surface variant="inset">
               <ApproveForm draftId={draft.id} />
             </Surface>
-            <Surface variant="inset" className="px-4 py-3">
+            <Surface variant="inset">
               <RejectForm draftId={draft.id} />
             </Surface>
           </div>
@@ -89,6 +89,8 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
               id={draft.id}
               label="Send now"
               variant="default"
+              size="md"
+              dot
               confirm="Send this draft now? Policy and suppression checks run first."
             />
             <TriggerButton invoke={revokeApprovalAction} id={draft.id} label="Revoke approval" />
@@ -98,7 +100,9 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
 
       <Section title="Attributed evidence" meta={`${draft.evidence.length} items`}>
         {draft.evidence.length === 0 ? (
-          <EmptyState title="No attributed evidence" description="This draft cites no evidence items." />
+          <Surface variant="raised">
+            <EmptyState icon="document" title="No attributed evidence" description="This draft cites no evidence items." />
+          </Surface>
         ) : (
           <Surface variant="raised" className="px-4 py-2">
             <EvidenceBlock evidence={draft.evidence} />
@@ -112,21 +116,21 @@ export default async function DraftPage({ params }: { params: Promise<{ draftId:
             {draft.versions.map((version) => (
               <div key={version.id} className="py-2">
                 <div className="flex items-baseline justify-between gap-3 text-2xs">
-                  <span className="text-ink-strong">
+                  <span className="font-medium text-ink-strong">
                     v{version.version} {version.is_human_edit ? "· human edit" : "· generated"}
                   </span>
-                  <span className="text-ink-faint">
+                  <span className="text-ink-muted">
                     {version.changed_by} · {formatDate(version.created_at)}
                   </span>
                 </div>
                 {version.change_reason && (
-                  <p className="pt-0.5 text-2xs text-ink-faint">{version.change_reason}</p>
+                  <p className="pt-0.5 text-2xs text-ink-muted">{version.change_reason}</p>
                 )}
               </div>
             ))}
           </Surface>
         </Section>
       )}
-    </>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import {
   ErrorState,
   ModuleDisabledState,
 } from "@/components/system/states";
+import { Surface } from "@/components/system/surface";
 import { ApiRequestError } from "@/lib/api/client";
 import { isModuleDisabled } from "@/lib/workflow/tenant";
 
@@ -12,10 +13,19 @@ import { isModuleDisabled } from "@/lib/workflow/tenant";
  * API's own error with its code and recovery action.
  */
 export function PageFailure({ error, module }: { error: unknown; module: string }) {
-  if (isModuleDisabled(error)) return <ModuleDisabledState module={module} />;
+  if (isModuleDisabled(error))
+    return (
+      <Surface variant="raised">
+        <ModuleDisabledState module={module} />
+      </Surface>
+    );
   if (error instanceof ApiRequestError) {
     if (error.status === 503 || error.error.code === "provider_unavailable") {
-      return <ApiUnavailableState message={error.error.message} />;
+      return (
+        <Surface variant="raised">
+          <ApiUnavailableState message={error.error.message} />
+        </Surface>
+      );
     }
     return (
       <ErrorState

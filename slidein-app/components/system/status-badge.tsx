@@ -3,47 +3,47 @@ import { cn } from "@/lib/utils";
 import type { StatusTone } from "@/lib/workflow/metadata";
 
 /**
- * StatusBadge: the one tokenized status indicator. Tones map to the
- * theme-tokenized --status-* colors, so the same badge reads correctly on
- * day and night without a `dark:` variant.
+ * StatusBadge: the one tokenized status indicator. Tinted pills in
+ * sentence-case sans with a 6px semantic dot — never solid blocks,
+ * never mono. Tones map to the theme-tokenized --status-* colors.
  */
-const TONE_STYLE: Record<StatusTone, { border: string; bg: string; color: string }> = {
+const TONE_STYLE: Record<StatusTone, { bg: string; color: string; dot: string }> = {
   live: {
-    border: "color-mix(in oklch, var(--status-live) 30%, transparent)",
-    bg: "color-mix(in oklch, var(--status-live) 10%, transparent)",
+    bg: "var(--status-live-bg)",
     color: "var(--status-live)",
+    dot: "var(--status-live)",
   },
   info: {
-    border: "color-mix(in oklch, var(--status-info) 30%, transparent)",
-    bg: "color-mix(in oklch, var(--status-info) 10%, transparent)",
+    bg: "var(--status-info-bg)",
     color: "var(--status-info)",
+    dot: "var(--status-info)",
   },
   warn: {
-    border: "color-mix(in oklch, var(--status-warn) 30%, transparent)",
-    bg: "color-mix(in oklch, var(--status-warn) 10%, transparent)",
+    bg: "var(--status-warn-bg)",
     color: "var(--status-warn)",
+    dot: "var(--status-warn)",
   },
   danger: {
-    border: "color-mix(in oklch, var(--status-danger) 30%, transparent)",
-    bg: "color-mix(in oklch, var(--status-danger) 10%, transparent)",
+    bg: "var(--status-danger-bg)",
     color: "var(--status-danger)",
+    dot: "var(--status-danger)",
   },
   neutral: {
-    border: "var(--rule-strong)",
-    bg: "var(--surface-2)",
-    color: "var(--text-muted)",
+    bg: "var(--status-neutral-bg)",
+    color: "var(--status-neutral)",
+    dot: "var(--status-neutral)",
   },
   flame: {
-    border: "var(--accent-ring)",
     bg: "var(--accent-wash)",
     color: "var(--text-accent)",
+    dot: "var(--accent-vivid)",
   },
 };
 
 export function StatusBadge({
   tone,
   label,
-  dot = false,
+  dot = true,
   title,
   className,
 }: {
@@ -58,18 +58,21 @@ export function StatusBadge({
     <Badge
       variant="outline"
       title={title}
-      className={cn("gap-1 font-label normal-case", className)}
-      style={{ borderColor: style.border, backgroundColor: style.bg, color: style.color }}
-    >
-      {dot && (
-        <span
-          className={cn(
-            "size-1.5 rounded-full bg-current",
-            tone === "live" && "animate-pulse",
-          )}
-          aria-hidden
-        />
+      className={cn(
+        "border-transparent",
+        dot &&
+          "before:content-[''] before:size-1.5 before:shrink-0 before:rounded-full before:bg-[var(--badge-dot)]",
+        dot && tone === "live" && "before:animate-pulse",
+        className,
       )}
+      style={
+        {
+          backgroundColor: style.bg,
+          color: style.color,
+          "--badge-dot": style.dot,
+        } as React.CSSProperties
+      }
+    >
       {label ?? tone}
     </Badge>
   );
@@ -86,9 +89,9 @@ export function CountChip({
   tone?: StatusTone;
 }) {
   return (
-    <span className="inline-flex items-baseline gap-1">
+    <span className="inline-flex items-baseline gap-1" data-metric>
       <span className="font-value text-base text-ink-strong">{count}</span>
-      <span className="text-2xs text-ink-faint">{label}</span>
+      <span className="text-xs text-ink-muted">{label}</span>
       <StatusBadge tone={tone} label="" className="sr-only" />
     </span>
   );

@@ -23,8 +23,8 @@ const COLUMNS: Column<Prospect>[] = [
     header: "Prospect",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">{row.full_name || row.email}</span>
-        <span className="block text-2xs text-ink-faint">
+        <span className="block font-medium text-ink-strong">{row.full_name || row.email}</span>
+        <span className="block text-[13px] text-ink-muted">
           {row.company_name} · {row.company_domain}
         </span>
       </span>
@@ -80,7 +80,7 @@ export default async function ResearchPage() {
             keyOf={(row) => row.id}
             rowHref={(row) => `/discovery/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="search"
                 title="Queue is clear"
                 description="Ingest prospects under Discovery to fill the research queue."
               />
@@ -91,13 +91,15 @@ export default async function ResearchPage() {
 
       <Section title="Recently researched" meta={`${researched.data.length} shown`}>
         {researched.data.length === 0 ? (
-          <EmptyState title="Nothing researched yet" description="Run research above." />
+          <Surface variant="raised">
+            <EmptyState icon="search" title="Nothing researched yet" description="Run research above." />
+          </Surface>
         ) : (
           <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
             {researched.data.slice(0, 10).map((row) => (
               <div key={row.id} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                <span className="text-ink-strong">
-                  {row.full_name || row.email} <span className="text-ink-faint">· {row.company_name}</span>
+                <span className="font-medium text-ink-strong">
+                  {row.full_name || row.email} <span className="text-ink-muted">· {row.company_name}</span>
                 </span>
                 <span className="font-value tabular-nums text-ink-muted">score {row.qualification_score}</span>
               </div>

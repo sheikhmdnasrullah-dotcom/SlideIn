@@ -19,7 +19,7 @@ export function EvidenceBlock({
 }) {
   if (evidence.length === 0) {
     return (
-      <p className={cn("text-2xs text-ink-faint", className)}>
+      <p className={cn("text-xs text-ink-muted", className)}>
         No evidence item is attributed to this claim.
       </p>
     );
@@ -30,19 +30,19 @@ export function EvidenceBlock({
         <li key={item.id} className={compact ? "py-1.5" : "py-2.5"}>
           <div className="flex flex-col gap-1">
             <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-label text-ink-faint">
+              <span className="font-label text-ink-muted">
                 {item.evidence_type.replace(/_/g, " ")}
               </span>
               <StatusBadge
                 tone={VERIFICATION_TONES[item.verification_status]}
                 label={VERIFICATION_LABELS[item.verification_status]}
               />
-              <span className="font-value text-2xs text-ink-faint">
+              <span className="font-value text-xs text-ink-muted">
                 conf {item.confidence.toFixed(2)}
               </span>
             </div>
-            <p className="text-[0.8125rem] leading-relaxed text-ink-muted">{item.claim_text}</p>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-ink-faint">
+            <p className="text-sm leading-[22px] text-ink-muted">{item.claim_text}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
               {item.source_url ? (
                 <a
                   href={item.source_url}
@@ -66,7 +66,7 @@ export function EvidenceBlock({
 
 /** SourceCitation: one line pointing at where a claim came from. */
 export function SourceCitation({ url, name }: { url: string; name?: string }) {
-  if (!url) return <span className="text-2xs text-ink-faint">no source</span>;
+  if (!url) return <span className="text-xs text-ink-muted">no source</span>;
   return (
     <a
       href={url}

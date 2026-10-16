@@ -28,9 +28,9 @@ export function Metric({
             : "text-ink-strong";
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
-      <span className="font-label text-ink-faint">{label}</span>
-      <span className={cn("font-value text-xl leading-none", toneClass)}>{value}</span>
-      {hint && <span className="text-2xs text-ink-faint">{hint}</span>}
+      <span className="font-label text-ink-muted">{label}</span>
+      <span className={cn("font-value text-xl leading-none", toneClass)} data-metric>{value}</span>
+      {hint && <span className="text-xs text-ink-muted">{hint}</span>}
     </div>
   );
 }
@@ -63,5 +63,5 @@ export function MetricCell({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("px-4 py-3 first:pl-0", className)}>{children}</div>;
+  return <div className={cn("px-6 py-4 first:pl-0", className)}>{children}</div>;
 }

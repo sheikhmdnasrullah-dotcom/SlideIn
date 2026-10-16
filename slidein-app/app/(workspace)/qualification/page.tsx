@@ -26,8 +26,8 @@ const QUEUE_COLUMNS: Column<Prospect>[] = [
     header: "Prospect",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">{row.full_name || row.email}</span>
-        <span className="block text-2xs text-ink-faint">{row.company_name}</span>
+        <span className="block font-medium text-ink-strong">{row.full_name || row.email}</span>
+        <span className="block text-[13px] text-ink-muted">{row.company_name}</span>
       </span>
     ),
   },
@@ -113,7 +113,7 @@ export default async function QualificationPage({
             keyOf={(row) => row.id}
             rowHref={(row) => `/discovery/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="document"
                 title="Queue is clear"
                 description="Research prospects first; they arrive here scored-ready."
               />
@@ -124,15 +124,15 @@ export default async function QualificationPage({
 
       <Section title="Results" meta={`${results.data.length} shown`}>
         <Surface variant="raised">
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-4 py-2.5">
+          <div className="mb-4 flex w-fit max-w-full flex-wrap items-center gap-1 rounded-pill bg-status-neutral-bg p-1">
             <Link
               href="/qualification"
               aria-current={!qualifiedOnly || undefined}
               className={cn(
-                "rounded-sm px-2 py-1 text-2xs transition-colors",
+                "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                 !qualifiedOnly
-                  ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                  : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                  ? "bg-surface text-ink-strong shadow-raised"
+                  : "text-ink-muted hover:text-ink-strong",
               )}
             >
               All
@@ -141,10 +141,10 @@ export default async function QualificationPage({
               href="/qualification?qualified_only=true"
               aria-current={qualifiedOnly || undefined}
               className={cn(
-                "rounded-sm px-2 py-1 text-2xs transition-colors",
+                "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                 qualifiedOnly
-                  ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                  : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                  ? "bg-surface text-ink-strong shadow-raised"
+                  : "text-ink-muted hover:text-ink-strong",
               )}
             >
               Qualified only
@@ -156,7 +156,7 @@ export default async function QualificationPage({
             keyOf={(row) => row.id}
             rowHref={(row) => `/discovery/${row.prospect_id}`}
             empty={
-              <EmptyState title="No qualification results" description="Qualify a prospect above." />
+              <EmptyState icon="document" title="No qualification results" description="Qualify a prospect above." />
             }
           />
         </Surface>

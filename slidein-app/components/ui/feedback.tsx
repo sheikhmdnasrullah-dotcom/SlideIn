@@ -2,11 +2,12 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Skeleton placeholder. Never a spinner in place of content. */
+/** Skeleton placeholder: pill bars with a slow shimmer. Never a spinner. */
 export function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("animate-pulse rounded-xs bg-surface-2", className)}
+      data-slot="skeleton"
+      className={cn("skeleton-shimmer rounded-pill bg-skeleton", className)}
       aria-hidden
       {...props}
     />
@@ -16,9 +17,9 @@ export function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
 /** A centred busy row for a full section fetch. */
 export function Spinner({ className, label }: { className?: string; label?: string }) {
   return (
-    <div className={cn("flex items-center gap-2 text-ink-faint", className)}>
+    <div className={cn("flex items-center gap-2 text-ink-muted", className)}>
       <span
-        className="size-3 animate-spin rounded-full border border-rule-strong border-t-flame-vivid"
+        className="size-3.5 animate-spin rounded-full border-2 border-rule-strong border-t-flame-vivid"
         aria-hidden
       />
       <span className="font-label">{label ?? "Loading"}</span>
@@ -54,9 +55,9 @@ export function Dialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="dialog-enter fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
-        className="absolute inset-0 bg-scrim"
+        className="absolute inset-0 cursor-default bg-scrim"
         aria-label="Close"
         onClick={onClose}
         type="button"
@@ -65,15 +66,15 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-10 w-full max-w-lg rounded-md bg-surface p-4 shadow-float ring-1 ring-rule-strong"
+        className="dialog-panel relative z-10 w-full max-w-lg rounded-xl border border-rule bg-surface p-8 shadow-float"
       >
-        <header className="flex flex-col gap-1 pb-3">
-          <h2 className="font-display-soft text-base text-ink-strong">{title}</h2>
-          {description && <p className="text-2xs text-ink-faint">{description}</p>}
+        <header className="flex flex-col gap-1 pb-4">
+          <h2 className="font-display-soft text-[15px] leading-[22px] text-ink-strong">{title}</h2>
+          {description && <p className="text-[13px] text-ink-muted">{description}</p>}
         </header>
         <div className="max-h-[65vh] overflow-y-auto">{children}</div>
         {footer && (
-          <footer className="flex items-center justify-end gap-2 pt-4">{footer}</footer>
+          <footer className="flex items-center justify-end gap-2 pt-6">{footer}</footer>
         )}
       </div>
     </div>

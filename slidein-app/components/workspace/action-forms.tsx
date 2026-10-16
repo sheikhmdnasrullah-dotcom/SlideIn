@@ -58,6 +58,7 @@ export function TriggerButton({
   label,
   variant = "outline",
   size = "sm",
+  dot = false,
   confirm,
   className,
 }: {
@@ -66,6 +67,7 @@ export function TriggerButton({
   label: string;
   variant?: "default" | "secondary" | "outline" | "ghost" | "danger" | "quiet";
   size?: "sm" | "md" | "lg" | "icon" | "icon-sm";
+  dot?: boolean;
   confirm?: string;
   className?: string;
 }) {
@@ -77,6 +79,7 @@ export function TriggerButton({
         type="button"
         variant={variant}
         size={size}
+        dot={dot}
         disabled={pending}
         onClick={() => {
           if (confirm && !window.confirm(confirm)) return;
@@ -101,7 +104,7 @@ function useFormAction(
 export function IngestForm() {
   const [result, formAction, pending] = useFormAction(discoverAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-6">
       <Field
         label="Prospects (CSV, one per line)"
         hint='Format: email, company, first name, last name, title, domain. Lines starting with # are ignored.'
@@ -111,7 +114,7 @@ export function IngestForm() {
           required
           rows={6}
           placeholder={"ada@analytical.example, Analytical Engines, Ada, Lovelace, Founder, analytical.example"}
-          className="font-mono text-xs"
+          className="font-code text-xs"
         />
       </Field>
       <div className="flex flex-wrap items-end gap-3">
@@ -132,13 +135,13 @@ export function IngestForm() {
 export function ApproveForm({ draftId }: { draftId: string }) {
   const [result, formAction, pending] = useFormAction(approveDraftAction);
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="draft_id" value={draftId} />
       <Field label="Approval note (optional)">
         <Input name="note" placeholder="Why this is good to send" />
       </Field>
       <div>
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} dot>
           {pending ? "Approving…" : "Approve draft"}
         </Button>
       </div>
@@ -150,7 +153,7 @@ export function ApproveForm({ draftId }: { draftId: string }) {
 export function RejectForm({ draftId }: { draftId: string }) {
   const [result, formAction, pending] = useFormAction(rejectDraftAction);
   return (
-    <form action={formAction} className="flex flex-col gap-2">
+    <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="draft_id" value={draftId} />
       <Field label="Reason (required)">
         <Input name="reason" required placeholder="What is wrong with this draft" />
@@ -170,8 +173,8 @@ export function RejectForm({ draftId }: { draftId: string }) {
 export function SuppressionForm() {
   const [result, formAction, pending] = useFormAction(addSuppressionAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-3">
+    <form action={formAction} className="flex flex-col gap-6">
+      <div className="grid gap-6 sm:grid-cols-3">
         <Field label="Email">
           <Input name="email" type="email" required placeholder="never@example.com" />
         </Field>
@@ -197,8 +200,8 @@ export function SuppressionForm() {
 export function ProfileForm({ profile }: { profile: BusinessProfile | null }) {
   const [result, formAction, pending] = useFormAction(saveProfileAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={formAction} className="flex flex-col gap-6">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Legal name">
           <Input name="legal_name" required defaultValue={profile?.legal_name ?? ""} />
         </Field>
@@ -218,7 +221,7 @@ export function ProfileForm({ profile }: { profile: BusinessProfile | null }) {
       <Field label="Core value proposition">
         <Textarea name="core_value_prop" rows={2} defaultValue={profile?.core_value_prop ?? ""} />
       </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Markets served (comma separated)">
           <Input name="markets_served" defaultValue={(profile?.markets_served ?? []).join(", ")} />
         </Field>
@@ -242,8 +245,8 @@ export function ProfileForm({ profile }: { profile: BusinessProfile | null }) {
 export function OfferForm() {
   const [result, formAction, pending] = useFormAction(saveOfferAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={formAction} className="flex flex-col gap-6">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Offer name">
           <Input name="name" required placeholder="e.g. Free acquisition audit" />
         </Field>
@@ -254,7 +257,7 @@ export function OfferForm() {
       <Field label="Summary">
         <Textarea name="summary" required rows={2} />
       </Field>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Pain points solved (comma separated)">
           <Input name="pain_points_solved" />
         </Field>
@@ -275,8 +278,8 @@ export function OfferForm() {
 export function IcpForm() {
   const [result, formAction, pending] = useFormAction(saveIcpAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={formAction} className="flex flex-col gap-6">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="ICP name">
           <Input name="name" required placeholder="e.g. Scaling brokerages" />
         </Field>
@@ -320,8 +323,8 @@ export function IcpForm() {
 export function BrandingForm({ branding }: { branding: Branding }) {
   const [result, formAction, pending] = useFormAction(saveBrandingAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={formAction} className="flex flex-col gap-6">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Business name">
           <Input name="business_name" defaultValue={branding.business_name} />
         </Field>
@@ -368,7 +371,7 @@ export function TemplateForm({
 }) {
   const [result, formAction, pending] = useFormAction(applyTemplateAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end gap-3">
         <Field
           label="Workspace template"
@@ -408,7 +411,7 @@ export function ModulesForm({
 }) {
   const [result, formAction, pending] = useFormAction(saveModulesAction);
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} className="flex flex-col gap-6">
       <div className="grid gap-2 sm:grid-cols-3">
         {registry.map((module) => (
           <Checkbox

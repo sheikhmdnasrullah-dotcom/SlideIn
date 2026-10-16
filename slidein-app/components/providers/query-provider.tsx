@@ -33,11 +33,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider>
           {children}
           <Toaster
-            position="bottom-right"
+            position="bottom-center"
             toastOptions={{
               classNames: {
-                toast: "!bg-surface !text-ink-strong !ring-1 !ring-rule-strong !rounded-md",
-                description: "!text-ink-faint",
+                toast: "!bg-button-primary !text-on-button-primary !border-0 !rounded-pill !shadow-float !px-5 !py-3 !text-sm !font-medium",
+                description: "!text-on-button-primary !opacity-70",
               },
             }}
           />

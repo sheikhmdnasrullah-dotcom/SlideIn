@@ -19,8 +19,8 @@ const ACTIVITY_COLUMNS: Column<ActivityLog>[] = [
     header: "Action",
     render: (row) => (
       <span>
-        <span className="block font-mono text-2xs text-ink-strong">{row.action}</span>
-        <span className="block text-2xs text-ink-faint">
+        <span className="block font-code text-xs text-ink-strong">{row.action}</span>
+        <span className="block text-xs text-ink-muted">
           {row.actor} · {row.actor_role}
         </span>
       </span>
@@ -47,7 +47,7 @@ const RUN_COLUMNS: Column<StageRun>[] = [
   {
     key: "stage",
     header: "Stage",
-    render: (row) => <span className="text-ink-strong">{stageLabel(row.stage)}</span>,
+    render: (row) => <span className="font-medium text-ink-strong">{stageLabel(row.stage)}</span>,
   },
   {
     key: "status",
@@ -112,7 +112,7 @@ export default async function ActivityPage() {
             rows={activity.data}
             keyOf={(row) => row.id}
             empty={
-              <EmptyState
+              <EmptyState icon="inbox"
                 title="No activity yet"
                 description="Workflow actions and configuration changes will be recorded here."
               />

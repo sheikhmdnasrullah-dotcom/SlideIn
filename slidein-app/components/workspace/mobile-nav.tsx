@@ -4,14 +4,15 @@ import * as React from "react";
 import { Menu, X } from "lucide-react";
 
 import { WorkflowSidebar } from "./sidebar";
+import { GlossTile } from "@/components/system/gloss-tile";
 import { brandInitials, safeLogoUrl } from "@/lib/workflow/tenant";
 import { cn } from "@/lib/utils";
 
 /**
- * MobileNav: the workspace chrome below the md breakpoint. The desktop
- * sidebar is a fixed 15rem rail; here it becomes a slide-over opened from a
- * compact top bar. No animation (conditional render), so there is no motion
- * to gate on prefers-reduced-motion.
+ * MobileNav: the workspace chrome below the lg breakpoint. The desktop
+ * sidebar is a fixed 264px rail; here it becomes a left drawer opened
+ * from a round menu button in the top bar. No animation (conditional
+ * render), so there is no motion to gate on prefers-reduced-motion.
  */
 export function MobileNav({
   attentionCounts,
@@ -42,26 +43,28 @@ export function MobileNav({
   }, [open ]);
 
   return (
-    <div className="md:hidden">
-      <div className="flex h-12 items-center gap-2 border-b border-rule bg-surface px-3">
+    <div className="lg:hidden">
+      <div className="flex h-16 items-center gap-3 border-b border-rule bg-sidebar-fill px-5">
         <button
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open navigation"
           aria-expanded={open}
-          className="flex size-8 items-center justify-center rounded-sm text-ink-muted hover:bg-surface-2 hover:text-ink-strong focus-ring"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-hover-tint hover:text-ink-strong focus-ring"
         >
-          <Menu className="size-4" aria-hidden />
+          <Menu className="size-[18px]" aria-hidden />
         </button>
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="size-6 rounded-xs object-contain" />
+          <img src={logo} alt="" className="size-9 rounded-[11px] object-contain" />
         ) : (
-          <span className="flex size-6 items-center justify-center rounded-xs bg-flame-vivid font-mono text-2xs font-semibold text-on-flame">
-            {brandInitials(displayName)}
-          </span>
+          <GlossTile size={36} float={false}>
+            <span className="font-sans text-[13px] font-semibold text-ink-strong">
+              {brandInitials(displayName)}
+            </span>
+          </GlossTile>
         )}
-        <span className="truncate font-display-soft text-sm text-ink-strong">{displayName}</span>
+        <span className="truncate font-sans text-[15px] font-semibold text-ink-strong">{displayName}</span>
       </div>
 
       {open && (
@@ -70,17 +73,17 @@ export function MobileNav({
             type="button"
             aria-label="Close navigation"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 cursor-default bg-scrim"
+            className="absolute inset-0 cursor-default bg-backdrop-soft"
           />
-          <div className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col bg-surface shadow-float">
-            <div className="flex justify-end border-b border-rule p-1">
+          <div className="absolute inset-y-0 left-0 flex w-[17rem] max-w-[85vw] flex-col bg-sidebar-fill shadow-float">
+            <div className="flex justify-end p-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close navigation"
-                className="flex size-8 items-center justify-center rounded-sm text-ink-muted hover:bg-surface-2 hover:text-ink-strong focus-ring"
+                className="flex size-10 items-center justify-center rounded-full text-ink-muted hover:bg-hover-tint hover:text-ink-strong focus-ring"
               >
-                <X className="size-4" aria-hidden />
+                <X className="size-[18px]" aria-hidden />
               </button>
             </div>
             <div

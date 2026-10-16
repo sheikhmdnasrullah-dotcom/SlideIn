@@ -18,6 +18,7 @@ import {
 
 import { SECTIONS, type SectionMeta } from "@/lib/workflow/metadata";
 import { SECTION_MODULES, brandInitials, safeLogoUrl } from "@/lib/workflow/tenant";
+import { GlossTile } from "@/components/system/gloss-tile";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -82,28 +83,30 @@ export function WorkflowSidebar({
     <aside
       data-slot="sidebar"
       className={cn(
-        "flex h-full w-[15rem] shrink-0 flex-col border-r border-rule bg-surface",
+        "flex h-full w-[264px] shrink-0 flex-col border-r border-rule bg-sidebar-fill",
         className,
       )}
     >
-      <div className="flex h-12 items-center gap-2 border-b border-rule px-4">
+      <div className="flex items-center gap-3 px-4 pt-5 pb-4">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="size-6 rounded-xs object-contain" />
+          <img src={logo} alt="" className="size-9 rounded-[11px] object-contain" />
         ) : (
-          <span className="flex size-6 items-center justify-center rounded-xs bg-flame-vivid font-mono text-2xs font-semibold text-on-flame">
-            {brandInitials(displayName)}
-          </span>
+          <GlossTile size={36} float={false}>
+            <span className="font-sans text-[13px] font-semibold text-ink-strong">
+              {brandInitials(displayName)}
+            </span>
+          </GlossTile>
         )}
-        <span className="truncate font-display-soft text-sm text-ink-strong">
+        <span className="truncate font-sans text-[15px] leading-[22px] font-semibold text-ink-strong">
           {displayName}
         </span>
       </div>
 
-      <nav className="flex grow flex-col gap-4 overflow-y-auto px-2 py-3">
+      <nav className="flex grow flex-col gap-4 overflow-y-auto px-3 py-2">
         {sections.map((group) => (
           <div key={group.group} className="flex flex-col gap-0.5">
-            <span className="px-2 pb-1 font-label text-ink-faint">{group.label}</span>
+            <span className="px-3 pt-2 pb-2 font-label text-ink-faint">{group.label}</span>
             {group.items.map((section) => {
               const Icon = ICONS[section.id] ?? MoreHorizontal;
               const active =
@@ -117,18 +120,36 @@ export function WorkflowSidebar({
                   title={section.description}
                   data-active={active || undefined}
                   className={cn(
-                    "group flex items-center gap-2 rounded-sm px-2 py-1.5 text-[0.8125rem] transition-colors",
+                    "group flex h-10 items-center gap-3 rounded-[12px] px-3 font-sans text-sm font-medium transition-colors duration-[220ms",
                     active
-                      ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                      : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                      ? "bg-flame-wash text-ink-strong"
+                      : "text-ink-muted hover:bg-hover-tint hover:text-ink-strong",
                   )}
                 >
-                  <Icon className="size-3.5 shrink-0" aria-hidden />
+                  <Icon
+                    className={cn(
+                      "size-[18px] shrink-0",
+                      active ? "text-ink-strong" : "text-ink-muted",
+                    )}
+                    aria-hidden
+                  />
                   <span className="truncate">{label}</span>
                   {typeof count === "number" && count > 0 && (
-                    <span className="ml-auto font-value text-2xs tabular-nums text-status-warn">
+                    <span
+                      className="ml-auto font-value text-xs tabular-nums text-status-warn"
+                      data-metric
+                    >
                       {count}
                     </span>
+                  )}
+                  {active && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full bg-flame-vivid",
+                        typeof count === "number" && count > 0 ? "" : "ml-auto",
+                      )}
+                    />
                   )}
                 </Link>
               );
@@ -137,12 +158,12 @@ export function WorkflowSidebar({
         ))}
       </nav>
 
-      <div className="flex flex-col gap-1 border-t border-rule px-4 py-3">
+      <div className="flex flex-col gap-1 border-t border-rule px-4 py-4">
         <span className="font-label text-ink-faint">Workspace</span>
-        <span className="font-value text-2xs text-ink-muted">{workspaceId}</span>
+        <span className="font-code text-xs text-ink-muted">{workspaceId}</span>
         <Link
           href="/contracts"
-          className="rounded-xs text-2xs text-ink-faint underline decoration-rule-strong underline-offset-2 hover:text-ink-strong focus-ring"
+          className="w-fit rounded-xs text-xs text-ink-faint underline decoration-rule-strong underline-offset-2 hover:text-ink-strong focus-ring"
         >
           Stage contracts
         </Link>

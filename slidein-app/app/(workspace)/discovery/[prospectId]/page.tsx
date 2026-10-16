@@ -42,7 +42,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
   const history = prospect.state_history ?? [];
 
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
       <PageHeader
         eyebrow="Workflow · prospect record"
         title={prospect.full_name || prospect.email}
@@ -68,7 +68,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
           <TriggerButton invoke={researchAction} id={prospect.id} label="Run research" />
           <TriggerButton invoke={qualifyAction} id={prospect.id} label="Qualify" />
           <TriggerButton invoke={personalizeAction} id={prospect.id} label="Prepare draft" />
-          <span className="self-center text-2xs text-ink-faint">
+          <span className="self-center text-2xs text-ink-muted">
             Suggested next: {next.label}
           </span>
         </div>
@@ -76,7 +76,9 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
 
       <Section title="Evidence" meta={`${evidence.length} items`}>
         {evidence.length === 0 ? (
-          <EmptyState title="No evidence yet" description="Run research to collect source-backed claims." />
+          <Surface variant="raised">
+            <EmptyState icon="document" title="No evidence yet" description="Run research to collect source-backed claims." />
+          </Surface>
         ) : (
           <Surface variant="raised" className="px-4 py-2">
             <EvidenceBlock evidence={evidence} />
@@ -91,34 +93,34 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <h3 className="font-label pb-2 text-ink-faint">Matching criteria</h3>
+              <h3 className="font-label pb-2 text-ink-muted">Matching criteria</h3>
               <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
                 {latestQualification.matching_criteria.map((criterion, index) => (
                   <div key={index} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                    <span className="text-ink-strong">{criterion.criterion}</span>
+                    <span className="font-medium text-ink-strong">{criterion.criterion}</span>
                     <span className="font-value tabular-nums text-status-live">
                       {criterion.points}/{criterion.max_points}
                     </span>
                   </div>
                 ))}
                 {latestQualification.matching_criteria.length === 0 && (
-                  <p className="py-2 text-2xs text-ink-faint">None.</p>
+                  <p className="py-2 text-2xs text-ink-muted">None.</p>
                 )}
               </Surface>
             </div>
             <div>
-              <h3 className="font-label pb-2 text-ink-faint">Missing criteria</h3>
+              <h3 className="font-label pb-2 text-ink-muted">Missing criteria</h3>
               <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
                 {latestQualification.missing_criteria.map((criterion, index) => (
                   <div key={index} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                    <span className="text-ink-strong">{criterion.criterion}</span>
+                    <span className="font-medium text-ink-strong">{criterion.criterion}</span>
                     <span className="font-value tabular-nums text-status-warn">
                       {criterion.points}/{criterion.max_points}
                     </span>
                   </div>
                 ))}
                 {latestQualification.missing_criteria.length === 0 && (
-                  <p className="py-2 text-2xs text-ink-faint">None.</p>
+                  <p className="py-2 text-2xs text-ink-muted">None.</p>
                 )}
               </Surface>
             </div>
@@ -128,7 +130,9 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
 
       <Section title="Drafts" meta={`${drafts.length} drafts`}>
         {drafts.length === 0 ? (
-          <EmptyState title="No drafts" description="Prepare a draft to start personalization." />
+          <Surface variant="raised">
+            <EmptyState icon="document" title="No drafts" description="Prepare a draft to start personalization." />
+          </Surface>
         ) : (
           <Surface variant="raised" className="divide-y divide-rule">
             {drafts.map((draft) => (
@@ -139,7 +143,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
               >
                 <span className="min-w-0 grow">
                   <span className="block truncate text-[0.8125rem] text-ink-strong">{draft.subject}</span>
-                  <span className="block text-2xs text-ink-faint">v{draft.version}</span>
+                  <span className="block text-[13px] text-ink-muted">v{draft.version}</span>
                 </span>
                 <StatusBadge
                   tone={DRAFT_STATUS_TONES[draft.status] ?? "neutral"}
@@ -153,13 +157,15 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
 
       <Section title="Deliveries" meta={`${sent.length} sent`}>
         {sent.length === 0 ? (
-          <EmptyState title="Nothing sent" description="Approved drafts dispatch from Outreach." />
+          <Surface variant="raised">
+            <EmptyState icon="send" title="Nothing sent" description="Approved drafts dispatch from Outreach." />
+          </Surface>
         ) : (
           <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
             {sent.map((message) => (
               <div key={message.id} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                <span className="text-ink-strong">{message.recipient_email}</span>
-                <span className="text-ink-faint">
+                <span className="font-medium text-ink-strong">{message.recipient_email}</span>
+                <span className="text-ink-muted">
                   {message.transport} · {message.delivery_status} · {formatDate(message.queued_at)}
                 </span>
               </div>
@@ -187,8 +193,8 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
           <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
             {history.map((entry, index) => (
               <div key={index} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                <span className="text-ink-strong">{prospectStatusLabel(entry.state)}</span>
-                <span className="text-ink-faint">
+                <span className="font-medium text-ink-strong">{prospectStatusLabel(entry.state)}</span>
+                <span className="text-ink-muted">
                   {formatDate(entry.entered_at)}{entry.reason ? ` · ${entry.reason}` : ""}
                 </span>
               </div>
@@ -196,6 +202,6 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
           </Surface>
         </Section>
       )}
-    </>
+    </div>
   );
 }

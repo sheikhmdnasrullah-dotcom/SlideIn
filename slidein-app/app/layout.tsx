@@ -2,6 +2,7 @@ import type * as React from "react";
 import type { Metadata } from "next";
 
 import "./globals.css";
+import { appFace } from "./fonts";
 import { Providers } from "@/components/providers/query-provider";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className={`h-full ${appFace.variable}`}>
       <body className="h-full">
         <Providers>
           <div data-workspace={WORKSPACE_ID} className="flex h-full min-h-0">

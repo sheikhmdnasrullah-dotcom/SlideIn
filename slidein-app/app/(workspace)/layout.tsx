@@ -67,13 +67,13 @@ export default async function WorkspaceLayout({
     sectionLabels,
   };
   return (
-    <div className="flex min-h-0 w-full flex-col md:flex-row" style={themeStyle(branding)}>
+    <div className="flex min-h-0 w-full flex-col lg:flex-row" style={themeStyle(branding)}>
       <MobileNav {...sidebarProps} />
-      <div className="hidden min-h-0 md:flex">
+      <div className="hidden min-h-0 lg:flex">
         <WorkflowSidebar {...sidebarProps} />
       </div>
       <main className="min-h-0 min-w-0 grow overflow-y-auto">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6">
+        <div className="page-enter mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-5 md:px-10 md:py-10">
           {children}
         </div>
       </main>

@@ -24,7 +24,7 @@ const DRAFT_COLUMNS: Column<Draft>[] = [
   {
     key: "subject",
     header: "Subject",
-    render: (row) => <span className="text-ink-strong">{row.subject}</span>,
+    render: (row) => <span className="font-medium text-ink-strong">{row.subject}</span>,
   },
   {
     key: "status",
@@ -45,7 +45,7 @@ const SENT_COLUMNS: Column<SentMessage>[] = [
     render: (row) => (
       <span>
         <span className="block text-ink-strong">{row.recipient_email}</span>
-        <span className="block text-2xs text-ink-faint">{row.sender_email}</span>
+        <span className="block text-[13px] text-ink-muted">{row.sender_email}</span>
       </span>
     ),
   },
@@ -72,8 +72,8 @@ const SUPPRESSION_COLUMNS: Column<SuppressionRecord>[] = [
     header: "Email",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">{row.email}</span>
-        <span className="block text-2xs text-ink-faint">{row.reason}{row.note ? ` · ${row.note}` : ""}</span>
+        <span className="block font-medium text-ink-strong">{row.email}</span>
+        <span className="block text-[13px] text-ink-muted">{row.reason}{row.note ? ` · ${row.note}` : ""}</span>
       </span>
     ),
   },
@@ -137,7 +137,7 @@ export default async function OutreachPage() {
             keyOf={(row) => row.id}
             rowHref={(row) => `/outreach/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="send"
                 title="Nothing awaiting approval"
                 description="Approved drafts can be sent from their review page."
               />
@@ -161,7 +161,9 @@ export default async function OutreachPage() {
 
       <Section title="Sent" meta={`${sent.total} messages`}>
         {sent.data.length === 0 ? (
-          <EmptyState title="Nothing sent yet" description="Approved drafts dispatch from their review page." />
+          <Surface variant="raised">
+            <EmptyState icon="send" title="Nothing sent yet" description="Approved drafts dispatch from their review page." />
+          </Surface>
         ) : (
           <Surface variant="raised">
             <DataTable<SentMessage>
@@ -183,13 +185,15 @@ export default async function OutreachPage() {
             columns={SUPPRESSION_COLUMNS}
             rows={suppression.data}
             keyOf={(row) => row.id}
-            empty={<EmptyState title="No suppressions" description="Opt-outs and bounces will appear here." />}
+            empty={<EmptyState icon="inbox" title="No suppressions" description="Opt-outs and bounces will appear here." />}
           />
         </Surface>
-        <SuppressionForm />
+        <Surface variant="raised">
+          <SuppressionForm />
+        </Surface>
       </Section>
 
-      <p className="text-2xs text-ink-faint">
+      <p className="text-xs text-ink-muted">
         Review all drafts under <Link href="/personalization" className="underline underline-offset-2 hover:text-ink-strong">Personalization</Link>.
       </p>
     </>

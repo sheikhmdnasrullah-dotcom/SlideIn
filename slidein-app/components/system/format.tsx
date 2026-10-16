@@ -96,8 +96,8 @@ export function DefRow({
 }) {
   return (
     <div className={cn("flex items-baseline justify-between gap-4 py-1", className)}>
-      <span className="font-label text-ink-faint">{label}</span>
-      <span className="text-right text-[0.8125rem] text-ink-muted">{children}</span>
+      <span className="font-label text-ink-muted">{label}</span>
+      <span className="text-right text-sm text-ink-muted">{children}</span>
     </div>
   );
 }

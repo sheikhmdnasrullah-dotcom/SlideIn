@@ -27,11 +27,11 @@ const COLUMNS: Column<Conversation>[] = [
     header: "Subject",
     render: (row) => (
       <span>
-        <span className="block text-ink-strong">
+        <span className="block font-medium text-ink-strong">
           {row.requires_action && <span className="mr-1.5 inline-block size-1.5 rounded-full bg-status-warn align-middle" aria-label="needs action" />}
           {row.subject || "(no subject)"}
         </span>
-        <span className="block text-2xs text-ink-faint">
+        <span className="block text-[13px] text-ink-muted">
           {row.last_message_at ? formatDate(row.last_message_at) : "no messages yet"}
         </span>
       </span>
@@ -89,15 +89,15 @@ export default async function ConversationsPage({
 
       <Section title="Inbox" description="Replies thread to their outbound message and classify by keyword intent.">
         <Surface variant="raised">
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-rule px-4 py-2.5">
+          <div className="mb-4 flex w-fit max-w-full flex-wrap items-center gap-1 rounded-pill bg-status-neutral-bg p-1">
             <Link
               href="/conversations"
               aria-current={!actionOnly || undefined}
               className={cn(
-                "rounded-sm px-2 py-1 text-2xs transition-colors",
+                "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                 !actionOnly
-                  ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                  : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                  ? "bg-surface text-ink-strong shadow-raised"
+                  : "text-ink-muted hover:text-ink-strong",
               )}
             >
               All
@@ -106,10 +106,10 @@ export default async function ConversationsPage({
               href="/conversations?requires_action=true"
               aria-current={actionOnly || undefined}
               className={cn(
-                "rounded-sm px-2 py-1 text-2xs transition-colors",
+                "flex h-8 items-center rounded-pill px-3.5 text-[13px] font-medium transition-all duration-[220ms focus-ring",
                 actionOnly
-                  ? "bg-flame-wash text-flame ring-1 ring-flame-ring"
-                  : "text-ink-muted hover:bg-surface-2 hover:text-ink-strong",
+                  ? "bg-surface text-ink-strong shadow-raised"
+                  : "text-ink-muted hover:text-ink-strong",
               )}
             >
               Needs action
@@ -121,7 +121,7 @@ export default async function ConversationsPage({
             keyOf={(row) => row.id}
             rowHref={(row) => `/conversations/${row.id}`}
             empty={
-              <EmptyState
+              <EmptyState icon="inbox"
                 title="No conversations"
                 description="Replies to sent messages thread here automatically."
               />

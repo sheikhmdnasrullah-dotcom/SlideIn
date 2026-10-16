@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
+import { TD, TH, THead, TR, Table } from "@/components/ui/table";
+import { StaggerTbody } from "./stagger";
 import { LoadingState } from "./states";
 
 /**
@@ -69,18 +70,18 @@ export function DataTable<T>({
             ))}
           </TR>
         </THead>
-        <TBody>
+        <StaggerTbody>
           {rows.map((row) => {
             const key = keyOf(row);
             const href = rowHref?.(row);
             return (
               <TR key={key}>
                 {columns.map((column, index) => (
-                  <TD key={column.key} align={column.align}>
+                  <TD key={column.key} align={column.align} data-label={column.header}>
                     {index === 0 && href ? (
                       <Link
                         href={href}
-                        className="decoration-flame-ring decoration-1 underline-offset-4 hover:underline"
+                        className="decoration-rule-strong decoration-1 underline-offset-4 hover:underline focus-ring"
                       >
                         {column.render(row)}
                       </Link>
@@ -92,7 +93,7 @@ export function DataTable<T>({
               </TR>
             );
           })}
-        </TBody>
+        </StaggerTbody>
       </Table>
       {footer}
     </>

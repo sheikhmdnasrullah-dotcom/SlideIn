@@ -31,7 +31,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const { conversation, prospect, replies, outbound } = detail;
 
   return (
-    <>
+    <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-6">
       <PageHeader
         eyebrow="Workflow · thread"
         title={conversation.subject || "(no subject)"}
@@ -45,7 +45,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
       />
 
       {prospect && (
-        <p className="text-2xs text-ink-faint">
+        <p className="text-2xs text-ink-muted">
           Prospect record:{" "}
           <Link href={`/discovery/${prospect.id}`} className="underline underline-offset-2 hover:text-ink-strong">
             {prospect.full_name || prospect.email}
@@ -55,14 +55,16 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
 
       <Section title="Replies" meta={`${replies.length} messages`}>
         {replies.length === 0 ? (
-          <EmptyState title="No replies yet" description="Inbound replies to tracked sends will thread here." />
+          <Surface variant="raised">
+            <EmptyState icon="inbox" title="No replies yet" description="Inbound replies to tracked sends will thread here." />
+          </Surface>
         ) : (
           <div className="flex flex-col gap-3">
             {replies.map((reply) => (
               <Surface key={reply.id} variant="raised" className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2 pb-2">
                   <span className="text-2xs text-ink-strong">{reply.sender_email}</span>
-                  <span className="text-2xs text-ink-faint">{formatDate(reply.received_at)}</span>
+                  <span className="text-2xs text-ink-muted">{formatDate(reply.received_at)}</span>
                   <StatusBadge
                     tone={REPLY_INTENT_TONES[reply.intent] ?? "neutral"}
                     label={`${REPLY_INTENT_LABELS[reply.intent] ?? reply.intent} · ${(reply.intent_confidence * 100).toFixed(0)}%`}
@@ -76,7 +78,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
                   {reply.body}
                 </p>
                 {reply.recommended_action && (
-                  <p className="pt-2 text-2xs text-ink-faint">Suggested: {reply.recommended_action}</p>
+                  <p className="pt-2 text-2xs text-ink-muted">Suggested: {reply.recommended_action}</p>
                 )}
               </Surface>
             ))}
@@ -89,8 +91,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           <Surface variant="inset" className="divide-y divide-rule px-4 py-1">
             {outbound.map((message) => (
               <div key={message.id} className="flex items-baseline justify-between gap-3 py-1.5 text-2xs">
-                <span className="text-ink-strong">{message.recipient_email}</span>
-                <span className="text-ink-faint">
+                <span className="font-medium text-ink-strong">{message.recipient_email}</span>
+                <span className="text-ink-muted">
                   {message.delivery_status} · {formatDate(message.queued_at)}
                 </span>
               </div>
@@ -108,6 +110,6 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
           )}
         </div>
       </Section>
-    </>
+    </div>
   );
 }

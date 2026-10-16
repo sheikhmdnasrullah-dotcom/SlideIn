@@ -35,7 +35,7 @@ export function Timeline({
   emptyLabel?: string;
 }) {
   if (items.length === 0) {
-    return <p className="px-4 py-3 text-2xs text-ink-faint">{emptyLabel}</p>;
+    return <p className="px-6 py-4 text-xs text-ink-muted">{emptyLabel}</p>;
   }
   return (
     <ol className={cn("flex flex-col", className)}>
@@ -50,14 +50,14 @@ export function Timeline({
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="flex flex-wrap items-baseline gap-2">
               {typeof item.title === "string" ? (
-                <span className="font-display-soft text-[0.8125rem] text-ink-strong">
+                <span className="font-display-soft text-sm text-ink-strong">
                   {item.title}
                 </span>
               ) : (
                 item.title
               )}
               {item.when && (
-                <span className="font-label text-ink-faint">{item.when}</span>
+                <span className="font-label text-ink-muted">{item.when}</span>
               )}
             </div>
             {item.description && (
@@ -119,8 +119,8 @@ export function StatusLine({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {tone && <StatusBadge tone={tone} label={label} />}
-      {!tone && <span className="font-label text-ink-faint">{label}</span>}
-      <span className="text-2xs text-ink-muted">{children}</span>
+      {!tone && <span className="font-label text-ink-muted">{label}</span>}
+      <span className="text-xs text-ink-muted">{children}</span>
     </div>
   );
 }

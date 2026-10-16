@@ -3,13 +3,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Badge. Tinted pills in sentence-case sans — never solid blocks, never mono.
+ */
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-xs px-1.5 py-0.5 font-label normal-case whitespace-nowrap",
+  "inline-flex h-[26px] items-center gap-1.5 rounded-pill px-2.5 font-sans text-xs font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
-        solid: "bg-flame-vivid text-on-flame",
-        outline: "ring-1 ring-rule-strong bg-surface-2 text-ink-muted",
+        solid: "bg-button-primary text-on-button-primary",
+        outline: "border border-rule-strong bg-surface text-ink-muted",
         quiet: "bg-transparent text-ink-faint",
       },
     },
