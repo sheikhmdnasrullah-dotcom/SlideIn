@@ -7,8 +7,11 @@ from starlette import status as http_status
 
 from ...db import session_scope
 from ...errors import SlideinError
+from ...models import Tenant
 from ...security import AuthContext, require_role, resolve_workspace
+from ...services.branding import BrandingService
 from ...services.config import ConfigService
+from ...services.modules import ModulesService, check_module_enabled
 
 router = APIRouter()
 
@@ -146,3 +149,67 @@ async def config_versions(
             auth.tenant_id, entity_type=entity_type, limit=100
         )
         return {"config_versions": rows}
+
+
+async def _settings_module_or_403(session, tenant_id: str) -> None:
+    """Server-side module gate: the settings surface requires its module."""
+    row = await session.get(Tenant, tenant_id)
+    stored = (row.settings or {}).get("modules") if row is not None else None
+    try:
+        check_module_enabled(stored, "settings")
+    except SlideinError as exc:
+        raise _error(exc)
+
+
+@router.get("/tenants/{tenant_id}/branding", tags=["configuration"])
+async def get_branding(
+    tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    async with session_scope() as session:
+        await _settings_module_or_403(session, auth.tenant_id)
+        return {"branding": await BrandingService(session).get_branding(auth.tenant_id)}
+
+
+@router.put("/tenants/{tenant_id}/branding", tags=["configuration"])
+async def update_branding(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    require_role(auth, "operator")
+    async with session_scope() as session:
+        await _settings_module_or_403(session, auth.tenant_id)
+        try:
+            branding = await BrandingService(session).update_branding(
+                auth.tenant_id, payload, actor=f"user:{auth.role}"
+            )
+        except SlideinError as exc:
+            raise _error(exc)
+    return {"branding": branding}
+
+
+@router.get("/tenants/{tenant_id}/modules", tags=["configuration"])
+async def get_modules(
+    tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    async with session_scope() as session:
+        await _settings_module_or_403(session, auth.tenant_id)
+        return await ModulesService(session).get_modules(auth.tenant_id)
+
+
+@router.put("/tenants/{tenant_id}/modules", tags=["configuration"])
+async def update_modules(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    require_role(auth, "operator")
+    async with session_scope() as session:
+        await _settings_module_or_403(session, auth.tenant_id)
+        try:
+            result = await ModulesService(session).update_modules(
+                auth.tenant_id, payload, actor=f"user:{auth.role}"
+            )
+        except SlideinError as exc:
+            raise _error(exc)
+    return result
