@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(SlideinError)
     async def _slidein_error_handler(request: Request, exc: SlideinError):
-        status = 404 if exc.code in ("tenant_forbidden", "not_found") else (
+        status = 404 if exc.code in ("tenant_forbidden", "not_found", "prospect_not_found", "draft_not_found") else (
             403 if exc.code == "not_authorized" else 400
         )
         return JSONResponse(

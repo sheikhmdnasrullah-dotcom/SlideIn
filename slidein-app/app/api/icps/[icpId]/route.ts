@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { ApiRequestError, operations } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/client";
+import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 
-async function delete(request: Request, { params }: { params: Promise<Record<string, string>> }) {
+async function removeIcp(request: Request, { params }: { params: Promise<Record<string, string>> }) {
   try {
     const {icpId} = await params;
     return NextResponse.json(await operations.deactivateIcp(WORKSPACE_ID, icpId));
@@ -28,4 +29,4 @@ async function delete(request: Request, { params }: { params: Promise<Record<str
 }
 
 
-export const DELETE = delete;
+export const DELETE = removeIcp;

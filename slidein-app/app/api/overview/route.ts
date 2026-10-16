@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { ApiRequestError, operations } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/client";
+import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 
 async function get(request: Request) {
   try {
+    const search = new URL(request.url).searchParams;
 
-    return NextResponse.json(await operations.overview(WORKSPACE_ID, Number(from(search).get('attention_limit')) || 10));
+    return NextResponse.json(await operations.overview(WORKSPACE_ID, Number(search.get('attention_limit')) || 10));
   } catch (error) {
     if (error instanceof ApiRequestError) {
       return NextResponse.json({ error: error.error }, { status: error.status });

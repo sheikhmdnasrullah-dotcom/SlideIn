@@ -17,6 +17,7 @@ import type {
   DeliveryEvent,
   Draft,
   DraftDetail,
+  EffectiveTemplate,
   EvidenceItem,
   Handoff,
   Icp,
@@ -32,6 +33,8 @@ import type {
   StageOutcome,
   StageRun,
   SuppressionRecord,
+  TemplateDoc,
+  TemplateSummary,
   WorkspaceModules,
 } from "./types";
 
@@ -109,6 +112,21 @@ export const operations = {
   saveModules(workspaceId: string, body: Record<string, unknown>) {
     return client.put<WorkspaceModules>(
       workspacePath("/modules", workspaceId),
+      body,
+    );
+  },
+  templates() {
+    return client.get<{ templates: TemplateSummary[] }>("/v1/templates");
+  },
+  templateDoc(templateId: string) {
+    return client.get<{ template: TemplateDoc }>(`/v1/templates/${templateId}`);
+  },
+  tenantTemplate(workspaceId: string) {
+    return client.get<EffectiveTemplate>(workspacePath("/template", workspaceId));
+  },
+  applyTemplate(workspaceId: string, body: Record<string, unknown>) {
+    return client.post<EffectiveTemplate>(
+      workspacePath("/template", workspaceId),
       body,
     );
   },

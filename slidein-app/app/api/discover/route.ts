@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { ApiRequestError, operations } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/client";
+import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from ...db import session_scope
 from ...runtime import StageRunner
 from ...security import AuthContext, resolve_workspace
+from ..deps import module_gate
 from ...services.activity import ActivityService
 from ...services.overview import OverviewService
 
@@ -19,6 +20,7 @@ async def overview(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "overview")
         return await OverviewService(session).summary(
             auth.tenant_id, attention_limit=attention_limit
         )
@@ -28,6 +30,7 @@ async def overview(
 async def handoffs(tenant_id: str, auth: AuthContext = Depends(resolve_workspace)) -> dict:
     """What each stage is holding and what it is waiting on."""
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "overview")
         return {"handoffs": await OverviewService(session).handoffs(auth.tenant_id)}
 
 
@@ -42,6 +45,7 @@ async def list_activity(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "activity")
         rows, total = await ActivityService(session).list(
             auth.tenant_id,
             limit=limit,
@@ -64,6 +68,7 @@ async def list_runs(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "activity")
         rows, total = await StageRunner(session).list_runs(
             auth.tenant_id,
             limit=limit,
@@ -89,6 +94,7 @@ async def runs_for_prospect(
     tenant_id: str, prospect_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "activity")
         runs = await StageRunner(session).runs_for_subject(auth.tenant_id, prospect_id)
         activity = await ActivityService(session).for_prospect(auth.tenant_id, prospect_id)
     return {"runs": runs, "activity": activity}
@@ -98,6 +104,7 @@ async def runs_for_prospect(
 async def dns_health(tenant_id: str, auth: AuthContext = Depends(resolve_workspace)) -> dict:
     """Sending-infrastructure health, from persisted delivery evidence only."""
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         from ...services.outreach import OutreachService
 
         counts = await OutreachService(session).delivery_counts(auth.tenant_id)

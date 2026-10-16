@@ -17,7 +17,7 @@ import type {
   SentStatus,
   Stage,
   VerificationStatus,
-} from "./types";
+} from "../api/types";
 
 export type StatusTone = "live" | "info" | "warn" | "danger" | "neutral" | "flame";
 

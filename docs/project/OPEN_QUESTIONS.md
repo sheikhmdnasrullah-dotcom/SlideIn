@@ -33,3 +33,4 @@
 | **OQ-025** | Chat Hosting Domain | P1 | Milestone 2 | Finalize branded tenant subdomain routing for the hosted chat page. |
 | **OQ-026** | Voice Provider Selection | P2 | Milestone 3 | Inbound/callback-only voice platform evaluation (Retell AI vs Synthflow) following legal review. |
 | **OQ-041** | TCPA / Inbound Voice Review | P2 | Milestone 3 | Formal review of inbound voice greeting disclosure requirements prior to voice pilot. |
+| **OQ-042** | Multi-Key Workspaces | P1 | Milestone 2 | Production `KeyStore` issues one key per workspace, so a tenant cannot hold both an operator key and a service key for provider/inbound webhooks. Needed before ESP bounce/complaint webhooks authenticate in production. (Found 2026-10-16 during live two-tenant validation; webhooks covered by pytest only.) |

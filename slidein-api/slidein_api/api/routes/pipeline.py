@@ -16,6 +16,7 @@ from ...db import session_scope
 from ...errors import NotFoundError, SlideinError
 from ...runtime import StageRunner
 from ...security import AuthContext, require_role, resolve_workspace
+from ..deps import module_gate
 from ...services.config import ConfigService
 from ...services.discovery import DiscoveryService
 from ...services.overview import OverviewService
@@ -137,6 +138,7 @@ async def discover(
         }
 
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "discovery")
         runner = StageRunner(session)
         outcome = await runner.run(
             StageName.DISCOVER,
@@ -171,6 +173,7 @@ async def list_prospects(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "discovery", "research", "qualification", "personalization")
         rows, total = await DiscoveryService(session).list_prospects(
             auth.tenant_id,
             limit=limit,
@@ -188,6 +191,7 @@ async def get_prospect(
     tenant_id: str, prospect_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "discovery", "research", "qualification", "personalization")
         try:
             return await OverviewService(session).prospect_detail(auth.tenant_id, prospect_id)
         except SlideinError as exc:
@@ -199,6 +203,7 @@ async def list_evidence(
     tenant_id: str, prospect_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "research", "qualification", "personalization")
         service = DiscoveryService(session)
         prospect = await service.get_prospect(auth.tenant_id, prospect_id)
         if prospect is None:
@@ -301,6 +306,7 @@ async def research(
         }
 
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "research")
         runner = StageRunner(session)
         outcome = await runner.run(
             StageName.RESEARCH,
@@ -431,6 +437,7 @@ async def qualify(
         }
 
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "qualification")
         runner = StageRunner(session)
         outcome = await runner.run(
             StageName.QUALIFY,
@@ -517,6 +524,7 @@ async def personalize(
         }
 
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "personalization")
         runner = StageRunner(session)
         outcome = await runner.run(
             StageName.PERSONALIZE,
@@ -544,6 +552,7 @@ async def list_qualifications(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "qualification")
         rows, total = await QualificationService(session).list_results(
             auth.tenant_id, qualified_only=qualified_only, limit=limit
         )

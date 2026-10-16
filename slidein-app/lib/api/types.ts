@@ -400,6 +400,47 @@ export interface WorkspaceModules {
   enabled: string[];
   nav_order: string[];
   registry: ModuleMeta[];
+  source?: "tenant" | "template" | "default";
+  template?: TemplatePointer | null;
+}
+
+export interface TemplatePointer {
+  id: string;
+  version: number | null;
+  applied_at: string | null;
+  label: string | null;
+}
+
+export interface TemplateSummary {
+  id: string;
+  version: number;
+  label: string;
+  description: string;
+}
+
+export interface TemplateDoc extends TemplateSummary {
+  modules: { enabled: string[]; nav_order: string[] };
+  terminology: TemplateTerminology;
+  pipeline_stages: { id: string; label: string }[];
+  task_types: string[];
+  ai_use_cases: string[];
+  required_integrations: string[];
+  role_defaults: Record<string, unknown>;
+}
+
+export interface TemplateTerminology {
+  sections: Record<string, string>;
+  nouns: Record<string, string>;
+}
+
+export interface EffectiveTemplate {
+  template: TemplatePointer | null;
+  modules: { enabled: string[]; nav_order: string[]; source: string };
+  terminology: TemplateTerminology;
+  pipeline_stages: { id: string; label: string }[];
+  task_types: string[];
+  ai_use_cases: string[];
+  required_integrations: string[];
 }
 
 // ── conversations ──────────────────────────────────────────────────────────

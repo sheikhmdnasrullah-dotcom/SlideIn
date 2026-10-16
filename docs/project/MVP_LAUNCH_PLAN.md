@@ -55,15 +55,22 @@ qualifies, sell the managed service manually before writing more code.
 
 ## Implementation sequence
 
-1. ✅ Tenant branding + module registry API + tests (this session).
-2. slidein-app front-layer repair + section pages. First repair (all
-   verified broken, see audit): route `operations` import source, 3
-   `delete`-keyword parse errors, `metadata.ts` `./types` import,
-   undefined `LayoutProps`/`cn`/`ApiRequestError` names; prove `next build`
-   + a sensitive `tsc` pass. Then build section pages (Overview →
-   Activity) + tenant theme provider + module-gated nav from the new
-   branding/modules BFF operations. Each page: real BFF data, empty/error
-   states, no mocks.
+1. ✅ Tenant branding + module registry API + tests.
+2. ✅ slidein-app front-layer repair (tsc 60→0, webpack build green) +
+   section pages (all 9 + prospect/draft/conversation/contracts routes) +
+   tenant theme provider + module-gated nav + server-side module
+   enforcement on all API routers.
+3. ✅ Industry template mechanism: versioned starter templates
+   (mortgage/fitness), additive pointer-semantics apply (tenant settings
+   win, never overwritten), effective-config reads, config-version +
+   activity audit, catalog/apply UI on the profile page, sidebar
+   terminology.
+4. ✅ Live two-tenant validation (2026-10-16): real API + two branded
+   workspaces, full path per tenant
+   (template→brand→profile→discover→research→qualify→draft→approve→
+   dry_run send→in_campaign), isolation 404s, module 403s, branded +
+   terminology-rendered pages — 47/47 checks green
+   (`/tmp/slidein-live-e2e.sh`, DB + servers torn down after the run).
 3. Template v1 for the pilot vertical + additive-apply endpoint + tests.
 4. ESP adapter #1 (sandbox → pilot domain), event ingestion, suppression.
 5. Onboarding runbook: create tenant → keys → branding → template →

@@ -52,7 +52,11 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db():
     """Initialize database tables."""
+    from product.core import field_encryption
     from product.db.models import Base
+    # Fail fast at startup when production runs without an encryption key
+    # (ADR-2026-10-16 F4/I5) instead of failing at the first credential write.
+    field_encryption.initialize()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Database tables initialized")

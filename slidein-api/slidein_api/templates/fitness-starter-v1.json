@@ -1,0 +1,42 @@
+{
+  "id": "fitness-starter-v1",
+  "version": 1,
+  "label": "Coaching practice starter",
+  "description": "Starter wording and layout for a fitness or finance coaching practice. Applies defaults only — anything the workspace already configured wins.",
+  "modules": {
+    "enabled": ["overview", "discovery", "research", "qualification", "personalization", "outreach", "inbox", "activity", "settings"],
+    "nav_order": ["overview", "discovery", "research", "qualification", "personalization", "outreach", "inbox", "activity", "settings"]
+  },
+  "terminology": {
+    "sections": {
+      "overview": "Overview",
+      "profile": "Practice settings",
+      "discovery": "Leads",
+      "research": "Lead research",
+      "qualification": "Consult fit",
+      "personalization": "Program drafts",
+      "outreach": "Outreach",
+      "conversations": "Check-ins",
+      "activity": "History"
+    },
+    "nouns": {
+      "prospect": "client",
+      "prospects": "clients"
+    }
+  },
+  "pipeline_stages": [
+    {"id": "discovered", "label": "New lead"},
+    {"id": "researching", "label": "Researching"},
+    {"id": "researched", "label": "Researched"},
+    {"id": "qualified", "label": "Consult fit"},
+    {"id": "disqualified", "label": "Not a fit"},
+    {"id": "draft_ready", "label": "Draft ready"},
+    {"id": "in_campaign", "label": "In outreach"},
+    {"id": "replied", "label": "Replied"},
+    {"id": "opted_out", "label": "Opted out"}
+  ],
+  "task_types": ["consultation", "check_in", "plan_review", "follow_up"],
+  "ai_use_cases": [],
+  "required_integrations": [],
+  "role_defaults": {}
+}

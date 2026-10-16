@@ -180,3 +180,82 @@ def test_module_gate_blocks_disabled_module_server_side():
     check_module_enabled(stored, "overview")  # allowed
     with pytest.raises(PermissionDenied):
         check_module_enabled(stored, "outreach")  # hidden AND forbidden
+
+
+def _disable(client, headers, tenant_id, keep):
+    resp = client.put(
+        _modules(tenant_id), json={"enabled": keep}, headers=headers
+    )
+    assert resp.status_code == 200
+
+
+def test_disabled_outreach_blocks_approvals_but_keeps_draft_reads(
+    client, admin_headers
+):
+    _disable(
+        client, admin_headers, TENANT_A,
+        ["overview", "discovery", "research", "qualification",
+         "personalization", "inbox", "activity", "settings"],
+    )
+    assert client.get(
+        f"/v1/tenants/{TENANT_A}/drafts", headers=admin_headers
+    ).status_code == 200  # via personalization
+    assert client.post(
+        f"/v1/tenants/{TENANT_A}/drafts/d_missing/approve",
+        json={}, headers=admin_headers,
+    ).status_code == 403
+    assert client.get(
+        f"/v1/tenants/{TENANT_A}/policy", headers=admin_headers
+    ).status_code == 403
+
+
+def test_shared_prospect_reads_need_any_pipeline_module(client, admin_headers):
+    _disable(client, admin_headers, TENANT_A, ["overview", "settings"])
+    assert client.get(
+        f"/v1/tenants/{TENANT_A}/prospects", headers=admin_headers
+    ).status_code == 403
+    _disable(
+        client, admin_headers, TENANT_A, ["overview", "research", "settings"]
+    )
+    assert client.get(
+        f"/v1/tenants/{TENANT_A}/prospects", headers=admin_headers
+    ).status_code == 200
+    # ...but the discovery action stays gated on its own module.
+    assert client.post(
+        f"/v1/tenants/{TENANT_A}/discover", json={"prospects": []},
+        headers=admin_headers,
+    ).status_code == 403
+
+
+def test_section_entry_points_are_gated(client, admin_headers):
+    _disable(client, admin_headers, TENANT_A, ["settings"])
+    for path in (
+        f"/v1/tenants/{TENANT_A}/overview",
+        f"/v1/tenants/{TENANT_A}/activity",
+        f"/v1/tenants/{TENANT_A}/conversations",
+        f"/v1/tenants/{TENANT_A}/qualifications",
+        f"/v1/tenants/{TENANT_A}/sent",
+    ):
+        assert client.get(path, headers=admin_headers).status_code == 403
+    # Config surface stays available: it hosts the modules switch itself.
+    assert client.get(
+        _modules(TENANT_A), headers=admin_headers
+    ).status_code == 200
+
+
+def test_inbound_webhook_ignores_inbox_module(client, admin_headers, service_headers):
+    _disable(
+        client, admin_headers, TENANT_A,
+        ["overview", "discovery", "research", "qualification",
+         "personalization", "outreach", "activity", "settings"],
+    )
+    assert client.get(
+        f"/v1/tenants/{TENANT_A}/conversations", headers=admin_headers
+    ).status_code == 403  # section hidden...
+    resp = client.post(
+        "/v1/webhooks/inbound",
+        json={"sender_email": "nobody@example.invalid", "subject": "hi", "body": "x"},
+        headers=service_headers,
+    )
+    assert resp.status_code == 404  # ...but compliance ingress still executes
+    assert resp.json()["error"]["code"] == "prospect_not_found"

@@ -10,6 +10,7 @@ from ...db import session_scope
 from ...errors import NotFoundError, SlideinError
 from ...runtime import StageRunner
 from ...security import AuthContext, require_auth, require_role, resolve_workspace
+from ..deps import module_gate
 from ...services.conversations import ConversationService
 from ...services.discovery import DiscoveryService
 from ...services.outreach import OutreachService
@@ -56,6 +57,7 @@ async def list_drafts(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "personalization", "outreach")
         rows, total = await PersonalizationService(session).list_drafts(
             auth.tenant_id, limit=limit, status=status, prospect_id=prospect_id
         )
@@ -67,6 +69,7 @@ async def get_draft(
     tenant_id: str, draft_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "personalization", "outreach")
         try:
             return await PersonalizationService(session).draft_detail(
                 auth.tenant_id, draft_id
@@ -84,6 +87,7 @@ async def edit_draft(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "personalization")
         try:
             row = await PersonalizationService(session).edit_draft(
                 tenant_id=auth.tenant_id,
@@ -110,6 +114,7 @@ async def approve_draft(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         service = PersonalizationService(session)
         try:
             row = await OutreachService(session).approve_draft(
@@ -129,6 +134,7 @@ async def revoke_approval(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         try:
             row = await OutreachService(session).revoke_approval(
                 tenant_id=auth.tenant_id, draft_id=draft_id, actor=f"user:{auth.role}"
@@ -147,6 +153,7 @@ async def reject_draft(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         try:
             row = await PersonalizationService(session).reject_draft(
                 tenant_id=auth.tenant_id,
@@ -225,6 +232,7 @@ async def send_draft(
         }
 
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         runner = StageRunner(session)
         outcome = await runner.run(
             StageName.OUTREACH,
@@ -284,6 +292,7 @@ async def _policy_block(session, tenant_id: str, policy: dict, draft_row: dict) 
 @router.get("/tenants/{tenant_id}/policy", tags=["outreach"])
 async def get_policy(tenant_id: str, auth: AuthContext = Depends(resolve_workspace)) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         return {"policy": await OutreachService(session).policy(auth.tenant_id)}
 
 
@@ -295,6 +304,7 @@ async def save_policy(
 ) -> dict:
     require_role(auth, "admin")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         return {"policy": await OutreachService(session).save_policy(
             auth.tenant_id, payload, actor=f"user:{auth.role}"
         )}
@@ -307,6 +317,7 @@ async def list_suppression(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         rows, total = await OutreachService(session).list_suppression(
             auth.tenant_id, limit=limit
         )
@@ -321,6 +332,7 @@ async def add_suppression(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         try:
             row = await OutreachService(session).add_suppression(
                 tenant_id=auth.tenant_id,
@@ -342,6 +354,7 @@ async def remove_suppression(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         removed = await OutreachService(session).remove_suppression(
             auth.tenant_id, suppression_id
         )
@@ -365,6 +378,7 @@ async def list_sent(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         rows, total = await OutreachService(session).list_sent(
             auth.tenant_id, limit=limit, status=status
         )
@@ -381,6 +395,7 @@ async def record_event(
     """Provider webhook: delivery/bounce/complaint/unsubscribe events."""
     require_role(auth, "service")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
         try:
             result = await OutreachService(session).record_event(
                 tenant_id=auth.tenant_id,
@@ -411,6 +426,7 @@ async def list_conversations(
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "inbox")
         rows, total = await ConversationService(session).list_conversations(
             auth.tenant_id,
             limit=limit,
@@ -425,6 +441,7 @@ async def get_conversation(
     tenant_id: str, conversation_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "inbox")
         try:
             return await ConversationService(session).conversation_detail(
                 auth.tenant_id, conversation_id
@@ -439,6 +456,7 @@ async def close_conversation(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "inbox")
         try:
             row = await ConversationService(session).close_conversation(
                 tenant_id=auth.tenant_id, conversation_id=conversation_id,
@@ -455,6 +473,7 @@ async def reopen_conversation(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "inbox")
         try:
             row = await ConversationService(session).reopen_conversation(
                 tenant_id=auth.tenant_id, conversation_id=conversation_id,

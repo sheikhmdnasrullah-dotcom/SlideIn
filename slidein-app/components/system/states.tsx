@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/feedback";
 import { API_BASE_URL } from "@/lib/api/config";
+import { cn } from "@/lib/utils";
 
 /**
  * The three states every panel can be in. A section never silently renders
@@ -90,6 +91,16 @@ export function ErrorState({
         {actions}
       </div>
     </div>
+  );
+}
+
+/** Module guard: the workspace has this module switched off (API 403). */
+export function ModuleDisabledState({ module }: { module: string }) {
+  return (
+    <EmptyState
+      title="This module is not enabled for this workspace"
+      description={`The '${module}' module is switched off. Enable it under Business Profile → Modules to use this section.`}
+    />
   );
 }
 

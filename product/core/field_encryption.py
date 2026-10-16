@@ -98,10 +98,12 @@ def initialize() -> None:
 
 
 def reset_cache() -> None:
-    """Drop the cached Fernet (used by tests that change the environment)."""
-    global _cached
+    """Drop the cached Fernet and the missing-key warning flag (used by
+    tests that change the environment)."""
+    global _cached, _warned_missing_key
     with _lock:
         _cached = None
+        _warned_missing_key = False
 
 
 def encrypt_json(value: Any) -> Optional[str]:

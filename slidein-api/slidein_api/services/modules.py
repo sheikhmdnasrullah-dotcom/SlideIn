@@ -87,6 +87,29 @@ def check_module_enabled(stored: object, module_id: str) -> None:
         )
 
 
+def check_any_module_enabled(stored: object, module_ids: list[str]) -> None:
+    """Raise 403 unless at least one of the modules is enabled.
+
+    For shared record reads (prospects, drafts) that several sections use:
+    the record stays readable while any section that fronts it is on.
+    """
+    unknown = [m for m in module_ids if m not in MODULE_IDS]
+    if unknown:
+        raise ValidationError(
+            f"Unknown module id(s): {', '.join(sorted(set(unknown)))}",
+            details={"unknown_modules": sorted(set(unknown))},
+            recovery_action="fix_request",
+        )
+    enabled = enabled_modules(stored)
+    if not any(m in enabled for m in module_ids):
+        raise PermissionDenied(
+            "None of the required modules are enabled for this workspace",
+            code="not_authorized",
+            details={"modules": list(module_ids)},
+            recovery_action="request_authorization",
+        )
+
+
 def validate_modules_update(payload: object) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValidationError(

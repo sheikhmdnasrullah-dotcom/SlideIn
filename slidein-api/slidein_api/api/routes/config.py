@@ -7,11 +7,12 @@ from starlette import status as http_status
 
 from ...db import session_scope
 from ...errors import SlideinError
-from ...models import Tenant
 from ...security import AuthContext, require_role, resolve_workspace
 from ...services.branding import BrandingService
 from ...services.config import ConfigService
-from ...services.modules import ModulesService, check_module_enabled
+from ...services.modules import ModulesService
+from ...services.templates import TemplateService
+from ..deps import module_gate
 
 router = APIRouter()
 
@@ -20,7 +21,7 @@ def _error(exc: SlideinError) -> HTTPException:
     code = exc.code
     status = (
         http_status.HTTP_404_NOT_FOUND
-        if code in ("not_found", "tenant_forbidden")
+        if code in ("not_found", "tenant_forbidden", "prospect_not_found", "draft_not_found")
         else http_status.HTTP_403_FORBIDDEN
         if code == "not_authorized"
         else http_status.HTTP_400_BAD_REQUEST
@@ -151,22 +152,12 @@ async def config_versions(
         return {"config_versions": rows}
 
 
-async def _settings_module_or_403(session, tenant_id: str) -> None:
-    """Server-side module gate: the settings surface requires its module."""
-    row = await session.get(Tenant, tenant_id)
-    stored = (row.settings or {}).get("modules") if row is not None else None
-    try:
-        check_module_enabled(stored, "settings")
-    except SlideinError as exc:
-        raise _error(exc)
-
-
 @router.get("/tenants/{tenant_id}/branding", tags=["configuration"])
 async def get_branding(
     tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
-        await _settings_module_or_403(session, auth.tenant_id)
+        await module_gate(session, auth.tenant_id, "settings")
         return {"branding": await BrandingService(session).get_branding(auth.tenant_id)}
 
 
@@ -178,7 +169,7 @@ async def update_branding(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
-        await _settings_module_or_403(session, auth.tenant_id)
+        await module_gate(session, auth.tenant_id, "settings")
         try:
             branding = await BrandingService(session).update_branding(
                 auth.tenant_id, payload, actor=f"user:{auth.role}"
@@ -193,8 +184,15 @@ async def get_modules(
     tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
     async with session_scope() as session:
-        await _settings_module_or_403(session, auth.tenant_id)
-        return await ModulesService(session).get_modules(auth.tenant_id)
+        await module_gate(session, auth.tenant_id, "settings")
+        result = await ModulesService(session).get_modules(auth.tenant_id)
+        effective = await TemplateService(session).effective(auth.tenant_id)
+        # Effective modules: tenant settings win, template fills the rest.
+        result["enabled"] = effective["modules"]["enabled"]
+        result["nav_order"] = effective["modules"]["nav_order"]
+        result["source"] = effective["modules"]["source"]
+        result["template"] = effective["template"]
+        return result
 
 
 @router.put("/tenants/{tenant_id}/modules", tags=["configuration"])
@@ -205,10 +203,43 @@ async def update_modules(
 ) -> dict:
     require_role(auth, "operator")
     async with session_scope() as session:
-        await _settings_module_or_403(session, auth.tenant_id)
+        await module_gate(session, auth.tenant_id, "settings")
         try:
             result = await ModulesService(session).update_modules(
                 auth.tenant_id, payload, actor=f"user:{auth.role}"
+            )
+        except SlideinError as exc:
+            raise _error(exc)
+        effective = await TemplateService(session).effective(auth.tenant_id)
+        result["source"] = effective["modules"]["source"]
+        result["template"] = effective["template"]
+    return result
+
+
+@router.get("/tenants/{tenant_id}/template", tags=["configuration"])
+async def get_template(
+    tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "settings")
+        return await TemplateService(session).effective(auth.tenant_id)
+
+
+@router.post("/tenants/{tenant_id}/template", tags=["configuration"])
+async def apply_template(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    require_role(auth, "operator")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "settings")
+        try:
+            result = await TemplateService(session).apply_template(
+                auth.tenant_id,
+                payload.get("template_id"),
+                actor=f"user:{auth.role}",
+                terminology=payload.get("terminology"),
             )
         except SlideinError as exc:
             raise _error(exc)

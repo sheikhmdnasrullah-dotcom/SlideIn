@@ -37,7 +37,7 @@ export interface ButtonProps
   extends React.ComponentProps<"button">,
     VariantProps<typeof buttonVariants> {
   /** Render as a different element while keeping the button styling. */
-  render?: React.ReactElement;
+  render?: React.ReactElement<{ className?: string }>;
 }
 
 export function Button({

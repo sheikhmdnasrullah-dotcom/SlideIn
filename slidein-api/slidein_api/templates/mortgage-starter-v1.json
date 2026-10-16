@@ -1,0 +1,42 @@
+{
+  "id": "mortgage-starter-v1",
+  "version": 1,
+  "label": "Mortgage practice starter",
+  "description": "Starter wording and layout for a mortgage or lending practice. Applies defaults only — anything the workspace already configured wins.",
+  "modules": {
+    "enabled": ["overview", "discovery", "research", "qualification", "personalization", "outreach", "inbox", "activity", "settings"],
+    "nav_order": ["overview", "discovery", "research", "qualification", "personalization", "outreach", "inbox", "activity", "settings"]
+  },
+  "terminology": {
+    "sections": {
+      "overview": "Pipeline",
+      "profile": "Practice settings",
+      "discovery": "Borrowers",
+      "research": "Borrower research",
+      "qualification": "Pre-qualification",
+      "personalization": "Outreach drafts",
+      "outreach": "Follow-up",
+      "conversations": "Conversations",
+      "activity": "History"
+    },
+    "nouns": {
+      "prospect": "borrower",
+      "prospects": "borrowers"
+    }
+  },
+  "pipeline_stages": [
+    {"id": "discovered", "label": "New inquiry"},
+    {"id": "researching", "label": "Researching"},
+    {"id": "researched", "label": "Researched"},
+    {"id": "qualified", "label": "Pre-qualified"},
+    {"id": "disqualified", "label": "Not a fit"},
+    {"id": "draft_ready", "label": "Draft ready"},
+    {"id": "in_campaign", "label": "In follow-up"},
+    {"id": "replied", "label": "Replied"},
+    {"id": "opted_out", "label": "Opted out"}
+  ],
+  "task_types": ["call", "follow_up", "meeting", "document_request"],
+  "ai_use_cases": [],
+  "required_integrations": [],
+  "role_defaults": {}
+}

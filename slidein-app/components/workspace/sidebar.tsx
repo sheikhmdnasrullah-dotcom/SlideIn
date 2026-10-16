@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import { SECTIONS, type SectionMeta } from "@/lib/workflow/metadata";
+import { SECTION_MODULES, brandInitials, safeLogoUrl } from "@/lib/workflow/tenant";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -48,19 +49,35 @@ const GROUP_ORDER: SectionMeta["group"][] = ["setup", "pipeline", "history"];
 export function WorkflowSidebar({
   attentionCounts,
   workspaceId,
+  brandName,
+  logoUrl,
+  enabledModules,
+  sectionLabels,
   className,
 }: {
   attentionCounts?: Record<string, number>;
   workspaceId: string;
+  brandName?: string;
+  logoUrl?: string | null;
+  /** When present, sections whose module is off are hidden (API still enforces). */
+  enabledModules?: string[] | null;
+  /** Template terminology overrides for section labels. */
+  sectionLabels?: Record<string, string> | null;
   className?: string;
 }) {
   const pathname = usePathname();
 
+  const visible = (section: SectionMeta) =>
+    !enabledModules ||
+    enabledModules.includes(SECTION_MODULES[section.id] ?? section.id);
   const sections = GROUP_ORDER.map((group) => ({
     group,
     label: GROUP_LABELS[group],
-    items: SECTIONS.filter((section) => section.group === group),
-  }));
+    items: SECTIONS.filter((section) => section.group === group && visible(section)),
+  })).filter((group) => group.items.length > 0);
+
+  const displayName = brandName?.trim() || "Slidein";
+  const logo = safeLogoUrl(logoUrl);
 
   return (
     <aside
@@ -71,10 +88,17 @@ export function WorkflowSidebar({
       )}
     >
       <div className="flex h-12 items-center gap-2 border-b border-rule px-4">
-        <span className="flex size-6 items-center justify-center rounded-xs bg-flame-vivid font-mono text-2xs font-semibold text-on-flame">
-          SI
+        {logo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={logo} alt="" className="size-6 rounded-xs object-contain" />
+        ) : (
+          <span className="flex size-6 items-center justify-center rounded-xs bg-flame-vivid font-mono text-2xs font-semibold text-on-flame">
+            {brandInitials(displayName)}
+          </span>
+        )}
+        <span className="truncate font-display-soft text-sm text-ink-strong">
+          {displayName}
         </span>
-        <span className="font-display-soft text-sm text-ink-strong">Slidein</span>
       </div>
 
       <nav className="flex grow flex-col gap-4 overflow-y-auto px-2 py-3">
@@ -86,6 +110,7 @@ export function WorkflowSidebar({
               const active =
                 pathname === section.href || pathname.startsWith(`${section.href}/`);
               const count = attentionCounts?.[section.id];
+              const label = sectionLabels?.[section.id]?.trim() || section.label;
               return (
                 <Link
                   key={section.id}
@@ -100,7 +125,7 @@ export function WorkflowSidebar({
                   )}
                 >
                   <Icon className="size-3.5 shrink-0" aria-hidden />
-                  <span className="truncate">{section.label}</span>
+                  <span className="truncate">{label}</span>
                   {typeof count === "number" && count > 0 && (
                     <span className="ml-auto font-value text-2xs tabular-nums text-status-warn">
                       {count}

@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 
-import { ApiRequestError, operations } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/client";
+import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 
 async function get(request: Request) {
   try {
+    const search = new URL(request.url).searchParams;
 
     return NextResponse.json(await operations.conversations(WORKSPACE_ID, {
-      requires_action: from(search).get('requires_action') === 'true' ? true : undefined,
-      intent: from(search).get('intent') ?? undefined,
+      requires_action: search.get('requires_action') === 'true' ? true : undefined,
+      intent: search.get('intent') ?? undefined,
     }));
   } catch (error) {
     if (error instanceof ApiRequestError) {

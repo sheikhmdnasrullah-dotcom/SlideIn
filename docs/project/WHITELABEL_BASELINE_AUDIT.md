@@ -61,21 +61,25 @@ untracked file (`docs/decisions/ADR-2026-10-16-foundation-hardening-plan.md`).
 
 ## 2. Partially implemented
 
-- **slidein-app pages**: `SECTIONS` metadata lists overview/profile/discovery/
-  research/qualify/personalize/outreach/conversations/activity routes, but
-  **no `page.tsx` exists under `app/(workspace)/`** — every section 404s.
-  Shell + BFF real, bodies missing.
-- **slidein-app front layer does not build** (verified 2026-10-16): all
-  ~35 `app/api/**/route.ts` files import `operations` from
-  `@/lib/api/client`, which does not export it (it lives in
-  `lib/api/operations.ts`) — every API route would throw at import time;
-  3 route files fail to parse (`async function delete`, reserved word);
-  `lib/workflow/metadata.ts` imports non-existent `./types`;
-  `components/` + layouts reference undefined names (`LayoutProps`, `cn`,
-  `ApiRequestError`); `npm run typecheck` reports only the 3 parse errors
-  and is otherwise insensitive (demonstrated by probe), so it is not a
-  reliable gate until the parse errors are fixed. `lib/api/*` itself is
-  clean (verified by scoped `tsc` over `lib/`).
+- **slidein-app pages**: built 2026-10-16 — all 9 sections
+  (overview/profile/discovery/research/qualification/personalization/
+  outreach/conversations/activity) plus prospect, draft, conversation, and
+  contracts routes render real BFF data with empty/error/module-disabled
+  states; workflow mutations run through server actions. Not yet
+  browser-verified (sandbox blocks ports; needs an unsandboxed run).
+- **slidein-app front layer: repaired 2026-10-16** (was: not building).
+  Fixed: `operations` import source in all 35 `app/api/**/route.ts` files,
+  3 `async function delete` parse errors, `search`/`from(search)` query
+  handling in 8 routes, `metadata.ts` `./types` import, undefined
+  `LayoutProps`/`cn`/`ApiRequestError` names, Button `render` prop type,
+  removed Next-16-invalid `eslint` key from `next.config.ts`. `tsc` is a
+  reliable gate again (parse errors had suppressed all semantic
+  diagnostics — demonstrated by probe, sensitivity re-verified after the
+  fix). `next build --webpack` passes; Turbopack build is unproven in the
+  sandbox (process-spawn restriction, not a code defect). Remaining
+  pre-existing gaps: `npm run lint` is broken (`next lint` removed in
+  Next 16, no eslint config); the 35 BFF `/api/*` proxies compile but are
+  currently uncalled (pages use server components + server actions).
 - **`SMTPTransport`**: real-send path exists but live-sending policy gates it;
   no evidence of a production send through it in this workspace.
 - **Notifications/booking/scheduler** (`services/notifications.py`,

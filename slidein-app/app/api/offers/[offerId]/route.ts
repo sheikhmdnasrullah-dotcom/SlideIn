@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { ApiRequestError, operations } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/client";
+import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 
-async function delete(request: Request, { params }: { params: Promise<Record<string, string>> }) {
+async function removeOffer(request: Request, { params }: { params: Promise<Record<string, string>> }) {
   try {
     const {offerId} = await params;
     return NextResponse.json(await operations.deactivateOffer(WORKSPACE_ID, offerId));
@@ -28,4 +29,4 @@ async function delete(request: Request, { params }: { params: Promise<Record<str
 }
 
 
-export const DELETE = delete;
+export const DELETE = removeOffer;
