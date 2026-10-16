@@ -64,6 +64,7 @@ deployment is single-tenant.
 ## Data on the live VPS (private, never in git)
 
 GoPhish DB (`/root/gophish/gophish.db`), KumoMTA spool + DKIM private keys,
-job_api SQLite, Warmbly Postgres, app env (Appwrite/Supabase keys),
-Caddy certs, systemd/pm2 state. Secrets live in root-only files and
-environment, never in the repo.
+job_api SQLite, Warmbly Postgres, slidein-api SQLite (`/opt/slidein-api/data/`),
+slidein-app env (`/opt/slidein-app/.env.local` with API key), app env
+(Appwrite/Supabase keys), Caddy certs, systemd/pm2 state. Secrets live in
+root-only files and environment, never in the repo.
