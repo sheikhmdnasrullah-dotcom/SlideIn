@@ -61,3 +61,13 @@ Every scheduled or triggered workflow runs through a durable state machine:
 4. `RETRYING`: Transient errors (rate limits from search API, temporary MTA socket timeout) trigger exponential backoff with jitter: $T = 2^n \times 10\text{s} \pm \text{jitter}$ (Max attempts: 3).
 5. `FAILED`: Permanent errors (auth failure, invalid format, corrupt data) halt the step, record the failure payload, and notify the operator without crashing the process.
 6. `COMPLETED`: Emits summary metrics, releases locks, and updates next scheduled run time.
+
+
+---
+
+## 4. Engagement State Extension (PROPOSED)
+
+After `REPLIED` the prospect may move through `ENGAGING → MEETING_PROPOSED → MEETING_BOOKED`, with exits
+`HUMAN_OWNED`, `STALLED`, `CLOSED_NOT_INTERESTED`, and `OPTED_OUT` (from any state; immediate). The existing
+`REPLIED → [*]` "Handed to Sales Conversation" remains valid until this extension is approved.
+Guards, branches and tests: `docs/product/PROSPECT_ENGAGEMENT.md` §5; model: `ENGAGEMENT_ARCHITECTURE.md` §4.

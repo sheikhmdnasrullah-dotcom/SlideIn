@@ -18,6 +18,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .config import ConfigService
+from .deliverability_guard import DeliverabilityGuard
 from .discovery import normalize_domain
 from .suppression import SuppressionService
 from .transport import get_transport
@@ -49,6 +50,9 @@ DEFAULT_POLICY: dict[str, Any] = {
     "max_attempts": 3,
     "send_window": "00:00-23:59",
     "allowed_senders": [],
+    "physical_postal_address": "Suite 400, 100 Pine Street, San Francisco, CA 94111",
+    "lawful_basis": "b2b_legitimate_interest",
+    "quarantined": False,
 }
 
 
@@ -204,6 +208,9 @@ class OutreachService:
         if limit_error is not None:
             raise limit_error
 
+        guard = DeliverabilityGuard(tenant_id)
+        guard.validate_pre_send_compliance(policy)
+
         configured_sender = sender_email or await self._default_sender(tenant_id, policy)
         if not configured_sender:
             raise ConfigError(
@@ -212,13 +219,21 @@ class OutreachService:
                 recovery_action="retry_stage",
             )
 
+        compliance_headers = guard.build_compliance_headers(
+            tenant_id=tenant_id,
+            sender_email=configured_sender,
+            recipient_email=prospect_row.email,
+        )
+        address = str(policy.get("physical_postal_address") or "").strip()
+        formatted_body = guard.format_compliant_body(row.body, physical_address=address)
+
         transport = get_transport(transport_config)
         result = transport.dispatch(
             sender=configured_sender,
             recipient=prospect_row.email,
             subject=row.subject,
-            body=row.body,
-            headers={"X-Slidein-Draft-Id": row.id, "X-Slidein-Tenant": tenant_id},
+            body=formatted_body,
+            headers={"X-Slidein-Draft-Id": row.id, "X-Slidein-Tenant": tenant_id, **compliance_headers},
         )
 
         sent = SentMessage(

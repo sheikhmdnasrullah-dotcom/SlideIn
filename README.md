@@ -236,3 +236,11 @@ Agent-Reach retain their own permissive licenses; see `NOTICE`.
 Don't want to operate this? Managed installs on **your own VPS**:
 setup, monitoring, deliverability reviews, and warmup guidance — your
 infrastructure and data stay yours. Open a GitHub issue to start.
+
+
+## Prospect engagement (planned capability)
+
+The product vision extends past outreach: reply → AI-assisted conversation → direct meeting booking.
+Specification: `docs/product/PROSPECT_ENGAGEMENT.md`; architecture: `docs/architecture/ENGAGEMENT_ARCHITECTURE.md`;
+tasks: `docs/engineering/IMPLEMENTATION_ROADMAP.md` (Phase 10 expansion); open questions: `docs/project/OPEN_QUESTIONS.md`.
+Not built yet; status in `docs/project/CURRENT_STATE.md`.

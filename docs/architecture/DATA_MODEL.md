@@ -182,3 +182,12 @@ erDiagram
 - `intent_confidence`: NUMERIC(3, 2) DEFAULT 0.00
 - `requires_action`: BOOLEAN DEFAULT true
 - `received_at`: TIMESTAMPTZ DEFAULT NOW()
+
+
+---
+
+## 3. Proposed Engagement Tables (NOT IMPLEMENTED)
+
+`conversation_messages`, `engagement_sessions`, `knowledge_items`, `meetings`, `consent_records`, `call_records`,
+audit/agent actions, `unanswered_questions` — proposed in `ENGAGEMENT_ARCHITECTURE.md` §4. Not part of the schema until approved.
+Existing code models (`Conversation`, `InboundReply`) in `slidein-api/slidein_api/models.py` remain the source of truth for what exists.

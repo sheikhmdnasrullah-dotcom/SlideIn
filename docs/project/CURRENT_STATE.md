@@ -49,6 +49,11 @@ human-approval queue exists; the live deployment is single-tenant.
 | 27 | Campaign console (public GoPhish UI) | Implemented and verified | `console.slideinventure.com/login` 200; loopback binds; CSRF origin fix (bare-host match); dry-run group+template created, zero sends |
 | 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR mail.nasrullahtanim.me forward-confirmed; dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
 | 29 | Intake-first onboarding (profile → ICP → research) | Implemented and verified | `/intake` form + file store + API live; gate flips verified both ways; research prompts consume business context |
+| 30 | Prospect engagement: inbound reply path to backend | Partially implemented | Backend `POST /webhooks/inbound`, threading, intent, opt-out suppression exist (`slidein-api`); **no production inbound mail path** (see #23) |
+| 31 | Engagement: grounded reply agent with approval | Planned but not implemented | Spec only: `docs/product/PROSPECT_ENGAGEMENT.md` |
+| 32 | Engagement: chat agent via secure link | Planned but not implemented | Spec only; M2 |
+| 33 | Engagement: meeting booking (provider, webhooks, records) | Planned but not implemented | No provider selected (OQ-004) |
+| 34 | Engagement: voice (inbound/callback only) | Planned but not implemented | Research + legal review required; outbound calling blocked |
 
 ## Data on the live VPS (private, never in git)
 

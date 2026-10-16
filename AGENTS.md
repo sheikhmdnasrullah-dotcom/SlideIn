@@ -74,3 +74,19 @@ archived under `archived_rules/` for reference; they are not binding.
 - Warmup engine governs volume ramping
 - Circuit breaker auto-pauses on high bounce/complaint rates
 
+
+
+## Prospect Engagement Capability (conversations, chat, voice, meeting booking)
+
+This is part of the product vision (reply → AI-assisted conversation → meeting booking). It is **documented, not built**.
+
+- **Before touching replies, conversations, chat, voice, calendars, or booking, read:**
+  `docs/product/PROSPECT_ENGAGEMENT.md` (requirements `ENG-REQ-*`, flows `FL-*`, knowledge boundaries, brand references),
+  `docs/architecture/ENGAGEMENT_ARCHITECTURE.md`, and `docs/project/OPEN_QUESTIONS.md`.
+- **Tasks and order:** `docs/engineering/IMPLEMENTATION_ROADMAP.md` → "Phase 10 Expansion" (tasks `T-001…T-041`). Smallest first workflow is M1 "Reply-to-Meeting Loop" (a proposal until the owner approves it).
+- **Everything labelled `PROPOSED`, `RESEARCH`, or `BLOCKED` is not approved.** Do not present it as a client commitment. No client statements exist in the workspace; never invent them.
+- **Approval required from the owner before:** choosing an inbound-mail path, booking/calendar provider, voice provider; enabling agent auto-send; adding links to first-touch emails; any call/SMS capability; changing live sending (also see `PROJECT_POLICY.md`).
+- **Never:** let an agent invent prices/availability/commitments; place automated outbound calls or texts; claim a booking before the provider confirms; skip suppression, rate limits, or tenant isolation.
+- **Visual work** (chat, booking, notification screens) follows the marketing `design-system.md` and tokens listed in `PROSPECT_ENGAGEMENT.md` §10; unresolved brand questions are in the open-questions register.
+- **Validate** with the acceptance criteria and verification methods in the task table; extend the tenant-boundary and suppression tests.
+- **After implementing,** update `docs/project/CURRENT_STATE.md` (status), the task row's status, and any requirement whose status changed. Do not duplicate the spec here.

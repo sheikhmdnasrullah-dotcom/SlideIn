@@ -31,3 +31,14 @@
 - **Search API Queries:** Each researched prospect consumes $1-3$ search calls. Usage must be tracked per tenant to prevent unbounded API credit burn.
 - **LLM Token Consumption:** Drafting and qualification consume ~800 prompt tokens and ~200 completion tokens per prospect.
 - **Storage Retention:** Raw crawled HTML is retained for 14 days; extracted structured `evidence_items` are retained permanently or until prospect deletion.
+
+
+---
+
+## 4. Engagement Boundaries (added 2026-10-16)
+
+1. **No automated/AI outbound calls or texts to prospects.** An email being sent is not consent to be phoned. Blocked until qualified legal review and explicit approval (`PROSPECT_ENGAGEMENT.md` ENG-REQ-040).
+2. **Agents never invent** prices, availability, commitments, or business facts; unknown means escalate.
+3. **No claim of regulatory compliance** is made for conversation, recording, or calling features.
+4. **No guarantee that a prospect books**; the system offers and records meetings only after provider confirmation.
+5. Agent-authored replies default to human approval and obey the same pre-send gates and rate limits as outreach.

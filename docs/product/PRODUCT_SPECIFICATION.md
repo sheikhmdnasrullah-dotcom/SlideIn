@@ -63,6 +63,13 @@ Slidein operates as a dual-workspace software platform:
   - `NOT_INTERESTED`
 - **Follow-up Recommendation:** Suggests next action (schedule meeting, send pricing sheet, pause sequence, archive).
 
+### Module 7: Prospect Engagement, Conversational Agents & Direct Meeting Booking (PROPOSED — not built)
+- **Purpose:** Carry a prospect from an outreach reply to a real conversation and a confirmed meeting with the client.
+- **Sub-features:** conversational email replies (F-RPL), chat agent via secure personalized link (F-CHT), inbound/callback-only voice (F-VCE, opt-in, conditional), meeting booking (F-BKG), approved knowledge & grounding (F-KNW), human handoff & notifications (F-HND), consent/security/audit (F-CMP).
+- **Behavior rules:** answers only from approved, tenant-scoped knowledge with citations; never invents prices, availability or commitments; AI disclosed in chat/voice; human approval by default for agent email replies; same pre-send gates as outreach; no automated outbound calling.
+- **Release recommendation:** M1 "Reply-to-Meeting Loop" (email) → M2 chat → M3 voice add-on (conditional). Awaiting owner approval (OQ-005).
+- **Authoritative detail:** `PROSPECT_ENGAGEMENT.md` (requirements ENG-REQ-*, flows FL-*), `../architecture/ENGAGEMENT_ARCHITECTURE.md`, `../project/OPEN_QUESTIONS.md`.
+
 ---
 
 ## 3. Autonomous Autonomy Levels

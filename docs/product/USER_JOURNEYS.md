@@ -100,3 +100,25 @@ If recipient replies with *"Please unsubscribe me and take me off your list"*:
 - System instantly inserts recipient email and domain into `suppression_records`.
 - Cancels any pending or future sequence follow-ups for this prospect.
 - Emits audit log entry `SUPPRESSION_OPT_OUT`. No further outreach is possible.
+
+
+---
+
+## Journey 5: Prospect Engagement — Reply → Conversation → Booked Meeting (PROPOSED)
+
+> Status: proposed; not built. Authoritative detail (branches FL-01…FL-12, tests):
+> [`PROSPECT_ENGAGEMENT.md` §5](PROSPECT_ENGAGEMENT.md). Architecture:
+> [`../architecture/ENGAGEMENT_ARCHITECTURE.md`](../architecture/ENGAGEMENT_ARCHITECTURE.md).
+
+Roles: **Prospect** (email, chat link, later phone) · **Client representative** (inbox, approvals, handoff) ·
+**Client admin** (approved knowledge, meeting types, autonomy) · **Platform operator** (health, kill switch).
+
+1. Prospect replies to an outreach email (question, interest, meeting request, chat or call request, not interested, stop).
+2. System ingests once, links the reply to tenant/prospect/campaign, filters auto-replies, classifies intent.
+3. Stop → immediate suppression. Needs human or unknown answer → handoff with context.
+4. Otherwise a grounded reply is drafted with citations; a representative approves (default) and it is sent through the normal pre-send gates.
+5. Interested/meeting → reply includes a booking option; chat → a secure personalized link (M2).
+6. Provider confirms booking → prospect and campaign status update, representative notified, conversation context preserved. The agent never claims a booking before confirmation.
+7. Representative can take over at any point; the agent stops and the full history is visible.
+
+Voice is limited to inbound/callback with consent (M3, opt-in); automated outbound calling is blocked pending legal review and approval.

@@ -34,6 +34,9 @@ recoverable. Everything else is up to the owner's judgment.
    `deliverability/tests/` should stay green.
 5. **Back up before destructive ops** on the live VPS (db, mail config).
    Existing backup scripts in `kumomta-lab/scripts/` cover this.
+6. **License & Clean-Room Provenance (BSL 1.1)**: Free self-hosting for single-tenant internal use; competitors strictly prohibited from reselling as a commercial cloud service. Strictly NEVER copy or derive code from GPL OpenOutreach or other third-party GPL tools.
+7. **Deliverability Liability & Shared IP Isolation**: Shared VPS IPs must be protected from tenant abuse. Enforce per-tenant hourly/daily caps, Reacher pre-send verification, and rolling circuit breakers (quarantine tenant if bounce >3% or complaints >0.05% without impacting neighbor tenants).
+8. **Cold-Email Legal Invariants (CAN-SPAM / GDPR / CASL)**: Every outbound message requires: (a) verified B2B lawful basis, (b) clear plain-text opt-out and RFC 8058 `List-Unsubscribe` headers with instant zero-delay suppression, and (c) tenant physical postal address in the footer. Messages lacking a physical address are blocked at the gate.
 
 ## 3. How to work here
 

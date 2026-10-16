@@ -60,3 +60,18 @@ export interface ResearchResult {
   - "You are writing a 1-to-1 business introduction. You are forbidden from inventing facts not provided in the Evidence items."
   - "Keep body under 100 words. Single focused call to action."
 - **Output Schema:** Zod-validated JSON `{ subject: string, body: string, cited_evidence_ids: string[] }`.
+
+
+---
+
+## 3. Proposed Engagement Integrations (NOT IMPLEMENTED — see `ENGAGEMENT_ARCHITECTURE.md`)
+
+| Category | Provider | Purpose | Interface | Status |
+|---|---|---|---|---|
+| Inbound email | TBD (PD-01) | Deliver replies to `/webhooks/inbound` | MX / IMAP / provider webhook | Open decision (OQ-020) |
+| Booking | TBD (PD-02) | Offer/confirm/reschedule/cancel meetings | `BookingProvider` adapter + webhooks | Open decision (OQ-004, OQ-021) |
+| Notifications | TBD | Alert representatives | Email/Slack/etc. | Open (OQ-023) |
+| Voice | TBD (PD-05) | Inbound/callback AI voice | Provider API + signed webhooks | Research; blocked on legal (OQ-009, OQ-041) |
+| Chat hosting | `workspace-app` public route | Tenant-branded chat | HTTPS + session token | Proposed (M2) |
+
+No provider in this section is selected or approved.

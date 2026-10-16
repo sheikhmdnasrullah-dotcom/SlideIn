@@ -294,3 +294,25 @@ Keep the application grounded in the actual commercial purpose of Slidein: helpi
 Use this product concept alongside the existing architecture, data model, API contracts, design system, and repository conventions. Inspect those artifacts before proposing structural changes. If there is a conflict, identify it and explain the trade-off instead of silently rewriting established decisions.
 
 **The central product principle: Slidein connects prospect research, personalized outreach, and reliable campaign operations into one system designed to help businesses start better sales conversations.**
+
+
+---
+
+## Addendum (2026-10-16): From Outreach to Conversation to Booked Meeting
+
+The journey does not end when the outreach email is sent. The intended extended workflow is:
+
+**Prospect discovery → Personalized outreach → Prospect engagement → AI-assisted conversation →
+Qualification, where appropriate → Meeting booking → Client handoff and follow-up.**
+
+A prospect who replies, asks a question, or wants to learn more should be able to continue the conversation
+easily: by email, through a secure personalized chat link, and (as an opt-in, higher-risk option) by phone —
+and, when ready, book a meeting directly with the client. The aim is to reduce friction between an outreach
+email and a meaningful conversation, never to replace the client's judgment.
+
+Status: direction stated by the owner; **investigated and documented, not built; scope not client-confirmed.**
+Details and requirements: [`docs/product/PROSPECT_ENGAGEMENT.md`](docs/product/PROSPECT_ENGAGEMENT.md).
+Architecture: [`docs/architecture/ENGAGEMENT_ARCHITECTURE.md`](docs/architecture/ENGAGEMENT_ARCHITECTURE.md).
+Open questions: [`docs/project/OPEN_QUESTIONS.md`](docs/project/OPEN_QUESTIONS.md).
+Principles that still hold: answers are grounded in approved client information; nothing is invented; humans can
+take over; tenants stay isolated; automated outbound calling is not assumed to be permitted.
