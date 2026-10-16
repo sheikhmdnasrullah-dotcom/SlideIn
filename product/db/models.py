@@ -18,6 +18,7 @@ import uuid
 from sqlalchemy import Column, String, DateTime, Boolean, Integer, Float, Text, JSON, ForeignKey, Index, Enum as SQLEnum
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql import func
+from sqlalchemy.types import TypeDecorator
 import uuid as uuid_module
 from datetime import datetime
 from typing import Optional, List, Dict, Any as DBAny
@@ -25,6 +26,31 @@ from typing import Optional, List, Dict, Any as DBAny
 
 class Base(DeclarativeBase):
     pass
+
+
+class EncryptedJSON(TypeDecorator):
+    """JSON column transparently encrypted at rest.
+
+    Values are Fernet-encrypted via product.core.field_encryption before
+    persistence and decrypted on load. Legacy plaintext rows decrypt-fail
+    and are returned as-is (lazy migration: the next save that touches the
+    column re-encrypts it).
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        from product.core import field_encryption
+        return field_encryption.encrypt_json(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        from product.core import field_encryption
+        return field_encryption.decrypt_json(value)
 
 
 class TenantMixin:
@@ -76,7 +102,7 @@ class User(TenantMixin, TimestampMixin, Base):
     role = Column(String(50), default="advisor", nullable=False)
     calendar_provider = Column(String(50), nullable=True)
     calendar_id = Column(String(255), nullable=True)
-    calendar_credentials = Column(JSON, nullable=True)
+    calendar_credentials = Column(EncryptedJSON, nullable=True)
     active = Column(Boolean, default=True, nullable=False)
     last_login_at = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
