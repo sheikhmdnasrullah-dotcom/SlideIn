@@ -371,6 +371,37 @@ export interface SendingPolicy {
   allowed_senders: string[];
 }
 
+// ── white-label: branding + modules ────────────────────────────────────────
+
+export interface BrandColors {
+  primary: string;
+  surface: string;
+  ink: string;
+}
+
+export interface Branding {
+  business_name: string;
+  logo_url: string;
+  favicon_url: string;
+  colors: BrandColors;
+  email_from_name: string;
+  custom_domain: string;
+  domain_verified: boolean;
+}
+
+export interface ModuleMeta {
+  id: string;
+  label: string;
+  min_role: string;
+  description: string;
+}
+
+export interface WorkspaceModules {
+  enabled: string[];
+  nav_order: string[];
+  registry: ModuleMeta[];
+}
+
 // ── conversations ──────────────────────────────────────────────────────────
 
 export interface Conversation {

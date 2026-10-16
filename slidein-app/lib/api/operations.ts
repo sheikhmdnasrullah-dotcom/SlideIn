@@ -8,6 +8,7 @@ import { client, workspacePath } from "./client";
 import type {
   ActivityLog,
   AttentionItem,
+  Branding,
   BusinessProfile,
   ConfigVersionRecord,
   ContractCatalog,
@@ -31,6 +32,7 @@ import type {
   StageOutcome,
   StageRun,
   SuppressionRecord,
+  WorkspaceModules,
 } from "./types";
 
 const page = <T,>(value: Page<T> | undefined, fallback: Page<T>): Page<T> => value ?? fallback;
@@ -88,6 +90,26 @@ export const operations = {
     return client.get<{ config_versions: ConfigVersionRecord[] }>(
       workspacePath("/config-versions", workspaceId),
       { entity_type: entityType },
+    );
+  },
+  branding(workspaceId: string) {
+    return client.get<{ branding: Branding }>(
+      workspacePath("/branding", workspaceId),
+    );
+  },
+  saveBranding(workspaceId: string, body: Record<string, unknown>) {
+    return client.put<{ branding: Branding }>(
+      workspacePath("/branding", workspaceId),
+      body,
+    );
+  },
+  modules(workspaceId: string) {
+    return client.get<WorkspaceModules>(workspacePath("/modules", workspaceId));
+  },
+  saveModules(workspaceId: string, body: Record<string, unknown>) {
+    return client.put<WorkspaceModules>(
+      workspacePath("/modules", workspaceId),
+      body,
     );
   },
 

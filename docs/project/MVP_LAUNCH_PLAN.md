@@ -56,8 +56,14 @@ qualifies, sell the managed service manually before writing more code.
 ## Implementation sequence
 
 1. ✅ Tenant branding + module registry API + tests (this session).
-2. slidein-app section pages (Overview → Activity), tenant theme provider,
-   module-gated nav. Each page: real BFF data, empty/error states, no mocks.
+2. slidein-app front-layer repair + section pages. First repair (all
+   verified broken, see audit): route `operations` import source, 3
+   `delete`-keyword parse errors, `metadata.ts` `./types` import,
+   undefined `LayoutProps`/`cn`/`ApiRequestError` names; prove `next build`
+   + a sensitive `tsc` pass. Then build section pages (Overview →
+   Activity) + tenant theme provider + module-gated nav from the new
+   branding/modules BFF operations. Each page: real BFF data, empty/error
+   states, no mocks.
 3. Template v1 for the pilot vertical + additive-apply endpoint + tests.
 4. ESP adapter #1 (sandbox → pilot domain), event ingestion, suppression.
 5. Onboarding runbook: create tenant → keys → branding → template →

@@ -65,6 +65,17 @@ untracked file (`docs/decisions/ADR-2026-10-16-foundation-hardening-plan.md`).
   research/qualify/personalize/outreach/conversations/activity routes, but
   **no `page.tsx` exists under `app/(workspace)/`** — every section 404s.
   Shell + BFF real, bodies missing.
+- **slidein-app front layer does not build** (verified 2026-10-16): all
+  ~35 `app/api/**/route.ts` files import `operations` from
+  `@/lib/api/client`, which does not export it (it lives in
+  `lib/api/operations.ts`) — every API route would throw at import time;
+  3 route files fail to parse (`async function delete`, reserved word);
+  `lib/workflow/metadata.ts` imports non-existent `./types`;
+  `components/` + layouts reference undefined names (`LayoutProps`, `cn`,
+  `ApiRequestError`); `npm run typecheck` reports only the 3 parse errors
+  and is otherwise insensitive (demonstrated by probe), so it is not a
+  reliable gate until the parse errors are fixed. `lib/api/*` itself is
+  clean (verified by scoped `tsc` over `lib/`).
 - **`SMTPTransport`**: real-send path exists but live-sending policy gates it;
   no evidence of a production send through it in this workspace.
 - **Notifications/booking/scheduler** (`services/notifications.py`,
