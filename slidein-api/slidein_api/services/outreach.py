@@ -14,12 +14,23 @@ and credentials, per the repo's live-sending policy.
 
 from __future__ import annotations
 
+import logging
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .activity import ActivityService
 from .config import ConfigService
-from .deliverability_guard import DeliverabilityGuard
+from .deliverability_guard import (
+    BREAKER_EVENT_TYPES,
+    MAX_ALLOWED_BOUNCE_RATE,
+    MAX_ALLOWED_COMPLAINT_RATE,
+    MIN_SAMPLE_SIZE_FOR_BREAKER,
+    QUARANTINE_WINDOW,
+    DeliverabilityGuard,
+)
 from .discovery import normalize_domain
+from .sending import CircuitBreakerError, CircuitBreakerService, SendingService
 from .suppression import SuppressionService
 from .transport import get_transport
 from ..errors import ConfigError, NotFoundError, SlideinError, SuppressedError
@@ -33,8 +44,11 @@ from ..models import (
     ProspectStatus,
     SentMessage,
     SentStatus,
+    Tenant,
     utcnow,
 )
+
+logger = logging.getLogger("slidein.outreach")
 from ..serialize import (
     delivery_event,
     draft,
@@ -63,6 +77,8 @@ class TransportError(SlideinError):
 class OutreachService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.sending = SendingService(session)
+        self.circuit_breaker = CircuitBreakerService(session)
 
     # -- policy -----------------------------------------------------------
 
@@ -227,13 +243,22 @@ class OutreachService:
         address = str(policy.get("physical_postal_address") or "").strip()
         formatted_body = guard.format_compliant_body(row.body, physical_address=address)
 
+        # Trusted identity propagation: the tenant and the sending
+        # campaign are stamped server-side from the authenticated draft,
+        # never from client input, so downstream systems can attribute
+        # every message and queue to exactly one tenant/campaign.
         transport = get_transport(transport_config)
         result = transport.dispatch(
             sender=configured_sender,
             recipient=prospect_row.email,
             subject=row.subject,
             body=formatted_body,
-            headers={"X-Slidein-Draft-Id": row.id, "X-Slidein-Tenant": tenant_id, **compliance_headers},
+            headers={
+                "X-Slidein-Draft-Id": row.id,
+                "X-Slidein-Campaign": row.id,
+                "X-Slidein-Tenant": tenant_id,
+                **compliance_headers,
+            },
         )
 
         sent = SentMessage(
@@ -468,7 +493,183 @@ class OutreachService:
             )
         await self.session.flush()
 
+        # Shared-IP protection: after every reputation outcome, re-evaluate
+        # this tenant's rolling window. Tripping quarantines only this
+        # tenant; neighbor tenants keep sending.
+        if event_type in BREAKER_EVENT_TYPES:
+            quarantine = await self._evaluate_quarantine(tenant_id, actor=actor)
+            return {
+                "event": event,
+                "sent_message": sent_message(sent),
+                "quarantined": quarantine["quarantined"],
+                "quarantine_reason": quarantine.get("quarantine_reason", ""),
+            }
+
         return {"event": event, "sent_message": sent_message(sent)}
+
+    async def _evaluate_quarantine(self, tenant_id: str, *, actor: str) -> dict:
+        """Rolling-window circuit breaker for shared-IP abuse isolation.
+
+        Evaluates the tenant's most recent `QUARANTINE_WINDOW` provider
+        outcomes. When the hard-bounce or spam-complaint rate crosses the
+        safety threshold, the tenant is flagged `quarantined` in its sending
+        policy (which `send_draft` refuses) and an abuse-review entry is
+        appended to the activity log. Resolution is a human decision via
+        `resolve_quarantine` — no automatic lift.
+        """
+        policy = await self.policy(tenant_id)
+        if policy.get("quarantined"):
+            return {
+                "quarantined": True,
+                "quarantine_reason": policy.get("quarantine_reason", ""),
+                "tripped_now": False,
+            }
+
+        rows = (
+            await self.session.execute(
+                select(DeliveryEvent)
+                .where(
+                    DeliveryEvent.tenant_id == tenant_id,
+                    DeliveryEvent.event_type.in_(BREAKER_EVENT_TYPES),
+                )
+                .order_by(DeliveryEvent.occurred_at.desc(), DeliveryEvent.id.desc())
+                .limit(QUARANTINE_WINDOW)
+            )
+        ).scalars().all()
+        events = [r.event_type for r in rows]
+        tripped, reason = DeliverabilityGuard.evaluate_circuit_breaker(events)
+        if not tripped:
+            return {"quarantined": False, "quarantine_reason": "", "tripped_now": False}
+
+        tenant = await self.session.get(Tenant, tenant_id)
+        settings = dict(getattr(tenant, "settings", None) or {})
+        settings.update(
+            {
+                "quarantined": True,
+                "quarantine_reason": reason,
+                "quarantine_tripped_at": utcnow().isoformat(),
+            }
+        )
+        tenant.settings = settings
+        await self.session.flush()
+
+        # Mirror the decision in the dedicated circuit-breaker state so
+        # the admin view shows one authoritative status per tenant.
+        await self.circuit_breaker.open(
+            tenant_id,
+            reason=reason,
+            opened_by=actor or "system",
+            metrics={"window_size": len(events)},
+        )
+
+        await ActivityService(self.session).record(
+            tenant_id=tenant_id,
+            action="tenant_quarantined",
+            actor=actor or "system",
+            actor_role="system",
+            summary=f"Sending quarantined pending abuse review: {reason}",
+            entity_type="tenant",
+            entity_id=tenant_id,
+            stage="outreach",
+            details={"reason": reason, "window_size": len(events)},
+        )
+        logger.warning("Tenant %s quarantined from shared-IP sending: %s", tenant_id, reason)
+        return {"quarantined": True, "quarantine_reason": reason, "tripped_now": True}
+
+    async def deliverability_status(self, tenant_id: str) -> dict:
+        """Operator view: quarantine state, live rolling-window rates and the
+        per-tenant caps that isolate this workspace on the shared VPS IPs."""
+        policy = await self.policy(tenant_id)
+        rows = (
+            await self.session.execute(
+                select(DeliveryEvent)
+                .where(
+                    DeliveryEvent.tenant_id == tenant_id,
+                    DeliveryEvent.event_type.in_(BREAKER_EVENT_TYPES),
+                )
+                .order_by(DeliveryEvent.occurred_at.desc(), DeliveryEvent.id.desc())
+                .limit(QUARANTINE_WINDOW)
+            )
+        ).scalars().all()
+        events = [r.event_type for r in rows]
+        total = len(events)
+        bounces = sum(1 for e in events if e in ("bounced", "hard_bounce"))
+        complaints = sum(1 for e in events if e in ("complained", "spam_complaint"))
+        tripped, reason = DeliverabilityGuard.evaluate_circuit_breaker(events)
+        return {
+            "quarantined": bool(policy.get("quarantined")),
+            "quarantine_reason": policy.get("quarantine_reason", ""),
+            "quarantine_tripped_at": policy.get("quarantine_tripped_at", ""),
+            "quarantine_history": policy.get("quarantine_history") or [],
+            "window_size": total,
+            "min_sample": MIN_SAMPLE_SIZE_FOR_BREAKER,
+            "bounce_rate": round(bounces / total, 4) if total else 0.0,
+            "complaint_rate": round(complaints / total, 4) if total else 0.0,
+            "thresholds": {
+                "bounce_rate": MAX_ALLOWED_BOUNCE_RATE,
+                "complaint_rate": MAX_ALLOWED_COMPLAINT_RATE,
+            },
+            "would_trip": tripped,
+            "trip_reason": reason or "",
+            "limits": {
+                "hourly_limit": policy.get("hourly_limit"),
+                "daily_limit": policy.get("daily_limit"),
+            },
+            "circuit": await self.circuit_breaker.get_circuit_state(tenant_id),
+            "sending": await self.sending.get_config(tenant_id),
+        }
+
+    async def resolve_quarantine(self, tenant_id: str, *, actor: str, note: str = "") -> dict:
+        """Abuse-review step: an admin has inspected the tenant's delivery
+        metrics and cleared the sending quarantine. The decision, the
+        tripping metrics and the reviewer are recorded for audit."""
+        policy = await self.policy(tenant_id)
+        if not policy.get("quarantined"):
+            raise SlideinError(
+                "Workspace is not quarantined; nothing to resolve",
+                code="not_quarantined",
+                recovery_action="review_deliverability",
+            )
+        tenant = await self.session.get(Tenant, tenant_id)
+        settings = dict(getattr(tenant, "settings", None) or {})
+        entry = {
+            "tripped_at": settings.get("quarantine_tripped_at", ""),
+            "reason": settings.get("quarantine_reason", ""),
+            "resolved_at": utcnow().isoformat(),
+            "resolved_by": actor,
+            "note": note,
+        }
+        history = list(settings.get("quarantine_history") or [])
+        history.append(entry)
+        settings.update(
+            {
+                "quarantined": False,
+                "quarantine_reason": "",
+                "quarantine_tripped_at": "",
+                "quarantine_history": history,
+            }
+        )
+        tenant.settings = settings
+        await self.session.flush()
+
+        await self.circuit_breaker.resolve(
+            tenant_id,
+            resolved_by=actor,
+            note=note,
+        )
+
+        await ActivityService(self.session).record(
+            tenant_id=tenant_id,
+            action="tenant_quarantine_resolved",
+            actor=actor,
+            actor_role=actor.split(":", 1)[-1] if ":" in actor else "admin",
+            summary=f"Quarantine resolved after abuse review: {note or 'no note'}",
+            entity_type="tenant",
+            entity_id=tenant_id,
+            stage="outreach",
+            details=entry,
+        )
+        return await self.policy(tenant_id)
 
     async def _suppress(
         self, *, tenant_id: str, email: str, reason: str, actor: str, note: str = ""

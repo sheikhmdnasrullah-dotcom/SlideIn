@@ -76,11 +76,35 @@ Every outbound email produced or sent by SlideIn must strictly adhere to statuto
 
 ---
 
-## 4. Implementation Invariants in `slidein-api`
+## 4. Implementation Invariants in `slidein-api` (implemented 2026-10-16)
 
 1. `DeliverabilityGuard` service in `slidein_api/services/deliverability_guard.py` enforces:
    - Tenant quarantine state checks
-   - Rolling bounce and complaint rate calculations
+   - Rolling bounce and complaint rate calculations (`MIN_SAMPLE_SIZE_FOR_BREAKER = 20`, window `QUARANTINE_WINDOW = 100`)
    - Physical postal address requirement check
    - Opt-out footer injection and RFC 8058 header attachment
-2. `OutreachService` hooks directly into `DeliverabilityGuard` prior to SMTP dispatch.
+2. `OutreachService.send_draft` hooks directly into `DeliverabilityGuard` prior to transport:
+   - per-tenant hourly/daily caps (`_check_limits`),
+   - quarantine refusal (`DeliverabilityQuarantineError`),
+   - `MissingPhysicalAddressError` / `LawfulBasisMissingError` blocks,
+   - compliant footer + `List-Unsubscribe` headers on the dispatched message.
+   The `approved: false` dry-run on `POST /drafts/{id}/send` runs the same checks via `_policy_block`, so the UI surfaces every block before dispatch.
+3. **Rolling circuit breaker → automatic quarantine** (wired, not just defined):
+   `OutreachService.record_event` re-evaluates the tenant's last 100 provider
+   outcomes (`accepted`/`delivered`/`bounced`/`complained`) on every
+   reputation outcome. Tripping (>3% hard bounce or >0.05% complaints)
+   persists `quarantined: true` on the tenant's sending policy and appends a
+   `tenant_quarantined` entry to the activity log. Only the offending tenant
+   is affected; neighbors keep sending. There is no automatic lift.
+4. **Abuse review endpoints** (operator tooling):
+   - `GET /v1/tenants/{id}/deliverability` — quarantine state, live window rates vs. thresholds, per-tenant caps, quarantine history.
+   - `POST /v1/tenants/{id}/quarantine/resolve` — **admin only**; records the reviewer and note in the activity log (`tenant_quarantine_resolved`) and retains the decision in `policy.quarantine_history`.
+5. **Pre-send verification boundary:** slidein-api dispatches only through
+   `dry_run` (default) or an explicitly configured SMTP transport, and the
+   live pipeline's Reacher (:8090) + deliverability gate remain the
+   verification layer for real sending. Prospect-level email verification in
+   slidein-api is not yet modeled (evidence-level verification only); until it
+   is, live sends must go through the verified live pipeline.
+6. **Verified:** `slidein-api/tests/test_compliance_and_deliverability.py`
+   (13 tests, incl. quarantine trip, neighbor isolation, abuse-review audit
+   trail, role gates, license invariants) + full suite 107 green.

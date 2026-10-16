@@ -6,13 +6,14 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..db import init_db
 from ..errors import SlideinError
-from .routes import config, outreach, overview, pipeline, system
+from .routes import config, factory, outreach, overview, pipeline, system
 
 logger = logging.getLogger("slidein.api")
 
@@ -58,7 +59,7 @@ def create_app() -> FastAPI:
         )
         return JSONResponse(
             status_code=status,
-            content={"error": exc.to_dict()},
+            content=jsonable_encoder({"error": exc.to_dict()}),
         )
 
     @app.exception_handler(StarletteHTTPException)
@@ -80,7 +81,7 @@ def create_app() -> FastAPI:
             }
         return JSONResponse(
             status_code=exc.status_code,
-            content=content,
+            content=jsonable_encoder(content),
             headers=getattr(exc, "headers", None),
         )
 
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
         )
 
     @app.get("/health", tags=["system"], include_in_schema=False)
+    @app.get("/healthz", tags=["system"], include_in_schema=False)
     async def root_health() -> dict:
         """Liveness probe, always public."""
         return {"status": "healthy", "service": "slidein-api", "version": "1.0.0"}
@@ -111,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(pipeline.router, prefix=prefix, tags=["pipeline"])
     app.include_router(outreach.router, prefix=prefix, tags=["outreach"])
     app.include_router(overview.router, prefix=prefix, tags=["overview"])
+    app.include_router(factory.router, prefix=prefix, tags=["factory"])
     return app
 
 

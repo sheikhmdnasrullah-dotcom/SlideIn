@@ -23,6 +23,11 @@ logger = logging.getLogger("slidein.deliverability_guard")
 MAX_ALLOWED_BOUNCE_RATE = 0.03      # 3.0%
 MAX_ALLOWED_COMPLAINT_RATE = 0.0005  # 0.05%
 MIN_SAMPLE_SIZE_FOR_BREAKER = 20    # Minimum dispatches before tripping circuit breaker
+QUARANTINE_WINDOW = 100             # Rolling per-tenant outcome window evaluated on each event
+
+#: Provider outcomes that count toward the reputation window. `submitted`,
+#: `deferred`, opens and clicks are not reputation outcomes.
+BREAKER_EVENT_TYPES = ("accepted", "delivered", "bounced", "complained")
 
 
 class DeliverabilityQuarantineError(SlideinError):

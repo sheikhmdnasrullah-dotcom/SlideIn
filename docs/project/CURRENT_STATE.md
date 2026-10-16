@@ -60,6 +60,10 @@ deployment is single-tenant.
 | 34 | Engagement: chat agent via secure link | Planned but not implemented | Spec only; M2 |
 | 35 | Engagement: meeting booking (provider, webhooks, records) | Planned but not implemented | No provider selected (OQ-004) |
 | 36 | Engagement: voice (inbound/callback only) | Planned but not implemented | Research + legal review required; outbound calling blocked |
+| 37 | SaaS risk guardrails (BSL 1.1 license + clean-room, per-tenant caps, auto-quarantine circuit breaker, abuse review, cold-email statutory pre-send gate) | Implemented and verified | `LICENSE` BSL 1.1 (Additional Use Grant + OpenOutreach non-derivation); `slidein-api` 144 tests green incl. deliverability breaker wired into `POST /events` (100-event window, >3% bounce / >0.05% complaint → quarantine), `GET /deliverability` + admin-only `POST /quarantine/resolve` (audit-logged), send gate blocks missing physical address / lawful basis / quarantine |
+| 38 | Dedicated client instance platform (Plan B) | Implemented and verified | Pinned release + versioned `DeploymentConfig` (`slidein_api/factory/`); deterministic owner/calendar booking router (`TeamOwner` -> `ProspectOwnerAssignment` -> `resolve_booking`); 16-stage pre-flight audit; zero client code forks; 144 pytest green |
+| 39 | Rapid client onboarding pipeline (<2 hours) | Implemented and verified | Automated plain-text intake compiler (`scripts/compile_client_intake.py` -> `IntakeCompiler`); industry-adaptive terminology & branding; one-command idempotent host installer (`install.sh` v0.2.0); SOP documented in `docs/playbooks/client-instance-onboarding.md` |
+| 40 | Tenant-level sending isolation (mode, route, breaker state) | Implemented and verified | `slidein-api` 12 tests in `tests/test_sending_isolation.py` green: `shared`/`dedicated`/`provider_managed` modes, fail-closed routing (`sending_route_unresolved`), per-tenant circuit breaker with admin pause/probe/resume, tenant-scoped reads, honest isolation wording. Real dedicated-IP verification still requires infrastructure (see `docs/engineering/TENANT_SENDING_ISOLATION.md`) |
 
 ## Data on the live VPS (private, never in git)
 

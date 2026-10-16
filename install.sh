@@ -15,8 +15,9 @@
 # From a git clone (contributors):
 #   ./install.sh --base-domain ... --mail-domains ... --admin-email ...
 #
-# Flags: --senders hello,talk,connect  --minimal (skip Warmbly)
-#        --non-interactive  --dry-run  --regenerate-secrets  --help
+# Flags: --senders hello,talk,connect  --config client_intake.txt  --activate
+#        --minimal (skip Warmbly)  --non-interactive  --dry-run
+#        --regenerate-secrets  --help
 #
 # Idempotent: safe to rerun; existing secrets/keys/data are kept.
 # License: MIT. All bundled upstreams are permissive-licensed
@@ -24,12 +25,12 @@
 # ============================================================
 set -euo pipefail
 
-INSTALL_VERSION="0.2.0"
+INSTALL_VERSION="0.3.0"
 MAIN_REPO="https://github.com/sheikhmdnasrullah-dotcom/SlideIn.git"
-APP_REPO="https://github.com/sheikhmdnasrullah-dotcom/slideinventure-workspace.git"
 
 # ---- args ----
 BASE_DOMAIN=""; MAIL_DOMAINS=""; ADMIN_EMAIL=""; SENDERS="hello,talk,connect"
+CONFIG_FILE=""; ACTIVATE_ON_INSTALL=0
 NON_INTERACTIVE=0; DRY_RUN=0; MINIMAL=0; REGEN_SECRETS=0
 
 usage() {
@@ -43,6 +44,8 @@ while [ $# -gt 0 ]; do
     --mail-domains) MAIL_DOMAINS="${2:?}"; shift 2 ;;
     --admin-email) ADMIN_EMAIL="${2:?}"; shift 2 ;;
     --senders) SENDERS="${2:?}"; shift 2 ;;
+    --config) CONFIG_FILE="${2:?}"; shift 2 ;;
+    --activate) ACTIVATE_ON_INSTALL=1; shift ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     --minimal) MINIMAL=1; shift ;;
@@ -73,15 +76,16 @@ IFS=',' read -ra SENDER_LIST <<< "$SENDERS"
 [ "${#SENDER_LIST[@]}" -ge 1 ] || die "need at least one --senders entry"
 
 PRIMARY="${DOMAINS[0]}"
-APP_HOST="app.$BASE_DOMAIN"; CONSOLE_HOST="console.$BASE_DOMAIN"
+APP_HOST="app.$BASE_DOMAIN"; API_HOST="api.$BASE_DOMAIN"; CONSOLE_HOST="console.$BASE_DOMAIN"
 TRACK_HOST="track.$BASE_DOMAIN"; WARM_HOST="warmbly.$BASE_DOMAIN"
 WARM_API="warmbly-api.$BASE_DOMAIN"; WARM_TRACK="warmbly-track.$BASE_DOMAIN"
 MAIL_HOST="mail.$PRIMARY"
 FIRST_PROFILE="${SENDER_LIST[0]}@${DOMAINS[0]}"
 
-SLIDEIN=/opt/slidein; REPO=$SLIDEIN/repo; APP_SRC=$SLIDEIN/workspace-app
+SLIDEIN=/opt/slidein; REPO=$SLIDEIN/repo
+SLIDEIN_API_DIR=$SLIDEIN/slidein-api; CLIENT_APP_DST=/var/www/slidein-app
 KUMO_LAB=/opt/kumomta-lab; GOPH=/root/gophish; DELIV=/opt/deliverability
-REACH=/opt/reacher/job_api; WARMB=/opt/warmbly; APPDST=/var/www/workspace-app
+REACH=/opt/reacher/job_api; WARMB=/opt/warmbly
 SECRETS_FILE=$SLIDEIN/.secrets.env
 
 echo "================================================"
@@ -394,47 +398,96 @@ log "deliverability CLI ready (precheck failures before DNS setup are expected)"
 }
 
 # ============================================================
-# PHASE 9: dashboard (build + start, loopback service)
+# PHASE 9: Slidein API & client dashboard
 # ============================================================
-log "PHASE 9: dashboard"
-dry "npm ci + build + pm2 start (open mode, loopback :3001)" || {
+log "PHASE 9: Slidein API & client dashboard"
+dry "setup slidein-api (:8100) + slidein-app (:3000) + optional bootstrap" || {
 # shellcheck disable=SC1090
 . "$SECRETS_FILE"
-rsync -a --delete --exclude .git --exclude node_modules --exclude .next \
-  --exclude .data/ --exclude .env.local --exclude .env.vercel --exclude knowledge/ \
-  --exclude "AI Venture/" --exclude efa-results.json --exclude efa-run.log \
-  --exclude Efa.csv "$APP_SRC/" "$APPDST/"
-cat > "$APPDST/.env.local" << ENVEOF
-GOPHISH_API_URL=http://127.0.0.1:8333
-GOPHISH_API_KEY=$GOPHISH_API_KEY
-LEAD_JOB_API_URL=http://127.0.0.1:8091
-LEAD_JOB_API_SECRET=$JOB_API_SECRET
-REACHER_URL=http://127.0.0.1:8091
-REACHER_SECRET=$REACHER_SECRET
-NEXT_PUBLIC_APP_URL=https://$APP_HOST
-DISABLE_AUTH=true
-DISABLE_AUTH_USER_ID=owner
-DISABLE_AUTH_USER_EMAIL=$FIRST_PROFILE
+
+# 9A: Slidein Workflow API (:8100 systemd service)
+log "  Deploying slidein-api (:8100)..."
+mkdir -p "$SLIDEIN_API_DIR" "$SLIDEIN_API_DIR/data"
+rsync -a --delete --exclude .venv --exclude __pycache__ --exclude .pytest_cache \
+  --exclude "*.pyc" --exclude "data/" "$REPO/slidein-api/" "$SLIDEIN_API_DIR/"
+[ -x "$SLIDEIN_API_DIR/.venv/bin/python" ] || python3 -m venv "$SLIDEIN_API_DIR/.venv"
+"$SLIDEIN_API_DIR/.venv/bin/pip" install -q -r "$SLIDEIN_API_DIR/requirements.txt" || warn "pip install had warnings"
+
+cat > "$SLIDEIN_API_DIR/.env" << APIENV
+SLIDEIN_DB_PATH=$SLIDEIN_API_DIR/data/slidein.db
+SLIDEIN_AUTH_MODE=disabled
 INTERNAL_API_SECRET=$INTERNAL_API_SECRET
 VAULT_MASTER_KEY=$VAULT_MASTER_KEY
-PORT=3001
+APIENV
+chmod 600 "$SLIDEIN_API_DIR/.env"
+
+cat > /etc/systemd/system/slidein-api.service << UNITEOF
+[Unit]
+Description=Slidein Workflow API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$SLIDEIN_API_DIR
+EnvironmentFile=-$SLIDEIN_API_DIR/.env
+ExecStart=$SLIDEIN_API_DIR/.venv/bin/uvicorn slidein_api.api.app:app --host 127.0.0.1 --port 8100
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+UNITEOF
+
+systemctl daemon-reload && systemctl enable slidein-api > /dev/null 2>&1 || true
+systemctl restart slidein-api
+for _ in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/8100) 2>/dev/null && break; sleep 2; done
+(echo > /dev/tcp/127.0.0.1/8100) 2>/dev/null || die "slidein-api never came up on :8100"
+log "  slidein-api live on :8100"
+
+# 9B: Client Instance Bootstrap (if --config supplied or bundle exists)
+TENANT_ID="ten_default"
+if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
+  log "  Bootstrapping client workspace from $CONFIG_FILE..."
+  BOOTSTRAP_CMD=("$SLIDEIN_API_DIR/.venv/bin/python" "$REPO/scripts/bootstrap_client_instance.py")
+  if [[ "$CONFIG_FILE" == *.json ]]; then
+    BOOTSTRAP_CMD+=(--bundle "$CONFIG_FILE")
+  else
+    BOOTSTRAP_CMD+=(--input "$CONFIG_FILE")
+  fi
+  [ "$ACTIVATE_ON_INSTALL" = 1 ] && BOOTSTRAP_CMD+=(--activate)
+  "${BOOTSTRAP_CMD[@]}" || warn "Client bootstrap reported warnings — check validation checklist"
+fi
+
+# 9C: Slidein Client Dashboard (:3000 Next.js app via PM2)
+log "  Deploying slidein-app (:3000)..."
+mkdir -p "$CLIENT_APP_DST"
+rsync -a --delete --exclude .git --exclude node_modules --exclude .next \
+  "$REPO/slidein-app/" "$CLIENT_APP_DST/"
+cat > "$CLIENT_APP_DST/.env.local" << ENVEOF
+SLIDEIN_API_URL=http://127.0.0.1:8100
+SLIDEIN_WORKSPACE_ID=$TENANT_ID
+SLIDEIN_AUTH_MODE=disabled
+NEXT_PUBLIC_APP_URL=https://$APP_HOST
+PORT=3000
 ENVEOF
-chmod 600 "$APPDST/.env.local"
-cd "$APPDST" && npm ci --no-audit --no-fund
+chmod 600 "$CLIENT_APP_DST/.env.local"
+cd "$CLIENT_APP_DST" && npm ci --no-audit --no-fund
 NEXT_PUBLIC_APP_URL="https://$APP_HOST" npm run build
 pm2 start ecosystem.config.cjs > /dev/null 2>&1 || pm2 restart ecosystem.config.cjs > /dev/null 2>&1
 pm2 save > /dev/null 2>&1 || true
-for _ in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/3001) 2>/dev/null && break; sleep 2; done
-(echo > /dev/tcp/127.0.0.1/3001) 2>/dev/null || die "dashboard never came up on :3001"
-log "dashboard live on :3001 (open mode — see warnings at the end)"
+for _ in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/3000) 2>/dev/null && break; sleep 2; done
+(echo > /dev/tcp/127.0.0.1/3000) 2>/dev/null || die "slidein-app never came up on :3000"
+log "  slidein-app live on :3000"
 }
 
 # ============================================================
-# PHASE 10: Caddy (public HTTPS for app/console/track/warmbly)
+# PHASE 10: Caddy (public HTTPS for app/api/console/track/warmbly)
 # ============================================================
 log "PHASE 10: Caddy"
 dry "write Caddyfile from template, validate, reload" || {
 sed -e "s/__BASE__/$BASE_DOMAIN/g" -e "s/__APP__/$APP_HOST/g" \
+    -e "s/__API__/$API_HOST/g" \
     -e "s/__CONSOLE__/$CONSOLE_HOST/g" -e "s/__TRACK__/$TRACK_HOST/g" \
     -e "s/__WARM__/$WARM_HOST/g" -e "s/__WARM_API__/$WARM_API/g" \
     -e "s/__WARM_TRACK__/$WARM_TRACK/g" "$REPO/install/Caddyfile.tmpl" > /etc/caddy/Caddyfile
@@ -442,7 +495,7 @@ grep -q "__" /etc/caddy/Caddyfile && die "Caddyfile template placeholders left u
 caddy validate --config /etc/caddy/Caddyfile > /dev/null || die "Caddyfile invalid"
 systemctl reload caddy 2>/dev/null || systemctl restart caddy
 sleep 6
-for u in "https://$APP_HOST/" "https://$CONSOLE_HOST/login"; do
+for u in "https://$APP_HOST/" "https://$API_HOST/health" "https://$CONSOLE_HOST/login"; do
   code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 "$u" 2>&1 || echo 000)
   [ "$code" = 200 ] && log "  $u -> $code" || warn "$u -> $code (DNS/TLS may still be propagating)"
 done
@@ -513,6 +566,8 @@ pip3 show agent-reach > /dev/null 2>&1 && log "Agent-Reach installed" || warn "A
 # ============================================================
 # PHASE 14: DNS records (print + save + verify loop)
 # ============================================================
+# PHASE 14: DNS records
+# ============================================================
 log "PHASE 14: DNS records"
 DNS_FILE=$SLIDEIN/dns-records.txt
 dry "print + verify DNS table" || {
@@ -520,7 +575,7 @@ dry "print + verify DNS table" || {
 echo "SlideIn DNS for $BASE_DOMAIN (server $PUBLIC_IP) — add at your DNS provider:"
 echo ""
 echo "[Website]  A  $BASE_DOMAIN  -> $PUBLIC_IP"
-for h in "$APP_HOST" "$CONSOLE_HOST" "$TRACK_HOST"; do echo "[Website]  A  $h  -> $PUBLIC_IP"; done
+for h in "$APP_HOST" "$API_HOST" "$CONSOLE_HOST" "$TRACK_HOST"; do echo "[Website]  A  $h  -> $PUBLIC_IP"; done
 if [ "$MINIMAL" = 0 ]; then
 for h in "$WARM_HOST" "$WARM_API" "$WARM_TRACK"; do echo "[Website]  A  $h  -> $PUBLIC_IP"; done
 fi
@@ -534,11 +589,11 @@ for d in "${DOMAINS[@]}"; do
   echo ""
 done
 echo "PTR (VPS host panel, not DNS): $PUBLIC_IP -> $MAIL_HOST"
-echo "MX: your choice (Zoho/Google) for receiving — SlideIn only sends."
+echo "MX: your choice (Google Workspace / M365) for receiving — SlideIn only sends."
 } | tee "$DNS_FILE"
 chmod 600 "$DNS_FILE"
 log "verify loop (informational until DNS propagates):"
-for h in "$APP_HOST" "$CONSOLE_HOST"; do
+for h in "$APP_HOST" "$API_HOST" "$CONSOLE_HOST"; do
   hit=""; for _ in $(seq 1 5); do hit=$(dig +short A "$h" 2>/dev/null | head -1); [ "$hit" = "$PUBLIC_IP" ] && break; sleep 10; done
   [ "$hit" = "$PUBLIC_IP" ] && log "  $h resolves here" || warn "$h not resolving yet — add DNS, then rerun installer to re-verify"
 done
@@ -552,33 +607,26 @@ echo "================================================"
 echo "  INSTALL COMPLETE"
 echo "================================================"
 echo ""
-echo "Dashboard:  https://$APP_HOST/  (also https://$BASE_DOMAIN/)"
-echo "  Instant local preview (before DNS): ssh -L 3001:localhost:3001 root@$PUBLIC_IP"
-echo "  then open http://localhost:3001 in your browser."
+echo "Workspace:  https://$APP_HOST/  (client dashboard, also https://$BASE_DOMAIN/)"
+echo "API:        https://$API_HOST/  (FastAPI workflow engine)"
 echo "Console:    https://$CONSOLE_HOST/login  (user: admin — see temp password below)"
 echo "Tracking:   https://$TRACK_HOST/  (404 on / is correct)"
-[ "$MINIMAL" = 0 ] && echo "Warmbly:    https://$WARM_HOST/"
+if [ "$MINIMAL" = 0 ]; then
+  echo "Warmbly:    https://$WARM_HOST/  (inbox warmup platform)"
+fi
 echo ""
-echo "Sending profiles: $(echo "$MAIL_DOMAINS" | tr ',' ' ' | wc -w) domain(s) x $(echo "$SENDERS" | tr ',' ' ' | wc -w) sender(s) via KumoMTA :2587"
+echo "Outbound Inboxes: Hybrid supported (Google Workspace / M365 for fast-start + KumoMTA for warmup)"
 echo "Secrets:    $SECRETS_FILE (root-only, mode 600 — back it up)"
 echo "DNS table:  $DNS_FILE"
-echo ""
-echo "FIRST LOGIN (GoPhish console):"
-echo "  journalctl -u gophish | grep 'Please login' | tail -1"
-echo "  Log in as admin, then change the password immediately."
 echo ""
 echo "NEXT STEPS:"
 echo "  1. Add DNS from $DNS_FILE, wait ~5 min, rerun installer to re-verify"
 echo "  2. Set PTR in your VPS panel: $PUBLIC_IP -> $MAIL_HOST"
 echo "  3. Verify mail auth: cd /opt/deliverability && python3 cli.py precheck"
-echo "  4. Register domains in Gmail Postmaster Tools + Microsoft SNDS"
-echo "  5. Connect mailboxes in Warmbly UI; ramp volume gradually (cold IP)"
-echo "  6. Rotate nothing now — all secrets were generated fresh"
+echo "  4. Bootstrap client: ./scripts/bootstrap_client_instance.py --input <intake.txt>"
+echo "  5. Connect mailboxes in Warmbly UI (https://$WARM_HOST) for gradual IP/domain warmup"
 echo ""
 echo "WARNINGS:"
-echo "  - Dashboard ships OPEN (no login) for first-run simplicity."
-echo "    Put Caddy basic_auth in front of $APP_HOST before inviting users,"
-echo "    or wire Appwrite/Supabase keys into $APPDST/.env.local + rebuild."
-echo "  - Unsubscribe requests land in each sender mailbox — honor manually."
-echo "  - This installer never sends email by itself. First sends are yours."
+echo "  - Client outreach is gated by validation: run synthetic tests before activation."
+echo "  - Live campaigns require explicit operator activation (--activate)."
 

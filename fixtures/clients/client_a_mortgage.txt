@@ -1,0 +1,23 @@
+Business Name: Summit Mortgage Partners
+Base Domain: apply.summitmortgage.example
+Industry: Mortgage Lending & Refinancing
+Primary Color: #1e3a8a
+Logo URL: https://summitmortgage.example/logo.svg
+Physical Address: 500 Financial Way, Denver, CO 80202
+Lawful Basis: B2B legitimate interest for licensed mortgage brokerage
+Sender: loans@apply.summitmortgage.example
+Daily Limit: 60
+Hourly Limit: 12
+CRM: hubspot
+
+Team Members:
+- John Davis | john@summitmortgage.example | https://cal.com/summit/john-davis | nmls-10492
+- Alice Chen | alice@summitmortgage.example | https://cal.com/summit/alice-chen | nmls-20941
+
+Inboxes:
+- outreach1@summitmortgage.example | Google Workspace | active | 50/day
+- outreach2@summitmortgage.example | Google Workspace | active | 50/day
+- loans@mail.summitmortgage.example | KumoMTA | warming | 15/day
+- talk@mail.summitmortgage.example | KumoMTA | warming | 15/day
+- connect@mail.summitmortgage.example | KumoMTA | warming | 15/day
+- updates@mail.summitmortgage.example | KumoMTA | warming | 15/day

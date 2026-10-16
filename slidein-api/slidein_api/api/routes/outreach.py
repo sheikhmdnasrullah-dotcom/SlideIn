@@ -12,6 +12,7 @@ from ...runtime import StageRunner
 from ...security import AuthContext, require_auth, require_role, resolve_workspace
 from ..deps import module_gate
 from ...services.conversations import ConversationService
+from ...services.deliverability_guard import DeliverabilityGuard
 from ...services.discovery import DiscoveryService
 from ...services.outreach import OutreachService
 from ...services.personalization import PersonalizationService
@@ -26,6 +27,8 @@ _STATUS_BY_CODE = {
     "not_authorized": http_status.HTTP_403_FORBIDDEN,
     "suppressed": http_status.HTTP_409_CONFLICT,
     "approval_required": http_status.HTTP_409_CONFLICT,
+    "tenant_dispatch_quarantined": http_status.HTTP_409_CONFLICT,
+    "not_quarantined": http_status.HTTP_409_CONFLICT,
     "rate_limited": http_status.HTTP_429_TOO_MANY_REQUESTS,
 }
 
@@ -276,12 +279,16 @@ async def _policy_block(session, tenant_id: str, policy: dict, draft_row: dict) 
     limit_error = await outreach._check_limits(tenant_id, policy)
     if limit_error is not None:
         return (limit_error.code, limit_error.message, limit_error.recovery_action)
-    if not outreach._default_sender(tenant_id, policy):
+    if not await outreach._default_sender(tenant_id, policy):
         return (
             "provider_unavailable",
             "No sending identity is configured for this workspace",
             "retry_stage",
         )
+    try:
+        DeliverabilityGuard(tenant_id).validate_pre_send_compliance(policy)
+    except SlideinError as exc:
+        return (exc.code, exc.message, exc.recovery_action)
     return None
 
 
@@ -308,6 +315,155 @@ async def save_policy(
         return {"policy": await OutreachService(session).save_policy(
             auth.tenant_id, payload, actor=f"user:{auth.role}"
         )}
+
+
+@router.get("/tenants/{tenant_id}/deliverability", tags=["outreach"])
+async def deliverability_status(
+    tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    """Shared-IP isolation state: quarantine flag, rolling bounce/complaint
+    rates against the trip thresholds, and the per-tenant send caps."""
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        return {"deliverability": await OutreachService(session).deliverability_status(
+            auth.tenant_id
+        )}
+
+
+@router.post("/tenants/{tenant_id}/quarantine/resolve", tags=["outreach"])
+async def resolve_quarantine(
+    tenant_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Abuse review: after inspecting the workspace's delivery metrics, an
+    admin clears the sending quarantine. The decision and the reviewer are
+    recorded in the activity log."""
+    require_role(auth, "admin")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return {"policy": await OutreachService(session).resolve_quarantine(
+                auth.tenant_id,
+                actor=f"user:{auth.role}",
+                note=str(payload.get("note") or ""),
+            )}
+        except SlideinError as exc:
+            raise _error(exc)
+
+
+@router.get("/tenants/{tenant_id}/sending", tags=["outreach"])
+async def sending_status(
+    tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    """Tenant sending configuration and reputation-isolation status.
+
+    Shows the sending mode, the assigned egress pool / provider route,
+    whether that route has been verified, and the current
+    circuit-breaker state — with honest wording about what is *not*
+    isolated.
+    """
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        outreach = OutreachService(session)
+        return {
+            "sending": await outreach.sending.get_config(auth.tenant_id),
+            "circuit": await outreach.circuit_breaker.get_circuit_state(auth.tenant_id),
+        }
+
+
+@router.put("/tenants/{tenant_id}/sending", tags=["outreach"])
+async def save_sending_config(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Operator update of the tenant's sending configuration.
+
+    Sets the sending mode, the assigned egress pool or provider route,
+    and whether that route has been verified. Shared mode always clears
+    any dedicated assignment.
+    """
+    require_role(auth, "admin")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return {
+                "sending": await OutreachService(session).sending.save_config(
+                    auth.tenant_id,
+                    payload,
+                    actor=f"user:{auth.role}",
+                )
+            }
+        except SlideinError as exc:
+            raise _error(exc)
+
+
+@router.post("/tenants/{tenant_id}/circuit/pause", tags=["outreach"])
+async def pause_circuit(
+    tenant_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Operator pause: stop this tenant's outbound mail until an abuse
+    review. Only this tenant's circuit is affected."""
+    require_role(auth, "admin")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return {
+                "circuit": await OutreachService(session).circuit_breaker.open(
+                    auth.tenant_id,
+                    reason=str(payload.get("reason") or "operator pause"),
+                    opened_by=f"user:{auth.role}",
+                )
+            }
+        except SlideinError as exc:
+            raise _error(exc)
+
+
+@router.post("/tenants/{tenant_id}/circuit/probe", tags=["outreach"])
+async def start_probe(
+    tenant_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Operator start of recovery: allow a limited probe batch after an
+    abuse review."""
+    require_role(auth, "admin")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return {
+                "circuit": await OutreachService(session).circuit_breaker.start_recovery_probe(
+                    auth.tenant_id,
+                    started_by=f"user:{auth.role}",
+                )
+            }
+        except SlideinError as exc:
+            raise _error(exc)
+
+
+@router.post("/tenants/{tenant_id}/circuit/resume", tags=["outreach"])
+async def resume_circuit(
+    tenant_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Operator resume: this tenant may send again after an abuse review."""
+    require_role(auth, "admin")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return {
+                "circuit": await OutreachService(session).circuit_breaker.resolve(
+                    auth.tenant_id,
+                    resolved_by=f"user:{auth.role}",
+                    note=str(payload.get("note") or ""),
+                )
+            }
+        except SlideinError as exc:
+            raise _error(exc)
 
 
 @router.get("/tenants/{tenant_id}/suppression", tags=["outreach"])

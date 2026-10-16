@@ -520,6 +520,109 @@ class SuppressionRecord(Base):
 
 
 # ---------------------------------------------------------------------------
+# Sending reputation isolation
+#
+# These tables carry the tenant-level view of *how* this tenant's mail is
+# sent and whether that route is isolated. They are deliberately separate
+# from Tenant.settings: settings is the human-editable sending policy
+# (limits, lawful basis), while these rows record the routing decision that
+# governs which infrastructure actually carries the bytes.
+# ---------------------------------------------------------------------------
+
+
+class SendingMode(str, enum.Enum):
+    """How this tenant's outbound mail leaves the building.
+
+    `shared` — every tenant on this installation shares one public IP, so
+        the tenant's reputation is *not* isolated.
+    `dedicated` — this tenant has its own public egress (a dedicated IP
+        or pool) and its reputation is isolated on that IP.
+    `provider_managed` — mail leaves through an external provider's own
+        infrastructure; isolation depends on the provider account/IP
+        configuration.
+    """
+
+    SHARED = "shared"
+    DEDICATED = "dedicated"
+    PROVIDER_MANAGED = "provider_managed"
+
+
+class TenantSendingConfig(Base):
+    """The routing decision for one tenant's outbound mail.
+
+    One row per tenant. `sending_mode` decides the isolation story and the
+    remaining fields name the concrete route the tenant is assigned to.
+    A dedicated assignment must name at least one egress source; a
+    provider-managed assignment must name the provider account. Nothing
+    here is trusted as proof of isolation — verification is an explicit,
+    manually reviewed operator step.
+    """
+
+    __tablename__ = "tenant_sending_configs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    sending_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    #: KumoMTA egress pool the tenant's messages are assigned to.
+    egress_pool: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    #: External delivery provider (e.g. "smtp-relay", "resend").
+    provider: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    #: Provider account identifier. Never contains credentials — only a
+    #: non-secret label the operator chose (an account nickname).
+    provider_account: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    #: Public IPs dedicated to this tenant, as assigned by the
+    #: infrastructure owner. Empty while the tenant uses a shared or
+    #: provider-managed route.
+    dedicated_ips: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    #: Whether the outbound route has been verified against the real
+    #: network. Set only by an operator after checking the live path.
+    verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    verified_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", name="uq_tenant_sending_config"),
+        Index("ix_tenant_sending_mode", "sending_mode"),
+    )
+
+
+class CircuitBreakerState(Base):
+    """Operator-visible circuit-breaker state for one tenant.
+
+    `open` means no tenant traffic is leaving; `half-open` means recovery
+    is being probed; `closed` means normal operation. Every transition is
+    written by the operator or by the evaluation, and the reason plus the
+    metrics that caused it are kept for audit.
+    """
+
+    __tablename__ = "circuit_breaker_states"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    metrics_json: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+    opened_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolve_note: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
+# ---------------------------------------------------------------------------
 # Conversations
 # ---------------------------------------------------------------------------
 

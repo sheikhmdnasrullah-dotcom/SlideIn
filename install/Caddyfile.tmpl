@@ -7,7 +7,11 @@
 # here and keep marketing DNS separate.
 
 __APP__, __BASE__ {
-	reverse_proxy localhost:3001
+	reverse_proxy localhost:3000
+}
+
+__API__ {
+	reverse_proxy localhost:8100
 }
 
 # GoPhish campaign console (admin UI + API). GoPhish serves plain HTTP on

@@ -1,0 +1,23 @@
+Business Name: Beacon Dental Group
+Base Domain: outreach.beacondental.example
+Industry: Pediatric & Orthodontic Dental Clinics
+Primary Color: #0d9488
+Logo URL: https://beacondental.example/logo.svg
+Physical Address: 120 Harbor Way, Suite 400, Boston, MA 02110
+Lawful Basis: B2B legitimate interest, verified practice manager list
+Sender: partnerships@outreach.beacondental.example
+Daily Limit: 40
+Hourly Limit: 8
+CRM: salesforce
+
+Team Members:
+- Dr. Sarah Jenkins | sarah@beacondental.example | https://cal.com/beacon/sarah | sf-9012
+- Dr. Michael Ross | michael@beacondental.example | https://cal.com/beacon/michael | sf-9013
+
+Inboxes:
+- director1@beacondental.example | Microsoft 365 | active | 40/day
+- director2@beacondental.example | Microsoft 365 | active | 40/day
+- practice@mail.beacondental.example | KumoMTA | warming | 10/day
+- advisors@mail.beacondental.example | KumoMTA | warming | 10/day
+- connect@mail.beacondental.example | KumoMTA | warming | 10/day
+- office@mail.beacondental.example | KumoMTA | warming | 10/day

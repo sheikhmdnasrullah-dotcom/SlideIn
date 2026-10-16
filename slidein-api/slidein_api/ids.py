@@ -26,7 +26,15 @@ PREFIXES = {
     "suppression": "sup",
     "stage_run": "run",
     "activity": "act",
+    "circuit_breaker": "cb",
     "config_version": "cfg",
+    "owner": "owner",
+    "assignment": "assign",
+    "crm_map": "crmmap",
+    "connection": "conn",
+    "deploy_config": "deploycfg",
+    "sending_config": "sendcfg",
+    "circuit_breaker": "cb",
 }
 
 
