@@ -1,4 +1,4 @@
-"use client";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/table";
@@ -10,6 +10,11 @@ import { LoadingState } from "./states";
  * Columns are declared once and reused by the row renderer, the empty state
  * and the loading skeleton, so a table can never render three different
  * shapes for the same data.
+ *
+ * A server component: column render functions run on the server, so pages
+ * pass closures freely. When `rowHref` is set, the first cell links to it;
+ * remaining cells (including action buttons) stay untouched, which keeps
+ * the HTML valid where a row-level anchor would not.
  */
 export interface Column<T> {
   key: string;
@@ -26,7 +31,6 @@ export function DataTable<T>({
   loading = false,
   loadingRows = 5,
   empty,
-  onRowClick,
   rowHref,
   footer,
   className,
@@ -37,7 +41,6 @@ export function DataTable<T>({
   loading?: boolean;
   loadingRows?: number;
   empty?: React.ReactNode;
-  onRowClick?: (row: T) => void;
   rowHref?: (row: T) => string;
   footer?: React.ReactNode;
   className?: string;
@@ -69,16 +72,21 @@ export function DataTable<T>({
         <TBody>
           {rows.map((row) => {
             const key = keyOf(row);
+            const href = rowHref?.(row);
             return (
-              <TR
-                key={key}
-                data-selected={false}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={cn((onRowClick || rowHref) && "cursor-pointer")}
-              >
-                {columns.map((column) => (
+              <TR key={key}>
+                {columns.map((column, index) => (
                   <TD key={column.key} align={column.align}>
-                    {column.render(row)}
+                    {index === 0 && href ? (
+                      <Link
+                        href={href}
+                        className="decoration-flame-ring decoration-1 underline-offset-4 hover:underline"
+                      >
+                        {column.render(row)}
+                      </Link>
+                    ) : (
+                      column.render(row)
+                    )}
                   </TD>
                 ))}
               </TR>

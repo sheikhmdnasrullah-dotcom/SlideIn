@@ -65,8 +65,30 @@ untracked file (`docs/decisions/ADR-2026-10-16-foundation-hardening-plan.md`).
   (overview/profile/discovery/research/qualification/personalization/
   outreach/conversations/activity) plus prospect, draft, conversation, and
   contracts routes render real BFF data with empty/error/module-disabled
-  states; workflow mutations run through server actions. Not yet
-  browser-verified (sandbox blocks ports; needs an unsandboxed run).
+  states; workflow mutations run through server actions. Browser-verified
+  2026-10-16 (Playwright, desktop 1440 + mobile 390): branded titles, no
+  horizontal overflow, desktop rail / mobile slide-over nav, zero console
+  errors, zero failed requests.
+- **Client/server boundary fix (2026-10-16)**: browser verification caught
+  `process is not defined` hydration crashes — client components imported
+  the API error class through the server-only API client. Fixed by moving
+  the error to dependency-free `lib/api/errors.ts` and adding the
+  `server-only` package to config/client/operations/actions, so any future
+  leak fails the build. Verified: no `SLIDEIN_API_KEY` or bare
+  `process.env` in shipped client chunks.
+- **DataTable fix (2026-10-16)**: was a client component receiving render
+  closures (Next.js forbids this) with `rowHref` silently ignored. Now a
+  server component; `rowHref` renders a valid first-cell link.
+- **Lint gate restored (2026-10-16)**: `eslint` + `eslint-config-next`
+  flat config; `npm run lint` clean (was broken: `next lint` removed).
+- **Marketing alignment verified (2026-10-16)**: live surfaces audited —
+  rewritten hero is service-framed with software-true sentences (approval
+  gates, evidence-backed drafts), "agentic" gone, layout description
+  accurate, pricing blank + noindex with owner-decision comment, footer
+  claims hold (RFC 8058 unsubscribe headers exist, suppression enforced,
+  self-serve true). No edits needed; dormant content files untouched.
+  Note: marketing-site `npm run lint` is red (104 pre-existing errors in
+  the parallel redesign) while its tsc + build are green.
 - **slidein-app front layer: repaired 2026-10-16** (was: not building).
   Fixed: `operations` import source in all 35 `app/api/**/route.ts` files,
   3 `async function delete` parse errors, `search`/`from(search)` query

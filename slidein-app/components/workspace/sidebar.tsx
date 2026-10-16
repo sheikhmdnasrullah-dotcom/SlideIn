@@ -12,7 +12,6 @@ import {
   Search,
   Settings2,
   UserCheck,
-  Users,
   Wand2,
   type LucideIcon,
 } from "lucide-react";

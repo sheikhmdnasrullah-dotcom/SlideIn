@@ -1,5 +1,7 @@
 /** Runtime configuration for the Slidein API connection. */
 
+import "server-only";
+
 const env = process.env;
 
 export const API_BASE_URL: string =

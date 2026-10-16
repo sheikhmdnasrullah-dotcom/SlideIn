@@ -7,7 +7,6 @@ import { WORKSPACE_ID } from "@/lib/api/config";
 
 async function post(request: Request, { params }: { params: Promise<Record<string, string>> }) {
   try {
-    const body = await request.json().catch(() => ({}));
     const {draftId} = await params;
     return NextResponse.json(await operations.revokeApproval(WORKSPACE_ID, draftId));
   } catch (error) {

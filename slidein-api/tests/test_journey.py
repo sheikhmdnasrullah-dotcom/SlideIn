@@ -578,6 +578,59 @@ def test_rate_limit_blocks_sending_when_exhausted(configured_workspace):
 # 7. Conversations
 # ---------------------------------------------------------------------------
 
+def test_failed_send_is_retryable_and_keeps_state_for_retry(configured_workspace):
+    """External-integration failure: a dead SMTP transport fails the send
+    retryably, records the failure, and leaves draft + prospect untouched
+    so the operator can retry. A retry over dry_run then succeeds."""
+    client, draft, prospect_id = _prepared_draft(configured_workspace)
+    headers = configured_workspace["headers"]
+    client.post(
+        f"/v1/tenants/{TENANT_A}/drafts/{draft['id']}/approve",
+        json={"note": "approved for dispatch"},
+        headers=headers,
+    )
+
+    dead_smtp = {
+        "sender_email": "hello@northwindcloud.example",
+        "transport": {
+            "transport": "smtp",
+            "smtp_host": "127.0.0.1",
+            "smtp_port": 1,
+            "smtp_use_tls": False,
+        },
+    }
+    failed = client.post(
+        f"/v1/tenants/{TENANT_A}/drafts/{draft['id']}/send",
+        json=dead_smtp,
+        headers=headers,
+    )
+    assert failed.status_code == 400, failed.text
+    error = failed.json()["error"]
+    assert error["code"] == "provider_unavailable"
+    assert error["retryable"] is True
+    assert error["recovery_action"] == "retry_stage"
+    assert error["details"]["retryable"] is True
+
+    draft_row = client.get(
+        f"/v1/tenants/{TENANT_A}/drafts/{draft['id']}", headers=headers
+    ).json()
+    assert draft_row["status"] == "approved"  # approval survives for the retry
+    prospect = client.get(
+        f"/v1/tenants/{TENANT_A}/prospects/{prospect_id}", headers=headers
+    ).json()
+    assert prospect["status"] == "draft_ready"
+    sent = client.get(f"/v1/tenants/{TENANT_A}/sent", headers=headers).json()["data"]
+    assert any(m["delivery_status"] == "failed" for m in sent)
+
+    retry = client.post(
+        f"/v1/tenants/{TENANT_A}/drafts/{draft['id']}/send",
+        json={"sender_email": "hello@northwindcloud.example"},
+        headers=headers,
+    ).json()
+    assert retry["status"] == "succeeded"
+    assert retry["outputs"]["sent_message"]["transport"] == "dry_run"
+
+
 def test_inbound_reply_updates_the_same_records(configured_workspace, service_headers):
     client, draft, prospect_id = _prepared_draft(configured_workspace)
     headers = configured_workspace["headers"]

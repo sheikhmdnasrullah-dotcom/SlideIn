@@ -4,10 +4,11 @@
  * the initial render and every mutation go through the same contract.
  */
 
+import "server-only";
+
 import { client, workspacePath } from "./client";
 import type {
   ActivityLog,
-  AttentionItem,
   Branding,
   BusinessProfile,
   ConfigVersionRecord,

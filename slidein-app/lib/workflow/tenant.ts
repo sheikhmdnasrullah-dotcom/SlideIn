@@ -9,7 +9,7 @@
 
 import type * as React from "react";
 
-import { ApiRequestError } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/errors";
 import type { Branding } from "@/lib/api/types";
 
 /** Workspace section id → API module id (see slidein-api MODULE_REGISTRY). */

@@ -7,7 +7,6 @@ import { WORKSPACE_ID } from "@/lib/api/config";
 
 async function post(request: Request, { params }: { params: Promise<Record<string, string>> }) {
   try {
-    const body = await request.json().catch(() => ({}));
     const {conversationId} = await params;
     return NextResponse.json(await operations.closeConversation(WORKSPACE_ID, conversationId));
   } catch (error) {

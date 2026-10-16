@@ -71,6 +71,19 @@ qualifies, sell the managed service manually before writing more code.
    dry_run send→in_campaign), isolation 404s, module 403s, branded +
    terminology-rendered pages — 47/47 checks green
    (`/tmp/slidein-live-e2e.sh`, DB + servers torn down after the run).
+5. ✅ Section 12F validation closure: lint gate restored and green;
+   failure/retry proven by test (`test_failed_send_is_retryable_and_
+   keeps_state_for_retry`: dead SMTP → 400 `provider_unavailable`
+   retryable, state preserved, dry_run retry succeeds); approval gates +
+   reply-intent classification proven by focused pytest (6/6);
+   responsive + console/network proven in headless Chromium at 1440px
+   and 390px (ALL GREEN, `/tmp/slidein-responsive.sh`); marketing
+   claims audited against shipped behavior (no edits needed).
+   Standing facts: no LLM/agent workflow exists in production paths
+   (deterministic services + keyword intents + code-enforced approvals);
+   retries are operator re-runs (no background retry scheduler);
+   service-role webhooks are pytest-only until multi-key workspaces
+   (OQ-042).
 3. Template v1 for the pilot vertical + additive-apply endpoint + tests.
 4. ESP adapter #1 (sandbox → pilot domain), event ingestion, suppression.
 5. Onboarding runbook: create tenant → keys → branding → template →

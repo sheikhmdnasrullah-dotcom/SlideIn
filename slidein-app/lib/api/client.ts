@@ -5,20 +5,13 @@
  * key from the environment (never shipped to the browser), one error shape.
  */
 
+import "server-only";
+
 import { API_BASE_URL, API_KEY, WORKSPACE_ID } from "./config";
+import { ApiRequestError } from "./errors";
 import type { ApiError } from "./types";
 
-export class ApiRequestError extends Error {
-  readonly status: number;
-  readonly error: ApiError;
-
-  constructor(status: number, error: ApiError) {
-    super(error.message);
-    this.name = "ApiRequestError";
-    this.status = status;
-    this.error = error;
-  }
-}
+export { ApiRequestError };
 
 type Query = Record<string, string | number | boolean | undefined | null>;
 

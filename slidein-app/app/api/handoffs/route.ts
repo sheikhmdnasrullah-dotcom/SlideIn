@@ -5,7 +5,7 @@ import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 
 
-async function get(request: Request) {
+async function get() {
   try {
 
     return NextResponse.json(await operations.handoffs(WORKSPACE_ID));

@@ -2,6 +2,7 @@ import type * as React from "react";
 
 import type { Metadata } from "next";
 
+import { MobileNav } from "@/components/workspace/mobile-nav";
 import { WorkflowSidebar } from "@/components/workspace/sidebar";
 import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
@@ -57,18 +58,24 @@ export default async function WorkspaceLayout({
     // The workspace is usable without the API; every panel says why.
   }
 
+  const sidebarProps = {
+    attentionCounts,
+    workspaceId: WORKSPACE_ID,
+    brandName: branding?.business_name || undefined,
+    logoUrl: branding?.logo_url || undefined,
+    enabledModules,
+    sectionLabels,
+  };
   return (
-    <div className="flex min-h-0 w-full" style={themeStyle(branding)}>
-      <WorkflowSidebar
-        attentionCounts={attentionCounts}
-        workspaceId={WORKSPACE_ID}
-        brandName={branding?.business_name || undefined}
-        logoUrl={branding?.logo_url || undefined}
-        enabledModules={enabledModules}
-        sectionLabels={sectionLabels}
-      />
-      <main className="min-w-0 grow overflow-y-auto">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-6">{children}</div>
+    <div className="flex min-h-0 w-full flex-col md:flex-row" style={themeStyle(branding)}>
+      <MobileNav {...sidebarProps} />
+      <div className="hidden min-h-0 md:flex">
+        <WorkflowSidebar {...sidebarProps} />
+      </div>
+      <main className="min-h-0 min-w-0 grow overflow-y-auto">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-4 sm:px-6 sm:py-6">
+          {children}
+        </div>
       </main>
     </div>
   );

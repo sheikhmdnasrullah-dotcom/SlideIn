@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/workspace/tooltip";
-import { ApiRequestError } from "@/lib/api/client";
+import { ApiRequestError } from "@/lib/api/errors";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
