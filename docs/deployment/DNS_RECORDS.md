@@ -50,6 +50,8 @@ Set PTR for `169.58.206.20` to `mail.nasrullahtanim.me`.
 | A | `warmbly` | `169.58.206.20` |
 | A | `warmbly-api` | `169.58.206.20` |
 | A | `warmbly-track` | `169.58.206.20` |
+| A | `api` | `169.58.206.20` (slidein-api agent workflow backend) |
+| A | `workspace` | `169.58.206.20` (slidein-app client workspace UI) |
 
 Use DNS-only (grey cloud) until Caddy has issued certificates; proxied
 (orange cloud) also works since Caddy follows HTTP-01 behind Cloudflare,
