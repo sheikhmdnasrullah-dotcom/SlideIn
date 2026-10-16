@@ -1,20 +1,24 @@
 # Current State — SlideIn
 
-> Living snapshot, last updated 2026-10-13 (campaign console live). Source of
+> Living snapshot, last updated 2026-10-16. Source of
 > truth for "what works". Detail and evidence: `PROJECT_AUDIT.md` (point-in-time,
 > pre-launch). Debt register: `TECHNICAL_DEBT.md`.
 
 SlideIn is a self-hosted outreach platform in **beta**, live on a single VPS
-as an owner-operated reference deployment (dashboard at `app`/apex, campaign
-console, tracking, and warmup hosts, all HTTPS; `www` is the Vercel marketing
-site, not served by the VPS). The stack: a modified GoPhish
-campaign/admin backend (Go), a Python deliverability engine (gate, circuit
-breaker, placement risk, provider abstraction), KumoMTA with a production Lua
-policy, a Next.js dashboard wired to local backends, a reacher-backed lead
-verification service, a self-hosted Warmbly warmup platform, Agent-Reach
-research tooling, and a universal multi-tenant core (`product/core/`) with
-enforced tenant/shared boundaries. No multi-customer SaaS, billing, or
-human-approval queue exists; the live deployment is single-tenant.
+as an owner-operated reference deployment. The SaaS surface now includes the
+agent workflow API (`api.slideinventure.com`) and the client workspace UI
+(`workspace.slideinventure.com`), alongside the dashboard
+(`app`/apex), campaign console, tracking, and warmup hosts (all HTTPS; `www`
+is the Vercel marketing site, not served by the VPS). The stack: a modified
+GoPhish campaign/admin backend (Go), a Python deliverability engine (gate,
+circuit breaker, placement risk, provider abstraction), KumoMTA with a
+production Lua policy, a Next.js dashboard wired to local backends, a
+reacher-backed lead verification service, a self-hosted Warmbly warmup
+platform, Agent-Reach research tooling, a universal multi-tenant core
+(`product/core/`) with enforced tenant/shared boundaries, and the new
+slidein-api (FastAPI) + slidein-app (Next.js) workflow layer. No
+multi-customer SaaS, billing, or human-approval queue exists; the live
+deployment is single-tenant.
 
 ## Capability matrix
 
@@ -49,11 +53,13 @@ human-approval queue exists; the live deployment is single-tenant.
 | 27 | Campaign console (public GoPhish UI) | Implemented and verified | `console.slideinventure.com/login` 200; loopback binds; CSRF origin fix (bare-host match); dry-run group+template created, zero sends |
 | 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR mail.nasrullahtanim.me forward-confirmed; dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
 | 29 | Intake-first onboarding (profile → ICP → research) | Implemented and verified | `/intake` form + file store + API live; gate flips verified both ways; research prompts consume business context |
-| 30 | Prospect engagement: inbound reply path to backend | Partially implemented | Backend `POST /webhooks/inbound`, threading, intent, opt-out suppression exist (`slidein-api`); **no production inbound mail path** (see #23) |
-| 31 | Engagement: grounded reply agent with approval | Planned but not implemented | Spec only: `docs/product/PROSPECT_ENGAGEMENT.md` |
-| 32 | Engagement: chat agent via secure link | Planned but not implemented | Spec only; M2 |
-| 33 | Engagement: meeting booking (provider, webhooks, records) | Planned but not implemented | No provider selected (OQ-004) |
-| 34 | Engagement: voice (inbound/callback only) | Planned but not implemented | Research + legal review required; outbound calling blocked |
+| 30 | Agent workflow API (slidein-api, FastAPI) | **Live** | `api.slideinventure.com/health` → 200; `:8100` via systemd; SQLite default DB; API-key auth (`ten_local`); `/v1/contracts` returns stage contracts |
+| 31 | Client workspace UI (slidein-app, Next.js) | **Live** | `workspace.slideinventure.com/` → 307→/overview; `:3201` via PM2; connects to slidein-api server-side via localhost:8100; full workflow sidebar + overview page rendering |
+| 32 | Prospect engagement: inbound reply path to backend | Partially implemented | Backend `POST /webhooks/inbound`, threading, intent, opt-out suppression exist (`slidein-api`); **no production inbound mail path** (see #23) |
+| 33 | Engagement: grounded reply agent with approval | Planned but not implemented | Spec only: `docs/product/PROSPECT_ENGAGEMENT.md` |
+| 34 | Engagement: chat agent via secure link | Planned but not implemented | Spec only; M2 |
+| 35 | Engagement: meeting booking (provider, webhooks, records) | Planned but not implemented | No provider selected (OQ-004) |
+| 36 | Engagement: voice (inbound/callback only) | Planned but not implemented | Research + legal review required; outbound calling blocked |
 
 ## Data on the live VPS (private, never in git)
 
