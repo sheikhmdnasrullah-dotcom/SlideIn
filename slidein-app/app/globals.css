@@ -327,7 +327,35 @@ svg.lucide {
   }
 }
 .page-enter {
-  animation: page-enter var(--dur-page) var(--ease-expo) both;
+  animation: page-enter 240ms var(--ease-out) both;
+}
+
+/* ── Client wordmark: live text in the accent axis, inverts with theme ──── */
+.client-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  white-space: nowrap;
+  font-feature-settings: "kern" 1, "liga" 1;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.client-wordmark-name {
+  font-family: var(--font-sans);
+  font-size: 1em;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  line-height: 1;
+  color: var(--on-surface);
+}
+.client-wordmark-sub {
+  font-family: var(--font-sans);
+  font-size: 0.5em;
+  font-weight: 500;
+  letter-spacing: var(--tracking-label, 0.02em);
+  line-height: 1;
+  color: var(--text-accent);
+  margin-left: 0.52em;
+  transform: translateY(-0.34em);
 }
 .page-enter > * {
   animation: page-enter var(--dur-page) var(--ease-expo) both;

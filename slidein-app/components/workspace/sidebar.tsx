@@ -78,6 +78,7 @@ export function WorkflowSidebar({
 
   const displayName = brandName?.trim() || "Slidein";
   const logo = safeLogoUrl(logoUrl);
+  const qualifier = displayName.includes(" ") ? displayName.split(/\s+/).slice(1).join(" ") : "";
 
   return (
     <aside
@@ -100,6 +101,9 @@ export function WorkflowSidebar({
         )}
         <span className="truncate font-sans text-[15px] leading-[22px] font-semibold text-ink-strong">
           {displayName}
+        </span>
+        <span className="truncate font-label text-ink-faint">
+          {qualifier}
         </span>
       </div>
 

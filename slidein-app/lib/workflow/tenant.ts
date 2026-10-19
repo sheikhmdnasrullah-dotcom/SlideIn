@@ -37,17 +37,36 @@ function cleanHex(value: unknown): string | null {
  * Tenant theme overrides for the semantic token contract in globals.css.
  * Returns `{}` when branding is absent or invalid, so the default Slidein
  * theme renders — the fallback is a complete theme, never a broken one.
+ *
+ * The accent axis (selection, focus, dots, links, the flame role) is driven
+ * by the tenant primary hex. Only ONE hue is ever active: the brand accent
+ * replaces the Slidein orange on the accent axis, while surface, ink, rule
+ * and status colours stay on the shared contract so the console still reads
+ * as Slidein. The wordmark is live text, so it inverts with the theme.
  */
 export function themeStyle(branding: Branding | null | undefined): React.CSSProperties {
   if (!branding) return {};
+  const primary = cleanHex(branding.colors?.primary);
   const surface = cleanHex(branding.colors?.surface);
   const ink = cleanHex(branding.colors?.ink);
   const style: Record<string, string> = {};
-  // NOTE (visual redesign): the tenant accent override is intentionally
-  // removed. The dashboard spec pins selection, focus, and dots to the
-  // single marketing orange in every workspace so both dashboards match
-  // each other. Tenant surface/ink overrides below still apply, and the
-  // branding settings form keeps saving normally.
+  if (primary) {
+    // Derive the supporting tints from the one primary hex. No second hue.
+    style["--color-brand"] = primary;
+    style["--text-accent"] = primary;
+    style["--accent-vivid"] = primary;
+    style["--accent-wash"] = `${primary}1a`;
+    style["--accent-highlight"] = `${primary}2e`;
+    style["--accent-ring"] = `${primary}3d`;
+    style["--input-focus-ring"] = `${primary}24`;
+    style["--focus-ring"] = `${primary}60`;
+    style["--on-accent"] = "#ffffff";
+    style["--color-flame"] = primary;
+    style["--color-flame-vivid"] = primary;
+    style["--color-flame-wash"] = `${primary}1a`;
+    style["--color-flame-ring"] = `${primary}3d`;
+    style["--color-on-flame"] = "#ffffff";
+  }
   if (surface) {
     style["--surface"] = surface;
     style["--page-fill"] = surface;
@@ -73,6 +92,17 @@ export function brandInitials(name: string | undefined): string {
   if (words.length === 0) return "SI";
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[1][0]).toUpperCase();
+}
+
+/**
+ * The qualifier shown under the workspace name in the sidebar: the remainder
+ * of the business name after the first word, or the domain parent when the
+ * name is a single word. Empty when the name is unconfigured.
+ */
+export function clientQualifier(name: string | undefined): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (words.length > 1) return words.slice(1).join(" ");
+  return "";
 }
 
 /** True when the API refused with a module-disabled 403. */
