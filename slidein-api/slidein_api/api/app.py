@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..db import init_db
+from .. import workspace_store as _workspace_store  # noqa: F401  (register tables on Base before create_all)
 from ..errors import SlideinError
 from .routes import autopilot, config, factory, osint, outreach, overview, pipeline, system, workspace
 

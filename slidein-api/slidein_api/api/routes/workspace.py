@@ -53,9 +53,22 @@ def _role(auth: AuthContext) -> Role:
     return _ROLE_MAP.get((auth.role or "").lower(), Role.TENANT_MEMBER)
 
 
-def _ensure_workspace(tenant_id: str) -> None:
-    if tenant_id not in _workspaces._current:  # lazy universal default
+_hydrated: set[str] = set()
+
+
+async def _ensure(tenant_id: str) -> None:
+    """First touch for a tenant: hydrate persisted state (restart) or seed
+    the universal workspace (fresh instance)."""
+    if tenant_id in _hydrated:
+        return
+    _hydrated.add(tenant_id)
+    from ... import workspace_store as wsp
+    restored = await wsp.load_tenant(tenant_id, workspaces=_workspaces,
+                                     evidence_store=_evidence,
+                                     proposal_ledger=_proposal_ledger)
+    if not restored:
         _workspaces.register(universal_workspace(tenant_id), role=Role.SYSTEM)
+        await wsp.persist_config(_workspaces._current[tenant_id])
 
 
 def _ledger(tenant_id: str) -> dict[str, dict]:
@@ -91,7 +104,7 @@ def _to_http(exc: Exception) -> HTTPException:
 # --------------------------------------------------------------------------- #
 @router.get("/workspace/config")
 async def get_workspace_config(auth: AuthContext = Depends(require_auth)):
-    _ensure_workspace(auth.tenant_id)
+    await _ensure(auth.tenant_id)
     cfg = _workspaces.current(auth.tenant_id, caller_tenant_id=auth.tenant_id,
                               role=_role(auth))
     return {
@@ -106,7 +119,7 @@ async def get_workspace_config(auth: AuthContext = Depends(require_auth)):
 
 @router.get("/workspace/history")
 async def get_workspace_history(auth: AuthContext = Depends(require_auth)):
-    _ensure_workspace(auth.tenant_id)
+    await _ensure(auth.tenant_id)
     history = _workspaces.history(auth.tenant_id, caller_tenant_id=auth.tenant_id,
                                   role=_role(auth))
     return {"versions": [{"version": c.version,
@@ -117,12 +130,14 @@ async def get_workspace_history(auth: AuthContext = Depends(require_auth)):
 
 @router.post("/workspace/rollback")
 async def rollback_workspace(body: dict, auth: AuthContext = Depends(require_auth)):
-    _ensure_workspace(auth.tenant_id)
+    await _ensure(auth.tenant_id)
     try:
         cfg = _workspaces.rollback(auth.tenant_id, int(body["to_version"]),
                                    caller_tenant_id=auth.tenant_id, role=_role(auth))
     except Exception as exc:
         raise _to_http(exc)
+    from ... import workspace_store as _wsp
+    await _wsp.persist_config(cfg)
     return {"version": cfg.version, "module_order": list(cfg.module_order)}
 
 
@@ -140,12 +155,14 @@ async def record_evidence(body: dict, auth: AuthContext = Depends(require_auth))
             caller_tenant_id=auth.tenant_id, role=_role(auth))
     except Exception as exc:
         raise _to_http(exc)
+    from ... import workspace_store as _wsp
+    await _wsp.persist_evidence(item)
     return item.__dict__
 
 
 @router.post("/workspace/adapt")
 async def propose_adaptation(body: dict, auth: AuthContext = Depends(require_auth)):
-    _ensure_workspace(auth.tenant_id)
+    await _ensure(auth.tenant_id)
     try:
         proposal = _adaptation.propose_workspace_changes(
             tenant_id=auth.tenant_id, caller_tenant_id=auth.tenant_id,
@@ -158,6 +175,8 @@ async def propose_adaptation(body: dict, auth: AuthContext = Depends(require_aut
                          for k, v in proposal.changes.items()},
              "rationale": proposal.rationale, "status": proposal.status.value}
     _ledger(auth.tenant_id)[pid] = entry
+    from ... import workspace_store as _wsp
+    await _wsp.persist_proposal(entry, auth.tenant_id)
     return entry
 
 
@@ -169,7 +188,7 @@ async def list_proposals(auth: AuthContext = Depends(require_auth)):
 @router.post("/workspace/proposals/{proposal_id}/apply")
 async def apply_proposal(proposal_id: str, body: dict,
                          auth: AuthContext = Depends(require_auth)):
-    _ensure_workspace(auth.tenant_id)
+    await _ensure(auth.tenant_id)
     entry = _ledger(auth.tenant_id).get(proposal_id)
     if not entry:
         raise HTTPException(status_code=404, detail="proposal not found")
@@ -196,6 +215,9 @@ async def apply_proposal(proposal_id: str, body: dict,
     except Exception as exc:
         raise _to_http(exc)
     entry["status"] = "applied"
+    from ... import workspace_store as _wsp
+    await _wsp.persist_proposal(entry, auth.tenant_id)
+    await _wsp.persist_config(cfg)
     return {"version": cfg.version, "module_order": list(cfg.module_order)}
 
 
