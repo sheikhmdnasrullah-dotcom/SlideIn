@@ -1,0 +1,6 @@
+# osint_core module dependencies (install into the saas venv)
+# Core stack already present in .venv: fastapi, pydantic>=2, httpx, dnspython, uvicorn, sqlalchemy
+celery[redis]>=5.4
+redis>=5.0
+httpx[socks]>=0.28        # SOCKS5 proxy support (pulls in socksio)
+curl-cffi>=0.7            # JA3/TLS fingerprint impersonation via libcurl-impersonate

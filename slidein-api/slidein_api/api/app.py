@@ -13,7 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..db import init_db
 from ..errors import SlideinError
-from .routes import config, factory, outreach, overview, pipeline, system
+from .routes import config, factory, osint, outreach, overview, pipeline, system
 
 logger = logging.getLogger("slidein.api")
 
@@ -112,6 +112,7 @@ def create_app() -> FastAPI:
     app.include_router(config.router, prefix=prefix, tags=["configuration"])
     app.include_router(pipeline.router, prefix=prefix, tags=["pipeline"])
     app.include_router(outreach.router, prefix=prefix, tags=["outreach"])
+    app.include_router(osint.router, prefix=prefix, tags=["osint"])
     app.include_router(overview.router, prefix=prefix, tags=["overview"])
     app.include_router(factory.router, prefix=prefix, tags=["factory"])
     return app

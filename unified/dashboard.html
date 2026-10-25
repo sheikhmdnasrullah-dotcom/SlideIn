@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slidein — Enrichment &amp; Visitor Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#0b0e14; --panel:#12161f; --line:#1f2633; --fg:#dbe2ec; --dim:#8b96a8;
+          --ok:#3fb96f; --warn:#e0a63f; --bad:#e05f5f; --acc:#4f8ff7; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:13px/1.45 "SF Mono", ui-monospace, Menlo, monospace; }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:16px; align-items:baseline; }
+  header h1 { font-size:15px; margin:0; letter-spacing:.5px; }
+  header .sub { color:var(--dim); }
+  #conn { margin-left:auto; font-size:11px; padding:2px 8px; border:1px solid var(--line); border-radius:10px; }
+  .grid { display:grid; grid-template-columns:1.2fr 1fr; gap:14px; padding:14px 20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .panel h2 { margin:0; padding:9px 12px; font-size:11px; text-transform:uppercase; letter-spacing:1px;
+              color:var(--dim); border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .panel h2 .dot { width:7px; height:7px; border-radius:50%; background:var(--ok); display:inline-block; }
+  .body { padding:10px 12px; max-height:420px; overflow-y:auto; }
+  .row { display:flex; gap:8px; margin-bottom:8px; }
+  input, textarea, button { background:#0d1119; color:var(--fg); border:1px solid var(--line);
+      border-radius:6px; padding:7px 9px; font:inherit; font-size:12px; }
+  input, textarea { flex:1; min-width:0; }
+  textarea { height:64px; resize:vertical; }
+  button { cursor:pointer; background:#16202f; }
+  button:hover { border-color:var(--acc); }
+  button.approve { color:var(--ok); } button.reject { color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td, th { padding:5px 6px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap;
+           overflow:hidden; text-overflow:ellipsis; max-width:190px; }
+  th { color:var(--dim); font-weight:normal; font-size:11px; }
+  #feed .ev { padding:4px 6px; border-bottom:1px solid #161c27; font-size:12px; }
+  #feed .ev .fw { color:var(--acc); }
+  #feed .ev .st-FAILED, #feed .ev .err { color:var(--bad); }
+  #feed .ev .st-COMPLETED { color:var(--ok); }
+  #feed .ev .delta { color:var(--dim); }
+  .tier-COOKIE_STITCH, .tier-RETENTION_API { color:var(--ok); }
+  .tier-LOCAL_GEOIP { color:var(--acc); }
+  .tier-ANONYMOUS { color:var(--warn); }
+  .msg { font-size:11px; color:var(--dim); padding:0 12px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SLIDEIN</h1><span class="sub">enrichment matrix · visitor capture · agentic drafts</span>
+  <span id="conn">connecting…</span>
+</header>
+
+<div class="grid">
+  <div>
+    <div class="panel">
+      <h2><span class="dot"></span>Live event stream</h2>
+      <div class="body" id="feed" style="max-height:520px"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:14px">
+    <div class="panel">
+      <h2>Enrich a lead</h2>
+      <div class="body">
+        <div class="row"><input id="lead-email" placeholder="jane.doe@acme.com"><button onclick="enrichOne()">enrich</button></div>
+        <div class="msg" id="enrich-msg">fires the full 14-module matrix + agent cluster; watch the live feed →</div>
+        <div class="row"><input id="camp-name" placeholder="campaign name"><button onclick="createCampaign()">new campaign</button></div>
+        <textarea id="camp-emails" placeholder="one email per line for bulk campaign"></textarea>
+        <div class="msg" id="camp-msg"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Approval queue <button style="margin-left:auto;font-size:10px" onclick="loadQueue()">refresh</button></h2>
+      <div class="body"><table id="queue"><tr><th>email</th><th>subject</th><th></th></tr></table>
+      <div class="msg" id="queue-msg">drafts land here when the agent cluster finishes</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>CRM visitors</h2>
+      <div class="body"><table id="visitors"><tr><th>tier</th><th>email</th><th>company</th><th>site</th></tr></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- live firehose ---------- */
+const feed = $('feed');
+const es = new EventSource('/stream/all');
+es.onopen = () => $('conn').textContent = 'live';
+es.onerror = () => $('conn').textContent = 'reconnecting…';
+es.onmessage = e => {
+  const env = JSON.parse(e.data);
+  const fw = env.active_framework || env.current_module || 'event';
+  const st = env.lifecycle_status || env.status || '';
+  const pct = env.progress_percentage;
+  const delta = env.extracted_delta || env.live_payload_delta || {};
+  const dstr = esc(Object.keys(delta).length ? JSON.stringify(delta).slice(0, 110) : '');
+  const err = env.error_logs ? `<span class="err">!! ${esc(env.error_logs).slice(0, 140)}</span>` : '';
+  const tier = env.resolution_tier ? `<span class="tier-${env.resolution_tier}">${env.resolution_tier}</span> ` : '';
+  feed.insertAdjacentHTML('afterbegin',
+    `<div class="ev">${tier}<span class="fw">${esc(fw)}</span> ` +
+    `<span class="st-${esc(st)}">${esc(st)}</span>` +
+    (pct != null ? ` <b>${pct}%</b>` : '') +
+    (env.site_domain ? ` <span class="delta">${esc(env.site_domain)}</span>` : '') +
+    (dstr ? ` <span class="delta">${dstr}</span>` : '') + ` ${err}</div>`);
+  while (feed.children.length > 300) feed.lastChild.remove();
+};
+
+/* ---------- actions ---------- */
+async function enrichOne() {
+  const email = $('lead-email').value.trim();
+  if (!email) return;
+  $('enrich-msg').textContent = 'queued…';
+  const r = await fetch('/api/v1/enrich', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({email})}).then(r => r.json());
+  $('enrich-msg').textContent = r.task_id ? `queued — task ${r.task_id}` : r.status;
+}
+
+async function createCampaign() {
+  const emails = $('camp-emails').value.split('\n').map(s => s.trim()).filter(s => s.includes('@'));
+  if (!emails.length) return;
+  const r = await fetch('/api/v1/enrich/bulk', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({emails, name: $('camp-name').value || undefined})}).then(r => r.json());
+  $('camp-msg').textContent = `campaign queued — job ${r.job_id}`;
+}
+
+async function loadQueue() {
+  const r = await fetch('/api/v1/approval/queue').then(r => r.json()).catch(() => ({pending:[]}));
+  const t = $('queue'); t.innerHTML = '<tr><th>email</th><th>subject</th><th></th></tr>';
+  for (const item of r.pending || []) {
+    t.insertAdjacentHTML('beforeend', `<tr><td>${esc(item.email)}</td><td>${esc(item.subject)}</td>
+      <td><button class="approve" onclick="decide('${esc(item.email)}','approve')">✓</button>
+          <button class="reject" onclick="decide('${esc(item.email)}','reject')">✗</button></td></tr>`);
+  }
+  $('queue-msg').textContent = `${(r.pending || []).length} awaiting decision`;
+}
+
+async function decide(email, action) {
+  await fetch(`/api/v1/approval/${encodeURIComponent(email)}`, {method:'POST',
+    headers:{'Content-Type':'application/json'}, body: JSON.stringify({action})});
+  loadQueue();
+}
+
+async function loadVisitors() {
+  const r = await fetch('/api/v1/crm/visitors?limit=50').then(r => r.json()).catch(() => ({visitors:[]}));
+  const t = $('visitors'); t.innerHTML = '<tr><th>tier</th><th>email</th><th>company</th><th>site</th></tr>';
+  for (const v of r.visitors || []) {
+    t.insertAdjacentHTML('beforeend', `<tr><td class="tier-${esc(v.resolution_tier)}">${esc(v.resolution_tier)}</td>
+      <td>${esc(v.email || '—')}</td><td>${esc(v.company_domain || '—')}</td><td>${esc(v.site_domain || '')}</td></tr>`);
+  }
+}
+
+loadQueue(); loadVisitors();
+setInterval(loadQueue, 5000);
+setInterval(loadVisitors, 5000);
+</script>
+</body>
+</html>

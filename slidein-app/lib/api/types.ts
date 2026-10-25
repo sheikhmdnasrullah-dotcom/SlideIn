@@ -680,3 +680,62 @@ export interface Page<T> {
   limit: number;
   offset: number;
 }
+
+// ── OSINT (OpenOSINT lookups) ──────────────────────────────────────────────
+
+export type OsintTargetType = "email" | "domain" | "handle" | "name";
+
+export interface OsintLookupSummary {
+  lookup: string;
+  tool: string;
+  target: string;
+  ok: boolean;
+  error: string | null;
+  lines: number;
+  duration_ms: number;
+}
+
+/** Ad-hoc research rows carry the tool's output lines, not a count. */
+export interface OsintLookupDetail extends Omit<OsintLookupSummary, "lines"> {
+  lines: string[];
+}
+
+export interface OsintDork {
+  label: string;
+  url: string;
+}
+
+export interface OsintResearchResult {
+  query: string;
+  target_type: OsintTargetType;
+  allow_active: boolean;
+  targets: Record<string, string>;
+  lookups: OsintLookupDetail[];
+  dorks: OsintDork[];
+  succeeded: string[];
+  failed: string[];
+  elapsed_ms: number;
+}
+
+export interface OsintHealth {
+  adapter: string;
+  status: string;
+  detail: string;
+  default_lookups: string[];
+  lookups: { name: string; tool: string; active: boolean; description: string }[];
+}
+
+export interface OsintEnrichOutcome {
+  prospect_id: string;
+  collector: string;
+  lookups: OsintLookupSummary[];
+  evidence_ids: string[];
+  evidence_count: number;
+  verified_count: number;
+  research_summary: {
+    evidence_types: string[];
+    sources: string[];
+    verified: number;
+    total: number;
+  };
+}

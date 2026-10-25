@@ -23,6 +23,9 @@ import type {
   Handoff,
   Icp,
   Offer,
+  OsintEnrichOutcome,
+  OsintHealth,
+  OsintResearchResult,
   Overview,
   Page,
   Prospect,
@@ -170,6 +173,28 @@ export const operations = {
   evidence(workspaceId: string, prospectId: string) {
     return client.get<{ evidence: EvidenceItem[] }>(
       workspacePath(`/prospects/${prospectId}/evidence`, workspaceId),
+    );
+  },
+
+  // ── osint ───────────────────────────────────────────────────────────────
+  osintHealth() {
+    return client.get<OsintHealth>("/v1/osint/health");
+  },
+  osintResearch(workspaceId: string, body: Record<string, unknown>) {
+    return client.post<OsintResearchResult>(
+      workspacePath("/osint/research", workspaceId),
+      body,
+    );
+  },
+  prospectOsint(workspaceId: string, prospectId: string) {
+    return client.get<{ prospect_id: string; evidence: EvidenceItem[]; count: number }>(
+      workspacePath(`/prospects/${prospectId}/osint`, workspaceId),
+    );
+  },
+  runProspectOsint(workspaceId: string, prospectId: string, body: Record<string, unknown> = {}) {
+    return client.post<OsintEnrichOutcome>(
+      workspacePath(`/prospects/${prospectId}/osint`, workspaceId),
+      body,
     );
   },
 

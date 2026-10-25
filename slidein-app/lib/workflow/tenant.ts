@@ -18,6 +18,7 @@ export const SECTION_MODULES: Record<string, string> = {
   profile: "settings",
   discovery: "discovery",
   research: "research",
+  osint: "research",
   qualification: "qualification",
   personalization: "personalization",
   outreach: "outreach",

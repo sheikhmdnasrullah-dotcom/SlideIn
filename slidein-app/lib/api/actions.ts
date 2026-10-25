@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { ApiRequestError } from "./client";
 import { WORKSPACE_ID } from "./config";
 import { operations } from "./operations";
+import type { OsintResearchResult } from "./types";
 
 export interface ActionResult {
   ok: boolean;
@@ -134,6 +135,66 @@ export async function personalizeAction(prospectId: string): Promise<ActionResul
   return trigger("Personalization", "/personalization", () =>
     operations.personalize(WORKSPACE_ID, prospectId),
   );
+}
+
+// ── osint ──────────────────────────────────────────────────────────────────
+
+export interface OsintResearchActionResult extends ActionResult {
+  data?: OsintResearchResult;
+}
+
+export async function osintAction(prospectId: string): Promise<ActionResult> {
+  try {
+    const outcome = await operations.runProspectOsint(WORKSPACE_ID, prospectId, {});
+    revalidatePath(`/discovery/${prospectId}`);
+    const failed = outcome.lookups.filter((row) => !row.ok).map((row) => row.lookup);
+    if (outcome.evidence_count === 0) {
+      return {
+        ok: false,
+        message:
+          failed.length > 0
+            ? `OSINT produced no evidence (failed: ${failed.join(", ")}).`
+            : "OSINT produced no evidence.",
+      };
+    }
+    const suffix = failed.length > 0 ? ` Failed: ${failed.join(", ")}.` : "";
+    return {
+      ok: true,
+      message: `OSINT filed ${outcome.evidence_count} evidence rows (${outcome.verified_count} verified).${suffix}`,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function runOsintResearchAction(
+  _prev: OsintResearchActionResult,
+  formData: FormData,
+): Promise<OsintResearchActionResult> {
+  try {
+    const query = str(formData.get("query"));
+    if (!query) {
+      return { ok: false, message: "Enter a name, email, handle, or domain to research." };
+    }
+    const allowActive = formData.get("allow_active") === "on";
+    const lookups = formData
+      .getAll("lookups")
+      .map((value) => String(value))
+      .filter(Boolean);
+    const data = await operations.osintResearch(WORKSPACE_ID, {
+      query,
+      allow_active: allowActive,
+      ...(lookups.length > 0 ? { lookups } : {}),
+    });
+    const seconds = (data.elapsed_ms / 1000).toFixed(1);
+    const detail =
+      data.failed.length > 0
+        ? `${data.succeeded.length}/${data.lookups.length} lookups succeeded — ${data.failed.join(", ")} failed.`
+        : `${data.lookups.length} lookup${data.lookups.length === 1 ? "" : "s"} succeeded.`;
+    return { ok: data.succeeded.length > 0, message: `Finished in ${seconds}s — ${detail}`, data };
+  } catch (error) {
+    return { ...failure(error) };
+  }
 }
 
 // ── drafts ─────────────────────────────────────────────────────────────────

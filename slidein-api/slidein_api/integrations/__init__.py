@@ -21,6 +21,11 @@ from .adapters import (
     MailTransport,
     MessagingAdapter,
 )
+from .openosint import (
+    LOOKUP_SPECS,
+    LookupResult,
+    OpenOSINTAdapter,
+)
 
 __all__ = [
     "AdapterStatus",
@@ -33,6 +38,9 @@ __all__ = [
     "DryRunMailTransport",
     "DryRunMessagingAdapter",
     "EnrichmentAdapter",
+    "LOOKUP_SPECS",
+    "LookupResult",
     "MailTransport",
     "MessagingAdapter",
+    "OpenOSINTAdapter",
 ]

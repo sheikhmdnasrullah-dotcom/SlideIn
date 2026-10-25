@@ -10,7 +10,7 @@ import { EvidenceBlock } from "@/components/system/evidence";
 import { Timeline } from "@/components/system/timeline";
 import { PageFailure } from "@/components/workspace/page-failure";
 import { TriggerButton } from "@/components/workspace/action-forms";
-import { personalizeAction, qualifyAction, researchAction } from "@/lib/api/actions";
+import { personalizeAction, qualifyAction, researchAction, osintAction } from "@/lib/api/actions";
 import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
 import {
@@ -34,6 +34,7 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
 
   const next = STATUS_NEXT_ACTION[prospect.status];
   const evidence = prospect.evidence ?? [];
+  const osintEvidence = evidence.filter((item) => item.collector.startsWith("openosint"));
   const qualifications = prospect.qualification ?? [];
   const latestQualification = qualifications[qualifications.length - 1];
   const drafts = prospect.drafts ?? [];
@@ -66,12 +67,29 @@ export default async function ProspectPage({ params }: { params: Promise<{ prosp
         </DefList>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-rule pt-4">
           <TriggerButton invoke={researchAction} id={prospect.id} label="Run research" />
+          <TriggerButton invoke={osintAction} id={prospect.id} label="Run OSINT" />
           <TriggerButton invoke={qualifyAction} id={prospect.id} label="Qualify" />
           <TriggerButton invoke={personalizeAction} id={prospect.id} label="Prepare draft" />
           <span className="self-center text-2xs text-ink-muted">
             Suggested next: {next.label}
           </span>
         </div>
+      </Section>
+
+      <Section title="OSINT" meta={`${osintEvidence.length} rows`}>
+        {osintEvidence.length === 0 ? (
+          <Surface variant="raised">
+            <EmptyState
+              icon="search"
+              title="No OSINT rows yet"
+              description="Run OSINT to execute the OpenOSINT lookups (dns, exposure, github) against this record and file each result as evidence."
+            />
+          </Surface>
+        ) : (
+          <Surface variant="raised" className="px-4 py-2">
+            <EvidenceBlock evidence={osintEvidence} compact />
+          </Surface>
+        )}
       </Section>
 
       <Section title="Evidence" meta={`${evidence.length} items`}>

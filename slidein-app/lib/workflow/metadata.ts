@@ -67,6 +67,14 @@ export const SECTIONS: SectionMeta[] = [
     description: "Source-backed evidence about one prospect.",
   },
   {
+    id: "osint",
+    href: "/osint",
+    label: "OSINT",
+    group: "pipeline",
+    stage: "research",
+    description: "Ad-hoc OpenOSINT lookups against a name, email, handle, or domain.",
+  },
+  {
     id: "qualification",
     href: "/qualification",
     label: "Qualification",

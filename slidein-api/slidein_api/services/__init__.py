@@ -12,6 +12,7 @@ from .discovery import DiscoveryService
 from .overview import OverviewService
 from .personalization import PersonalizationService
 from .qualification import QualificationService
+from .osint import OSINTService
 from .outreach import OutreachService
 from .research import ResearchService
 from .suppression import SuppressionService
@@ -26,6 +27,7 @@ __all__ = [
     "OverviewService",
     "PersonalizationService",
     "QualificationService",
+    "OSINTService",
     "OutreachService",
     "ResearchService",
     "SMTPTransport",

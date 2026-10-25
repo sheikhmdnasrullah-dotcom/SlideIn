@@ -1,12 +1,16 @@
 """Research — collects source-backed evidence for one prospect.
 
-Research never invents facts. Evidence comes from one of two connectors:
+Research never invents facts. Evidence comes from one of three connectors:
 
   * `WebsiteConnector` — fetches the prospect's public pages with a real
     HTTP request and extracts only what those pages actually contain.
   * `SuppliedClaimsConnector` — accepts claims already collected by an
     external connector (search API, internal enrichment feed) as long as
     each one carries its own source URL.
+  * `openosint` — runs the OpenOSINT CLI's passive lookups (DNS, exposure,
+    GitHub) through :class:`slidein_api.integrations.openosint.
+    OpenOSINTAdapter` and files each tool's output as a claim; see
+    `services/osint.py` for the target and claim mapping.
 
 Every evidence row records the URL it came from, whether the claim was
 read directly from that page (`verified`) or derived from it (`inferred`),
@@ -29,8 +33,10 @@ from typing import Any, Iterable
 
 from ..errors import ProviderError, SlideinError
 from ..ids import new_id
+from ..integrations.openosint import DEFAULT_LOOKUPS, OpenOSINTAdapter
 from ..models import EvidenceItem, Prospect, VerificationStatus
 from ..serialize import evidence
+from .osint import claims_from_results, targets_for
 
 USER_AGENT = "SlideinResearch/1.0 (+https://slidein.example/bot)"
 REQUEST_TIMEOUT = 10.0
@@ -378,7 +384,20 @@ class ResearchService:
         if supplied_claims:
             claims.extend(SuppliedClaimsConnector().collect(prospect, claims=supplied_claims))
 
-        if connector == "website" or not supplied_claims:
+        if connector == "openosint":
+            results = await OpenOSINTAdapter().run_lookups(
+                targets_for(prospect, list(DEFAULT_LOOKUPS)), list(DEFAULT_LOOKUPS)
+            )
+            for raw in claims_from_results(results, prospect):
+                claims.append(Claim(**raw))
+            if not claims:
+                raise ProviderError(
+                    "OpenOSINT produced no evidence for this prospect",
+                    code="source_unavailable",
+                    details={"lookups": [r.summary() for r in results]},
+                    recovery_action="retry_stage",
+                )
+        elif connector == "website" or not supplied_claims:
             if connector == "website" or connector == "supplied":
                 try:
                     website = WebsiteConnector(offline=offline_connector)

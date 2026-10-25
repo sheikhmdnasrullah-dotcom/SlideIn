@@ -730,3 +730,42 @@ class ActivityLog(Base):
     __table_args__ = (
         Index("ix_activity_logs_tenant_created", "tenant_id", "created_at"),
     )
+
+
+class AutopilotState(Base):
+    """Per-workspace state of the autonomous agent loop (services/autopilot.py).
+
+    One row per tenant: whether the loop may advance this workspace, what the
+    last tick did, and cumulative totals. Individual stage work is already
+    audited by `StageRun` + `ActivityLog`; this table only holds the loop's
+    own control state so the dashboard can render it without replaying runs.
+    """
+
+    __tablename__ = "autopilot_state"
+
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
+    )
+    #: Master switch for THIS workspace (the env master switch is separate).
+    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    #: When auto-approval is on, autopilot approves the drafts it generates
+    #: before sending. Suppression/limits/compliance still apply on every send.
+    auto_approve: Mapped[bool] = mapped_column(default=True, nullable=False)
+    #: Whether the send step dispatches (transport still resolves per env —
+    #: dry_run records without putting bytes on the wire).
+    send_enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+
+    last_tick_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_status: Mapped[str] = mapped_column(String(32), default="never_run", nullable=False)
+    last_error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    #: Counters from the most recent tick (ingested/researched/…).
+    last_stats: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+    #: Cumulative counters across ticks.
+    totals: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+
+    updated_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )

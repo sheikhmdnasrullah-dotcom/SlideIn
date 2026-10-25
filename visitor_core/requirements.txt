@@ -1,0 +1,4 @@
+# visitor_core module deps — installed into the saas venv.
+# Core stack already present: fastapi, pydantic>=2, httpx, celery[redis], redis,
+# curl-cffi, sqlalchemy, aiosqlite
+geoip2>=4.8          # MaxMind GeoIP2 local database reader (pulls maxminddb)
