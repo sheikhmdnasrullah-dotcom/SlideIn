@@ -1,6 +1,8 @@
 # SLIDEIN — UPDATED BRAND KIT & DESIGN STANDARDS
 
-> **Document Class:** Authoritative Brand System & Visual Identity  
+> **2026-10-26 implementation notice:** This document is not authorization for another workspace redesign. It conflicts with the current `slidein-app` implementation, which uses Inter Tight and copied hex/semantic tokens including pure white. Preserve the implemented orange/neutral editorial system while the token documentation is reconciled deliberately. Canonical product and architecture documents take precedence for current implementation work.
+
+> **Document Class:** Historical Brand System Proposal  
 > **Source of Truth:** Replicated from SlideIn Venture (`sv to tanim.social`) & Console Architecture  
 > **Aesthetic Archetype:** Minimal · Architectural · Editorial · Technical · Blueprint  
 > **Version:** 1.0.0  

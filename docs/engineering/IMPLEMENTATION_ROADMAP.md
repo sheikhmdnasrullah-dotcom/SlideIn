@@ -1,186 +1,246 @@
-# SLIDEIN ENGINEERING IMPLEMENTATION ROADMAP
+# Slidein Implementation Roadmap
 
-> **Ordered, Dependency-Driven Execution Roadmap (Phases 0–12)**  
-> Status: Active Roadmap  
-> Version: 1.0.0
+- Status: Active canonical execution sequence
+- Version: 2.0.0
+- Date: 2026-10-26
+- Product: `../product/PRODUCT_SPECIFICATION.md`
+- Architecture: `../architecture/CANONICAL_ARCHITECTURE.md`
+- Working checklist: `../../../planning/TASKS.md`
 
----
+## Operating rule
 
-## Roadmap Overview
+Complete one vertical business loop before broadening the product. Do not create a dashboard phase, a new acquisition model, or a framework migration as a prerequisite.
 
-```mermaid
-graph TD
-    P0[Phase 0: Audit & Architecture Documentation] --> P1[Phase 1: Technical & Development Foundation]
-    P1 --> P2[Phase 2: Tenant & Deployment Model]
-    P2 --> P3[Phase 3: Business Knowledge & Onboarding]
-    P3 --> P4[Phase 4: Prospect Discovery Integration]
-    P4 --> P5[Phase 5: Research & Qualification Engine]
-    P5 --> P6[Phase 6: Unified Prospect Workspace]
-    P6 --> P7[Phase 7: Personalized Outreach Preparation]
-    P7 --> P8[Phase 8: Controlled Dispatch & Deliverability]
-    P8 --> P9[Phase 9: Durable Automation & Worker Queues]
-    P9 --> P10[Phase 10: Conversations & Inbound Outcomes]
-    P10 --> P11[Phase 11: Fleet Operations & Operator Tools]
-    P11 --> P12[Phase 12: Production Hardening & Multi-Client Scale]
-```
+Each phase requires implementation, tests, documentation, and a demonstrated acceptance path. Do not mark work complete from typechecks or screenshots alone.
 
----
+## Phase 0 — Freeze, baseline, and protect the current system
 
-## Detailed Phases & Exit Criteria
+### Tasks
 
-### Phase 0: Product Constitution & Repository Audit (CURRENT)
-- **Objectives:** Complete code audit, assess `workspace-app`, document canonical architecture, contracts, security, and roadmap.
-- **Exit Criteria:** All 17 architectural documents created and approved; clear delta between existing codebase and target architecture.
+- Create a working branch and preserve all existing uncommitted work.
+- Re-run the current backend, frontend, and targeted infrastructure tests.
+- Inventory routes, models, workers, integrations, and request paths against the current revision.
+- Freeze new customer features in `workspace-app`, parallel `product` Acquisition OS routes, `osint_core`, `visitor_core`, and `unified`.
+- Record live/production claims as unverified until tested.
+- Ensure no live sending, production deployment, DNS change, or external provider mutation occurs without explicit authorization.
+- Fix the current `slidein-app` lint error without redesigning the component.
+- Add a CI/test baseline for the canonical applications.
 
-### Phase 1: Technical Foundation & Console Consolidation
-- **Objectives:** Consolidate `workspace-app` as single operational console, establish shared TypeScript types, database connectivity, and environment validation.
-- **Exit Criteria:** `npm run dev` and `npm run build` execute reliably; database connectivity test passes.
+### Exit criteria
 
-### Phase 2: Tenant & Deployment Foundation
-- **Objectives:** Implement `Tenant` and `Deployment` domain models, tenant context extraction in server actions/routes, and membership permissions.
-- **Exit Criteria:** Automated test proving complete tenant isolation (Tenant A cannot view or mutate Tenant B records).
+- Canonical test baseline is reproducible.
+- No parallel center is receiving new customer workflow features.
+- Current behavior and data-migration risks are documented.
+- Existing data and owner work are preserved.
 
-### Phase 3: Business Knowledge & Onboarding
-- **Objectives:** Build Business Profile, Offer Registry, Evidence Vault, ICP rule editor, and 12-factor Readiness Assessor.
-- **Exit Criteria:** Operator can input client profile and offers; system computes real readiness score.
+## Phase 1 — Establish one canonical product boundary
 
-### Phase 4: First Working Prospect Discovery Integration
-- **Objectives:** CSV batch ingestion and public web discovery adapter with deduplication, domain normalization, and idempotent persistence.
-- **Exit Criteria:** Discovered prospects save cleanly with source attribution and show in the leads table.
+### Tasks
 
-### Phase 5: Research, Qualification & Offer Matching
-- **Objectives:** Web research worker (Tavily/Search API), structured `evidence_items` persistence, explainable ICP scoring, and offer matching.
-- **Exit Criteria:** Prospect receives explainable score ($0-100$) with sourced evidence citations.
+- Make `slidein-app` and `slidein-api` the only customer request path for new work.
+- Map every `product/core` adaptive behavior to a canonical capability, configuration, evidence, proposal, or execution concept.
+- Stop `product` Acquisition OS records and `workspace-app` mock opportunities from feeding customer screens.
+- Mark prototype/open surfaces unavailable to customer traffic.
+- Introduce a compatibility inventory for duplicate routes/models with owner, replacement, test, and removal condition.
+- Keep existing infrastructure behind adapters; do not rewrite sending or deliverability components merely for naming consistency.
+- Update documentation and module names to canonical vocabulary.
 
-### Phase 6: Unified Prospect Workspace
-- **Objectives:** Polish `/leads` data table with filters for qualification score, offer match, evidence preview, and batch actions.
-- **Exit Criteria:** Users can inspect full prospect profile, evidence cards, and qualification breakdown.
+### Exit criteria
 
-### Phase 7: Evidence-Grounded Personalized Outreach
-- **Objectives:** Context-aware drafting engine referencing verified evidence; draft versioning, editing, deliverability scoring, and human approval flow.
-- **Exit Criteria:** Generated draft includes zero fabricated claims; user can edit and approve draft.
+- One canonical customer API and domain owns the first workflow.
+- No customer screen reads mock acquisition data.
+- No duplicate acquisition record is created by a second workflow authority.
+- Every legacy path is explicitly retained, isolated, migrated, or scheduled for removal.
 
-### Phase 8: Controlled Dispatch & Deliverability Gating
-- **Objectives:** Connect KumoMTA/GoPhish transport adapter; pre-send suppression checks; hourly rate limiting; delivery webhook processing.
-- **Exit Criteria:** Approved draft sends via SMTP (port 2587); DKIM verifies; bounce/delivery status records.
+## Phase 2 — Unify capability, knowledge, and configuration persistence
 
-### Phase 9: Durable Automation & Daily Operation
-- **Objectives:** Persistent background schedules for discovery, research, drafting, and dispatch; circuit breakers; retry mechanisms.
-- **Exit Criteria:** Background worker operates reliably across application restarts.
+### Tasks
 
-### Phase 10: Inbound Conversations & Outcomes
-- **Objectives:** Inbound MIME webhook / IMAP sync; thread stitching; intent classifier (`interested`, `unsubscribe`, etc.); auto-suppression on opt-out.
-- **Exit Criteria:** Inbound reply updates prospect stage; opt-out instantly prevents future emails.
+- Reconcile `MODULE_REGISTRY` and `CAPABILITY_CATALOG` into one code-owned versioned registry.
+- Reconcile tenant module settings and adaptive workspace tables into one persistent configuration authority.
+- Bring adaptive tables into canonical SQLAlchemy models and Alembic migrations.
+- Preserve existing configuration/history through a tested migration.
+- Model capability states: available, configuring, awaiting approval, active, paused, error.
+- Separate verified facts, unverified claims, hypotheses, and proposals.
+- Require privileged verification; callers cannot self-assert `verified=true`.
+- Require appropriate admin/approver permission for proposal approval/application and rollback.
+- Make all adaptation review-required initially.
+- Disable autonomous navigation reordering and auto-enablement from mentions/clicks.
+- Add provenance, actor, timestamp, evidence references, and audit events.
 
-### Phase 11: Fleet Operations & Internal Operator Console
-- **Objectives:** Operator overview across client deployments, global delivery health, queue metrics, and provider cost tracking.
-- **Exit Criteria:** Operator can deploy and monitor multiple independent client businesses from one screen.
+### Exit criteria
 
-### Phase 12: Production Hardening & Scale
-- **Objectives:** End-to-end integration test suite, disaster recovery runbooks, multi-client security review, and backup verification.
-- **Exit Criteria:** Full test suite passes; production readiness verified.
+- One registry and one configuration authority drive both navigation and server authorization.
+- Configuration, evidence, proposals, and history survive restart and migration.
+- Viewer/member roles cannot verify evidence or apply privileged changes.
+- A rejected or unapproved proposal has no effect.
+- Repeating an apply/rollback request cannot corrupt version history.
 
+## Phase 3 — Make execution durable and safe
 
----
+### Tasks
 
-## Phase 10 Expansion: Prospect Engagement (Replies → Chat → Voice → Booking)
+- Define one execution authority around canonical stage contracts and `StageRunner` semantics.
+- Decide narrowly where LangGraph remains behind that authority; remove parallel ownership of acquisition state.
+- Add durable scheduling/queueing appropriate to the existing modular monolith.
+- Add idempotency keys for stages, sends, webhooks, and approval/resume actions.
+- Implement bounded automatic retries with backoff, jitter where useful, and terminal review/dead-letter states.
+- Add cancellation, pause, timeout, stuck-run detection, and restart recovery.
+- Ensure waiting LangGraph executions can be reconstructed and read/resumed after process restart.
+- Enforce admin/approver permission and tenant binding on resume.
+- Prevent duplicate dispatch on worker retry or replay.
+- Default new instances to autopilot disabled, review required, and `dry_run`.
+- Require explicit readiness and activation before live transport.
+- Add per-tenant and global send stop controls.
 
-> Added 2026-10-16. Product spec: `docs/product/PROSPECT_ENGAGEMENT.md`. Architecture:
-> `docs/architecture/ENGAGEMENT_ARCHITECTURE.md`. Open decisions: `docs/project/OPEN_QUESTIONS.md`.
-> **Milestone 1 (M1: Reply-to-Meeting Loop) is APPROVED BY OWNER (2026-10-16).**
-> - Inbound path: Dual (KumoMTA webmail dashboard viewer OR Google Workspace/M365 IMAP/OAuth sync).
-> - Notifications: 24/7 background worker to Telegram Bot, Discord Webhook, Slack Webhook.
-> - Scheduling: Notion Booking Calendar primary with custom link sync fallback.
-> - Grace Period: 24 business hours (US business days only) for human rep before agent auto-replies.
-> - First-Touch Link Rule: STRICTLY ZERO links in cold outreach; booking links only sent upon explicit interest.
-> - Pricing Policy: Fixed monthly pricing; agents have zero discretion to discount or negotiate.
+### Exit criteria
 
-### Milestones
+- Restarting the API/worker does not lose or duplicate work.
+- Replaying a webhook or send attempt does not create duplicate records/messages.
+- Retry policy and terminal state are observable in Activity.
+- Unauthorized callers cannot resume or approve executions.
+- A fresh instance cannot accidentally send live email.
 
-| Milestone | Scope | Exit criteria | Status |
-|---|---|---|---|
-| **M0 Prerequisites** | T-001, T-016 decision, approval enforcement, OQ P0 decisions | Decisions recorded; inbound path chosen; provider chosen | **COMPLETED** |
-| **M1 Reply-to-Meeting Loop** (MVP candidate) | WS-A, WS-B(part), WS-C(min), WS-D, WS-E(link), WS-F, WS-I(min), WS-J(min) | A real reply is answered from approved knowledge (with 24h human grace period), Notion booking link sent on interest; Telegram/Discord alerted | **APPROVED & ACTIVE** |
-| **M2 Chat agent** | WS-G, T-018, T-029, T-030, T-035 | Prospect chats via secure link, books, or is handed off | PLANNED |
-| **M3 Voice add-on** | WS-H | Legal sign-off + inbound/callback pilot only | RESEARCH |
-| **Blocked** | Automated outbound calls/SMS | Strictly BLOCKED (TCPA compliance + Owner directive) | BLOCKED |
+## Phase 4 — Complete prospect-to-conversation
 
-### Dependency graph
+### Tasks
 
-```mermaid
-graph LR
-  T001[T-001 dual inbound path] --> T002[T-002 ingest idempotency] --> T003[T-003 threading] --> T013[T-013 reply drafting + 24h grace]
-  T002 --> T004[T-004 auto-reply filter]
-  T003 --> T005[T-005 opt-out]
-  T006[T-006 message model] --> T003
-  T009[T-009 knowledge model] --> T011[T-011 grounded answers] --> T013
-  T016[T-016 Notion booking adapter] --> T017[T-017 interest-only booking link] --> T019[T-019 booking webhook]
-  T013 --> T014[T-014 send gates] 
-  T013 --> T017
-  T019 --> T023[T-023 Telegram/Discord alerts]
-  T001 --> T023
-  T022[T-022 takeover] --> T024[T-024 dashboard webmail UI]
-  T037[T-037 kill switch] --> T013
-  T013 --> T039[T-039 E2E tests]
-  T011 --> T027[T-027 chat agent] --> T029[T-029 chat to booking]
-  T007[T-007 session tokens] --> T025[T-025 chat service] --> T027
-  T031[T-031 voice legal+feasibility] --> T032[T-032 voice pilot]
-```
+- Reuse existing profile, discovery, research, qualification, personalization, approval, and delivery services.
+- Implement one production inbound email connector behind the canonical adapter boundary.
+- Verify provider authentication/signatures and retry behavior.
+- Make inbound ingest idempotent per tenant/provider message ID.
+- Preserve raw MIME only under an explicit secure retention policy.
+- Thread using Message-ID, In-Reply-To, References, and tenant-scoped fallback rules.
+- Route ambiguous threads, auto-replies, bounces, list loops, and low-confidence intent correctly.
+- Apply opt-out immediately and cancel eligible pending sends/agent replies.
+- Wire notification/grace-period behavior only through durable execution and explicit tenant policy.
+- Remove hardcoded provider/pricing constants; read commercial rules from approved client knowledge.
+- Route interested replies to a deterministic owner and verified Notion/custom booking link.
+- Keep first-touch messages link-free.
+- Record a meeting only after confirmed provider evidence.
+- Implement the complete UI empty/error/review states using existing pages/components.
 
-### Task table
+### Exit criteria
 
-Columns: ID · deliverable · requirements · module/location · depends on · acceptance · verification · status · open decision.
+A hermetic and then explicitly authorized live acceptance test proves:
 
-| ID | Deliverable | Reqs | Location | Depends | Acceptance | Verification | Status | Open decision |
-|---|---|---|---|---|---|---|---|---|
-| **WS-A Inbound & reply handling** | | | | | | | | |
-| T-001 | Production dual inbound path (KumoMTA webmail viewer & Google/M365 sync) | 001 | KumoMTA/DNS/`slidein-api` webhooks | – | Real reply lands in conversation <60 s | Live test via sink/real mailbox | IN PROGRESS | RESOLVED (Dual) |
-| T-002 | Idempotent ingest (unique Message-ID per tenant), raw MIME retention | 002,112 | `services/conversations.py`, `models.py` | T-001 | Replay ×5 → 1 row | Unit + replay test | IN PROGRESS | – |
-| T-003 | Robust threading + prospect/campaign association + ambiguity queue | 003 | `conversations.py` | T-002,T-006 | 20/20 fixtures; ambiguous → review | Fixture suite | IN PROGRESS | – |
-| T-004 | Auto-reply/OOO/bounce/list-loop filtering; agent turn cap | 004 | `conversations.py` | T-002 | OOO yields no reply | Fixture suite | IN PROGRESS | – |
-| T-005 | Opt-out hardening: cancel pending sends/agent drafts | 006 | `suppression.py`, queue | T-003 | Zero sends after stop | Automated e2e | IN PROGRESS | – |
-| **WS-B Identity, storage, audit** | | | | | | | | |
-| T-006 | `conversation_messages` model + migration (needs alembic, `TECHNICAL_DEBT`) | 010,026 | `models.py`, migrations | – | Unified ordered thread | Migration + API test | IN PROGRESS | – |
-| T-007 | Engagement session/token service | 020,021 | new service | T-006 | Hashed, expiring tokens | Security unit tests | NOT STARTED | – |
-| T-008 | Append-only audit ledger for agent actions | 111 | `activity.py` | T-006 | Entry per action | Audit test | NOT STARTED | – |
-| **WS-C Knowledge** | | | | | | | | |
-| T-009 | Approved knowledge model (non-negotiable monthly pricing, zero discount) | 080,082,084,085,116 | `models.py`, Knowledge module | – | Unapproved/discounted never retrievable | Boundary tests | IN PROGRESS | RESOLVED |
-| T-010 | Knowledge editor + approval workflow | 080,083 | `workspace-app` Knowledge | T-009 | Admin approves/expires | UI + e2e test | NOT STARTED | – |
-| T-011 | Grounded answer service with citations and refusal | 009,023,081,083 | `services/` new | T-009 | 0 fabricated facts on eval set | Eval suite | NOT STARTED | RESOLVED |
-| T-012 | Adversarial eval set + guardrail policy | 081 | tests/eval | T-011 | Passing threshold agreed | CI eval | NOT STARTED | – |
-| **WS-D Reply agent** | | | | | | | | |
-| T-013 | Reply drafting + 24-hr US business day grace period scheduler | 005,007,009 | `conversations.py`, `services/scheduler.py` | T-003,T-011,T-037 | Auto-reply after 24 business hrs if human silent | Unit + timer tests | IN PROGRESS | RESOLVED |
-| T-014 | Send path reuse: gate, breaker, limits, identity | 008 | `transport.py` | T-013 | Breaker blocks reply | Unit + live dry run | NOT STARTED | RESOLVED |
-| T-015 | Escalation rules (low confidence, sensitive, unknown) | 005,081 | Policy engine | T-013 | Routes to human | Scenario tests | NOT STARTED | – |
-| **WS-E Booking** | | | | | | | | |
-| T-016 | Notion Booking Calendar adapter + fallback custom booking link sync | 060,061,114 | `services/booking.py` | – | Adapter contract tests pass | Contract tests | IN PROGRESS | RESOLVED (Notion) |
-| T-017 | Scheduling-link flow in approved reply (INTEREST ONLY, 0 in cold) | 060,061,062 | RA + BS | T-013,T-016 | Zero links in cold; link in interest draft | Integration + cold check | IN PROGRESS | RESOLVED |
-| T-018 | Direct availability/booking via API (M2) | 061,063,066 | BS | T-016 | No double booking | Race test | NOT STARTED | RESOLVED |
-| T-019 | Booking webhook → `meetings`, status, never pre-confirm | 063,064,067 | BS | T-016,T-006 | Status MEETING_BOOKED on event only | Webhook replay test | NOT STARTED | – |
-| T-020 | Reschedule/cancel handling | 065 | BS | T-019 | Records updated | Event tests | NOT STARTED | – |
-| T-021 | Pre-call brief & reminders (link to Phase 12/14) | 069 | later | T-019 | – | – | DEFERRED | – |
-| **WS-F Handoff & notifications** | | | | | | | | |
-| T-022 | Human takeover/handback; agent pause | 100,025 | Policy engine, UI | T-006 | Agent silent after takeover | e2e | NOT STARTED | – |
-| T-023 | 24/7 VPS Alert Dispatcher (Telegram Bot, Discord, Slack) | 064,102 | `services/notifications.py` | T-019 | Delivered per event within 15s | Provider mock + live check | IN PROGRESS | RESOLVED |
-| T-024 | Dashboard webmail & conversation UI with full context | 010,101 | `workspace-app` mail/leads | T-006 | Context complete | UI test | IN PROGRESS | – |
-| **WS-G Chat (M2)** | | | | | | | | |
-| T-025 | Chat session service + secure link page | 020,021 | Chat gateway, `workspace-app` public route | T-007 | Token-bound session | Security test | NOT STARTED | RESOLVED |
-| T-026 | Brand-compliant chat UI with AI disclosure and human button | 022,025 | `workspace-app`; brand per `docs/product/PROSPECT_ENGAGEMENT.md` §10 | T-025 | Disclosure 100% | Playwright | NOT STARTED | OQ-060..063 |
-| T-027 | Chat agent orchestration (grounded, one job) | 023,024 | CA | T-011,T-025 | Scenario pass | Eval + e2e | NOT STARTED | – |
-| T-028 | Qualification logic (configurable, non-blocking) | 027,068 | CA/BS | T-027 | Meeting-intent books directly | Scenario tests | NOT STARTED | OQ-011 |
-| T-029 | Chat → booking | 060,064 | CA+BS | T-018 | Booking from chat | e2e | NOT STARTED | – |
-| T-030 | Abandonment policy | 028 | Policy engine | T-025 | Limits respected | Fixture | NOT STARTED | OQ-013 |
-| **WS-H Voice (M3)** | | | | | | | | |
-| T-031 | Feasibility, provider and legal review; confirm no-outbound rule | 040 | docs | – | Written decision | Review sign-off | NOT STARTED | OQ-009,026,041 |
-| T-032 | Inbound/callback voice pilot with AI disclosure, human transfer | 041,042,043,045 | Voice gateway | T-031,T-027 | Greeting + transfer verified | Call tests | NOT STARTED | – |
-| T-033 | Call summary, outcome, recording/retention policy | 044 | call_records | T-032 | Policy enforced | Audit | NOT STARTED | OQ-043 |
-| **WS-I Security, consent, privacy** | | | | | | | | |
-| T-034 | Consent/preference model | 113 | `consent_records` | T-006 | Record per channel | Unit | NOT STARTED | OQ-042 |
-| T-035 | Link hardening, rate limiting, abuse protection | 021 | Chat gateway | T-007 | Abuse tests pass | Security tests | NOT STARTED | – |
-| T-036 | Retention & deletion jobs | 115 | worker | T-006 | Deletion verified | Test | NOT STARTED | OQ-044 |
-| T-037 | Per-tenant & global emergency stop | 110 | Policy + send path | – | Stop halts sends | e2e | NOT STARTED | – |
-| T-038 | Legal review checklist maintained | 117 | docs | – | Signed off | Review | NOT STARTED | OQ-040..046 |
-| **WS-J Testing & ops** | | | | | | | | |
-| T-039 | End-to-end suite on lab stack (sink MX): reply→answer→booking→opt-out | all M1 | `test_*`, lab | T-013,T-019 | Green | CI | NOT STARTED | – |
-| T-040 | Monitoring/alerts: inbound lag, DLQ depth, agent error rate, booking failures | 112 | Prometheus/Grafana | T-001 | Alerts fire | Fire drill | NOT STARTED | – |
-| T-041 | Operations runbook (incident, kill switch, provider outage) | 110,112 | `docs/operations` | T-037 | Reviewed | Tabletop | NOT STARTED | – |
+1. A client profile, offer, and ICP can be configured and versioned.
+2. A prospect enters with source attribution.
+3. Research persists sourced evidence.
+4. Qualification and offer match explain their decision.
+5. A draft is grounded and versioned.
+6. An authorized human approves it.
+7. Safety gates allow a controlled send or explicit dry run.
+8. A real/provider-simulated reply arrives once, threads correctly, and records intent.
+9. Opt-out blocks all later sends.
+10. An interested reply reaches the right owner/booking destination.
+11. Overview and Activity reflect the entire journey after restart.
+
+## Phase 5 — Simplify the existing workspace without redesigning it
+
+This phase intentionally follows working domain behavior.
+
+### Tasks
+
+- Consolidate navigation to Overview, Business Setup, Prospects & Research, Outreach, Conversations, Activity, Settings.
+- Preserve existing stage routes as nested views, record tabs, or aliases where useful.
+- Move OSINT into Research and stage contracts into a technical/settings surface.
+- Remove mock metrics, decorative agent streams, and unsupported navigation.
+- Use real empty, loading, disabled, pending, unavailable, and error states.
+- Preserve current tokens, typography, orange accent, system components, and responsive behavior.
+- Reconcile brand documentation with the implemented design rather than redesigning the app.
+- Add accessibility and workflow-focused frontend tests.
+
+### Exit criteria
+
+- A new user can complete the first workflow without understanding internal architecture.
+- Every visible item maps to real backend state or an explicit unavailable state.
+- No duplicate section exists solely to make the product appear broader.
+- No new design language, UI framework, or dashboard concept was introduced.
+
+## Phase 6 — Add customer identity and centralized entitlements
+
+### Tasks
+
+- Add secure customer user/session handling to `slidein-app`.
+- Add users, memberships, invitations, roles, revocation, and credential rotation.
+- Distinguish viewer, member, approver, tenant admin, service credential, and platform operator.
+- Bind every UI/API/job action to actor and tenant.
+- Introduce central entitlement definitions for Self-Hosted, Managed, and Growth Partner.
+- Separate product capability availability from service operating responsibility.
+- Enforce entitlements server-side without scattering plan checks.
+- Add explicit operator impersonation/support-access audit if such access is allowed.
+- Keep dedicated client environments as the initial topology.
+
+### Exit criteria
+
+- Two users with different roles receive correct access in the same instance.
+- One client cannot access another client's records, credentials, runs, streams, exports, or infrastructure.
+- Revoked users/keys lose access.
+- Tier changes alter authorized scope without changing domain data or application structure.
+
+## Phase 7 — Prove dedicated deployment and no-lock-in operations
+
+### Tasks
+
+- Add versioned deployment records and release/configuration metadata.
+- Implement repeatable fresh install and supported upgrade paths.
+- Rehearse backup and restore on an isolated environment.
+- Add health, failure, backup, and update status for operators.
+- Implement machine-readable full customer export with documented schema.
+- Exclude secret values and provide safe reconnection instructions.
+- Implement offboarding: export confirmation, credential revocation, retention/deletion schedule, backup expiry, and verification.
+- Document incident response, rollback, send stop, provider outage, and recovery.
+- Resolve and record the owner licensing decision before third-party managed rollout; align README and license messaging only after that decision.
+
+### Exit criteria
+
+- The same tagged release deploys to two isolated instances without code changes.
+- An upgrade preserves data and can be rolled back safely.
+- A restore rehearsal reconstructs a working instance.
+- Export can be independently inspected and reimported or migrated according to policy.
+- Offboarding leaves no active credentials and produces a verifiable deletion/retention record.
+
+## Phase 8 — Add only the next justified capability
+
+Candidates include richer discovery connectors, read-only workflow visualization, optional CRM connectors, full calendar synchronization, content operations, or visitor capture.
+
+Before selecting one, require:
+
+- A real client/user need.
+- A canonical record and API mapping.
+- Entitlement and permission behavior.
+- Integration/provider-rule review.
+- Durable execution and failure semantics.
+- Honest UI states using existing navigation.
+- Tests and operational ownership.
+
+Do not add LinkedIn automation, visitor identification, chat, voice, or generated micro-SaaS merely because prototypes or old sales copy exist.
+
+## Continuous acceptance gates
+
+Every pull request/change set must answer:
+
+1. Which canonical user task does this improve?
+2. Which existing records and components are reused?
+3. Does it create any duplicate authority or parallel product surface?
+4. How are tenant, actor, entitlement, and capability enforced?
+5. How does state survive restart and upgrade?
+6. How are retries, replay, approval, and audit handled?
+7. What happens when data is empty, unauthorized, unavailable, or failed?
+8. Which tests prove the behavior?
+9. Which documentation changed?
+10. Does this avoid unnecessary visual or dependency churn?
+
+## Explicit non-goals
+
+- Big-bang repository rewrite.
+- New dashboard/frontend for each client or industry.
+- Autonomous UI rearrangement or code deployment.
+- CRM replacement or mandatory Twenty adoption.
+- Refine adoption.
+- Immediate Temporal migration.
+- Arbitrary React Flow execution editor.
+- Shared production multi-tenancy at this stage.
+- Prices in platform code or this roadmap.
+- Unverified production, compliance, deliverability, or capability claims.

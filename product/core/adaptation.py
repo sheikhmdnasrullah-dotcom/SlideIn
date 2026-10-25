@@ -126,6 +126,11 @@ class AdaptationEngine:
                 "or one explicit verified instruction")
         if len(set(steps)) != len(steps) or not steps:
             raise InsufficientEvidence("steps must be a non-empty ordered set")
+        # Universal flow invariant: proposals may compose canonical stages
+        # (tools/logic vary per client) but can never invent new top-level
+        # stages. Off-flow steps are rejected here, before persistence.
+        from product.core.flow import assert_flow_aligned
+        steps = assert_flow_aligned(tuple(steps))
         proposal = WorkflowProposal(tenant_id=tenant_id, name=name, purpose=purpose,
                                     steps=tuple(steps), trigger=trigger,
                                     evidence_refs=tuple(evidence_refs))

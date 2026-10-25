@@ -90,3 +90,18 @@ This is part of the product vision (reply → AI-assisted conversation → meeti
 - **Visual work** (chat, booking, notification screens) follows the marketing `design-system.md` and tokens listed in `PROSPECT_ENGAGEMENT.md` §10; unresolved brand questions are in the open-questions register.
 - **Validate** with the acceptance criteria and verification methods in the task table; extend the tenant-boundary and suppression tests.
 - **After implementing,** update `docs/project/CURRENT_STATE.md` (status), the task row's status, and any requirement whose status changed. Do not duplicate the spec here.
+
+## THE UNIVERSAL FLOW — non-negotiable product invariant
+
+Every feature, workflow, module, agent, or integration you build MUST map
+onto the canonical seven-stage flow:
+
+    configure → discover → research → qualify → personalize → outreach → converse
+    (converse → activity → overview → back to configure)
+
+**Read `docs/UNIVERSAL_FLOW.md` and `product/core/flow.py` before designing
+anything.** Build tools/logic UNDER stages — never add, reorder, or skip
+stages. Off-flow workflow proposals are rejected by the adaptation engine
+(`assert_flow_aligned`) and by CI (`product/tests/test_flow.py`). If a task
+seems to need a new top-level stage, stop and flag it to the product owner;
+it is an architecture decision, not a session decision.

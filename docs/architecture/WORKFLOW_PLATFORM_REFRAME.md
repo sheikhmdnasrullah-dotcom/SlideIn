@@ -1,6 +1,8 @@
 # Slidein: Workflow Deployment Platform — Architecture Report
 
-Date: 2026-10-16. Status: audit complete, foundation implemented, decisions pending.
+> **2026-10-26 supersession notice:** This is a useful historical audit, not the active architecture. Canonical convergence decisions are now in `../decisions/ADR-2026-10-26-canonical-product-convergence.md`, `CANONICAL_ARCHITECTURE.md`, and `../product/PRODUCT_SPECIFICATION.md`. Booking provider and first-workflow questions described as pending here have since been resolved; current implementation gaps are tracked in `../project/CURRENT_STATE.md`.
+
+Date: 2026-10-16. Status: historical audit; superseded as active guidance.
 Companion code: `slidein-api/slidein_api/blueprints/`, `integrations/`, `deployments/`
 (new files only; no migrations, no edits to in-progress work).
 

@@ -1,5 +1,7 @@
 # OPEN QUESTIONS & DECISIONS REGISTER
 
+> **2026-10-26 canonical update:** Product convergence, first-release scope, dedicated deployment, controlled adaptation, seven-section navigation, and the three-tier model are now decided in `../decisions/ADR-2026-10-26-canonical-product-convergence.md`. The remaining managed-service licensing decision is recorded there and in `../deployment/MANAGED_SERVICE_PLAN.md`. Older status labels below remain historical where they conflict with `CURRENT_STATE.md`.
+
 > **Status:** Living Register  
 > **Last Updated:** 2026-10-16 (Owner Decisions Formally Recorded)  
 > **Related Specifications:** [`../product/PROSPECT_ENGAGEMENT.md`](../product/PROSPECT_ENGAGEMENT.md), [`../architecture/ENGAGEMENT_ARCHITECTURE.md`](../architecture/ENGAGEMENT_ARCHITECTURE.md)  

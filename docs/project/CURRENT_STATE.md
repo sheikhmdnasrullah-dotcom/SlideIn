@@ -1,74 +1,159 @@
-# Current State — SlideIn
+# Current State — Slidein
 
-> Living snapshot, last updated 2026-10-16. Source of
-> truth for "what works". Detail and evidence: `PROJECT_AUDIT.md` (point-in-time,
-> pre-launch). Debt register: `TECHNICAL_DEBT.md`.
+- Living implementation snapshot
+- Last locally verified: 2026-10-26
+- Repository revision inspected: `a808b23`
+- Scope: local source and tests; live VPS and external providers were not contacted
+- Product direction: `../product/PRODUCT_SPECIFICATION.md`
+- Target architecture: `../architecture/CANONICAL_ARCHITECTURE.md`
 
-SlideIn is a self-hosted outreach platform in **beta**, live on a single VPS
-as an owner-operated reference deployment. The SaaS surface now includes the
-agent workflow API (`api.slideinventure.com`) and the client workspace UI
-(`workspace.slideinventure.com`), alongside the dashboard
-(`app`/apex), campaign console, tracking, and warmup hosts (all HTTPS; `www`
-is the Vercel marketing site, not served by the VPS). The stack: a modified
-GoPhish campaign/admin backend (Go), a Python deliverability engine (gate,
-circuit breaker, placement risk, provider abstraction), KumoMTA with a
-production Lua policy, a Next.js dashboard wired to local backends, a
-reacher-backed lead verification service, a self-hosted Warmbly warmup
-platform, Agent-Reach research tooling, a universal multi-tenant core
-(`product/core/`) with enforced tenant/shared boundaries, and the new
-slidein-api (FastAPI) + slidein-app (Next.js) workflow layer. No
-multi-customer SaaS, billing, or human-approval queue exists; the live
-deployment is single-tenant.
+This file describes observed implementation, not aspirations. Older live-deployment claims remain historical until directly reverified.
 
-## Capability matrix
+## 1. Current architectural reality
 
-| # | Capability | Status | Evidence |
-|---|---|---|---|
-| 1 | Go campaign/admin app | Implemented and verified | systemd; 13 Go pkgs ok; admin API live |
-| 2 | Deliverability pipeline + safety core | Implemented and verified | 103 Python tests OK; live e2e 8/8 |
-| 3 | KumoMTA production policy | Implemented and verified | kumod 2026.09.29; STARTTLS+AUTH verified; v4-only egress (sysctl pin); EHLO mail.nasrullahtanim.me; live delivery to Zoho confirmed |
-| 4 | Local dev stack | Implemented and verified | `./dev` + `./doctor` FULLY OPERATIONAL 2026-10-12 |
-| 5 | End-to-end local send | Implemented and verified | e2e 8/8 + platform 8/8; DKIM verified at sink |
-| 6 | Production VPS deployment | Implemented and verified | 18 containers healthy; deploy script completed live runs; idempotent reruns |
-| 7 | Public HTTPS (app/apex/console/track/warmbly×3) + Caddy | Implemented and verified | 200s live; LE certs auto-issued; www is Vercel (CNAME, never VPS) |
-| 8 | Mail auth DNS (SPF/DKIM/DMARC ×3) | Implemented and verified | precheck green; Cloudflare API push 2026-10-12 |
-| 9 | GoPhish sending profiles (9/9) | Implemented and verified | via KumoMTA relay; 3× nasrullahtanim.me + 6× tanim.social/tanim.tech; dashboard reads live profiles (sanitized) |
-| 10 | Dashboard ↔ backend wiring | Implemented and verified | no-login open mode; live profile/verification/job proofs |
-| 11 | Lead verification (single + bulk) | Implemented and verified | job lifecycle: upload → SSE → download, real verdicts |
-| 12 | Warmup platform (Warmbly self-host) | Implemented, partially verified | 11/11 healthy; SMTP relay proven; mailbox connect is a manual UI step |
-| 13 | Research evidence (Agent-Reach) | Implemented and verified | jina page-read live in lead research; gh/bili/yt need logins |
-| 14 | Universal core Stage 1 | Implemented and verified | `product/core/` + 22 boundary tests green, DB-free |
-| 15 | Suppression on live paths | Implemented and verified | worker + submit gated (8 tests) + live platform pass |
-| 16 | HTTP auth/tenancy (deliverability) | Implemented and verified | 401/404 enforcement, 28 tests + live pass |
-| 17 | Monitoring (Prom/Grafana/AM/Loki) | Implemented, partially verified | all Up; alert routes untested; no notifier wired |
-| 18 | Warmup engine (BullMQ, legacy) | Implemented but unverified | installed; superseded by Warmbly for warmup |
-| 19 | Transactional CLI (`cli.py tx-*`) | Implemented but unverified | no live sends run |
-| 20 | Product API (FastAPI, tenant model) | Partially implemented | needs PostgreSQL; no alembic; roles unenforced |
-| 21 | AI agents (research/personalization) | Partially implemented | Tavily + agent-reach evidence live; mock default elsewhere |
-| 22 | Human-approval enforcement | Planned but not implemented | `Message.ai_approved` unset-at-send; no queue |
-| 23 | Receiving/IMAP mailboxes | Not implemented | mailcow era ended; replies go nowhere; MX points at dead host |
-| 24 | Billing / entitlements | Planned but not implemented | — |
-| 25 | Managed multi-tenant SaaS | Planned but not implemented | intent only (`managed-service-plan.md`); core Stage 1 is the foundation |
-| 26 | Backups rehearsed | Not implemented | `backup.sh/restore.sh` present, never rehearsed |
-| 27 | Campaign console (public GoPhish UI) | Implemented and verified | `console.slideinventure.com/login` 200; loopback binds; CSRF origin fix (bare-host match); dry-run group+template created, zero sends |
-| 28 | Bulk-compliance + reputation hygiene | Partially implemented | List-Unsubscribe on 9/9 profiles; IP clean on Spamhaus/SpamCop/SORBS; PTR mail.nasrullahtanim.me forward-confirmed; dmarc@ mailboxes missing (Zoho TODO); Postmaster/SNDS unregistered |
-| 29 | Intake-first onboarding (profile → ICP → research) | Implemented and verified | `/intake` form + file store + API live; gate flips verified both ways; research prompts consume business context |
-| 30 | Agent workflow API (slidein-api, FastAPI) | **Live** | `api.slideinventure.com/health` → 200; `:8100` via systemd; SQLite default DB; API-key auth (`ten_local`); `/v1/contracts` returns stage contracts |
-| 31 | Client workspace UI (slidein-app, Next.js) | **Live** | `workspace.slideinventure.com/` → 307→/overview; `:3201` via PM2; connects to slidein-api server-side via localhost:8100; full workflow sidebar + overview page rendering |
-| 32 | Prospect engagement: inbound reply path to backend | Partially implemented | Backend `POST /webhooks/inbound`, threading, intent, opt-out suppression exist (`slidein-api`); **no production inbound mail path** (see #23) |
-| 33 | Engagement: grounded reply agent with approval | Planned but not implemented | Spec only: `docs/product/PROSPECT_ENGAGEMENT.md` |
-| 34 | Engagement: chat agent via secure link | Planned but not implemented | Spec only; M2 |
-| 35 | Engagement: meeting booking (provider, webhooks, records) | Planned but not implemented | No provider selected (OQ-004) |
-| 36 | Engagement: voice (inbound/callback only) | Planned but not implemented | Research + legal review required; outbound calling blocked |
-| 37 | SaaS risk guardrails (BSL 1.1 license + clean-room, per-tenant caps, auto-quarantine circuit breaker, abuse review, cold-email statutory pre-send gate) | Implemented and verified | `LICENSE` BSL 1.1 (Additional Use Grant + OpenOutreach non-derivation); `slidein-api` 144 tests green incl. deliverability breaker wired into `POST /events` (100-event window, >3% bounce / >0.05% complaint → quarantine), `GET /deliverability` + admin-only `POST /quarantine/resolve` (audit-logged), send gate blocks missing physical address / lawful basis / quarantine |
-| 38 | Dedicated client instance platform (Plan B) | Implemented and verified | Pinned release + versioned `DeploymentConfig` (`slidein_api/factory/`); deterministic owner/calendar booking router (`TeamOwner` -> `ProspectOwnerAssignment` -> `resolve_booking`); 16-stage pre-flight audit; zero client code forks; 144 pytest green |
-| 39 | Rapid client onboarding pipeline (<2 hours) | Implemented and verified | Automated plain-text intake compiler (`scripts/compile_client_intake.py` -> `IntakeCompiler`); industry-adaptive terminology & branding; one-command idempotent host installer (`install.sh` v0.2.0); SOP documented in `docs/playbooks/client-instance-onboarding.md` |
-| 40 | Tenant-level sending isolation (mode, route, breaker state) | Implemented and verified | `slidein-api` 12 tests in `tests/test_sending_isolation.py` green: `shared`/`dedicated`/`provider_managed` modes, fail-closed routing (`sending_route_unresolved`), per-tenant circuit breaker with admin pause/probe/resume, tenant-scoped reads, honest isolation wording. Real dedicated-IP verification still requires infrastructure (see `docs/engineering/TENANT_SENDING_ISOLATION.md`) |
+Slidein currently has multiple product centers, not one fully converged workspace.
 
-## Data on the live VPS (private, never in git)
+| Area | Observed state | Canonical disposition |
+|---|---|---|
+| `slidein-app/` | Real Next.js customer workspace with server-side BFF, workflow navigation, backend-driven overview, prospect/draft/conversation pages | Canonical customer frontend |
+| `slidein-api/` | FastAPI workflow API with persistent acquisition records, stage contracts, approvals, sending policy, conversations, activity, and autopilot | Canonical backend/domain |
+| `workspace-app/` | Broad Next.js internal console with many tool surfaces; acquisition command center consumes mock opportunities and hardcoded operational content | Internal/legacy; not customer workspace |
+| `product/` | Parallel Acquisition OS models/API plus adaptive core; main API mounts opportunities, command-center, and health routers | Do not expand as another product; absorb useful core concepts |
+| `osint_core/`, `visitor_core/`, `unified/` | Useful enrichment/visitor prototypes with unauthenticated, non-tenant-scoped surfaces | Not customer-safe; adapt only after isolation and scope review |
+| Mail/deliverability stack | Go/KumoMTA/Lua/Python/Rust/Redis/Celery/Caddy/Docker and monitoring components | Retain behind verified canonical adapters |
 
-GoPhish DB (`/root/gophish/gophish.db`), KumoMTA spool + DKIM private keys,
-job_api SQLite, Warmbly Postgres, slidein-api SQLite (`/opt/slidein-api/data/`),
-slidein-app env (`/opt/slidein-app/.env.local` with API key), app env
-(Appwrite/Supabase keys), Caddy certs, systemd/pm2 state. Secrets live in
-root-only files and environment, never in the repo.
+## 2. Implemented canonical workflow
+
+The canonical stage sequence is:
+
+```text
+configure -> discover -> research -> qualify -> personalize
+          -> outreach -> converse -> synthesize
+```
+
+Verified code provides:
+
+- Versioned business profiles, offers, ICPs, and configuration.
+- Source-attributed prospect records.
+- Research evidence with verification states.
+- Explainable qualification and offer-match records.
+- Versioned message drafts and approval states.
+- Sending policy, suppression, delivery events, deliverability and quarantine controls.
+- Inbound webhook threading, intent classification, and opt-out behavior.
+- Stage runs, explicit caller-driven attempts, failure/recovery metadata, and activity history.
+- Backend-driven overview with pipeline, attention, next actions, stage health, sources, and autopilot status.
+
+The overview is operational API-backed UI. The `workspace-app` acquisition command center is not equivalent and must not be treated as operational truth.
+
+## 3. Adaptive workspace state
+
+The adaptive layer currently includes:
+
+- A code-defined capability catalog.
+- Versioned workspace configuration and rollback.
+- Evidence and adaptation proposals.
+- LangGraph research/qualification/approval execution with SQLite checkpoints.
+- Configuration-driven navigation ordering in `slidein-app`.
+- Instance-database write-through persistence for workspace config versions, evidence, and proposals, added in `a808b23`.
+
+Remaining concerns:
+
+- Canonical `MODULE_REGISTRY` and `CAPABILITY_CATALOG` still overlap.
+- Adaptive models/persistence must be brought into the canonical model and migration lifecycle.
+- Viewers are mapped to tenant members for adaptive routes; evidence submission accepts caller-supplied `verified=true`.
+- Proposal approval/application and execution resume require a complete authorization review.
+- Agent execution lookup/resume still relies on an initialized in-memory executor; restart behavior must be tested and repaired.
+- Text-mention-driven navigation reordering is not accepted product behavior.
+- Two workflow authorities must not independently own the same acquisition records.
+
+## 4. Authentication and isolation
+
+Implemented in the canonical API:
+
+- Workspace-bound bearer API keys.
+- Viewer/service/operator/admin roles.
+- Cross-workspace 404 behavior.
+- Server-side API key use by `slidein-app`.
+
+Not yet a complete external-customer identity model:
+
+- No canonical customer user-session and team-membership flow.
+- `slidein-app` is configured around a server-side workspace ID/key.
+- No central three-tier entitlement enforcement.
+- No complete audited operator control plane across dedicated instances.
+
+Dedicated client environments remain the initial managed deployment model. Shared production multi-tenancy is not approved.
+
+## 5. Execution and automation
+
+- `StageRunner` provides contracts, run/activity records, and explicit retry attempts.
+- It does not provide durable scheduling, automatic retry/backoff, exactly-once behavior, or distributed execution.
+- Autopilot is an in-process loop, not a durable worker system.
+- Autopilot state currently defaults to enabled, auto-approve, and send-enabled; transport defaults to `dry_run`.
+- The accepted target default for new instances is autopilot disabled until activation, review required, and dry-run transport.
+- LangGraph checkpoints exist, but HTTP restart/resume behavior requires verification and authorization hardening.
+
+## 6. Inbound, engagement, and booking
+
+- Canonical inbound webhook, threading, intent, and suppression exist.
+- A confirmed production mailbox/IMAP/provider ingress feeding that webhook is still missing.
+- Grace-period and notification helpers exist, but canonical inbound execution is not wired into a complete durable engagement loop.
+- Team-owner and verified booking-destination resolution exists.
+- `services/booking.py` still contains Notion and `$350` platform constants; client commercial policy must come from versioned client configuration.
+- Notion primary booking plus custom booking links is already an owner-resolved provider decision; do not reopen it without new requirements.
+- Full booking webhooks, availability synchronization, meeting lifecycle, and no-show recovery are not a complete canonical journey.
+
+## 7. Persistence, operations, and service tiers
+
+- SQLite is the canonical local default; PostgreSQL URL configuration is supported.
+- No Alembic migrations were found; initialization uses `create_all`.
+- Instance-durable adaptive tables were added, but still need migration lifecycle treatment.
+- Deployment lifecycle transitions exist as a dataclass model, not a deployed fleet control plane.
+- Backup scripts/docs exist; restore rehearsal is not verified in this investigation.
+- No coherent customer export/deletion/offboarding workflow was found.
+- `Tenant.plan_tier` is stored/serialized but does not enforce the three service levels.
+- Self-hosted installation assets exist; reproducible upgrade/recovery proof remains incomplete.
+
+## 8. Security and exposed prototypes
+
+- OSINT enrichment, result, approval, and dossier routes lack tenant authentication and use email/job-based Redis keys.
+- Visitor APIs lack tenant authentication; visitor rows have no tenant ID.
+- `unified/` mounts these routers and exposes a dashboard and merged SSE firehose without a production tenant boundary.
+- External research and connected content require prompt-injection handling.
+- Production use must never run with authentication disabled or rely on hidden navigation as authorization.
+
+## 9. Design and documentation
+
+- `slidein-app` has a coherent orange/neutral editorial design system and reusable primitives.
+- Current implementation uses Inter Tight and copied hex/semantic tokens, including pure white.
+- `docs/design/UPDATED_BRAND_KIT.md` conflicts with that implementation by requiring Fraunces, OKLCH, and no pure white.
+- The accepted direction is to preserve the current implementation and stop visual churn; documentation must be reconciled without another redesign.
+- `LICENSE` is BSL 1.1 and restricts third-party hosted/managed offerings without commercial permission; README displays an MIT badge. Owner/licensing decision remains unresolved.
+- Older planning and status documents contain conflicting tiers, pricing, content scope, dashboard names, and implementation claims. Canonical documentation precedence is defined in `../architecture/CANONICAL_ARCHITECTURE.md`.
+
+## 10. Verification performed on 2026-10-26
+
+| Check | Observed result |
+|---|---|
+| `slidein-api` pytest | 179 passed; one `TestRunService` collection warning |
+| `slidein-app` TypeScript | Passed |
+| `slidein-app` lint | Failed: one `no-assign-module-variable` error in `components/workspace/sidebar.tsx` |
+| Full local `product` pytest | 50 passed, 5 failed, 33 errors; local PostgreSQL unavailable and async workflow tests not runnable |
+| `workspace-app` targeted project tests | 13 passed, 2 failed from `server-only` imported in test runtime |
+| Marketing lint | Failed across included skill/worktree scripts and application files |
+| Production frontend build | Not run in this investigation |
+| Live VPS/providers | Not verified |
+
+CI explicitly ignores `product/tests/test_workflows.py`; the parallel product suite must not be described as fully green.
+
+## 11. Immediate priority order
+
+1. Preserve the canonical workflow and stop new parallel product surfaces.
+2. Fix adaptive authorization, executor restart behavior, and registry/persistence duplication.
+3. Establish migrations, durable execution/idempotency, and safe autopilot defaults.
+4. Complete real inbound reply ingestion and owner/booking-link handoff.
+5. Add customer identity, entitlements, export/offboarding, and managed operational proof.
+6. Consolidate navigation only against real backend capabilities.
+7. Expand to additional channels only after the first complete loop passes acceptance.
+
+See `../engineering/IMPLEMENTATION_ROADMAP.md` for tasks and exit criteria.
