@@ -44,7 +44,7 @@ def test_synthesize_reconciled_not_deleted():
     from slidein_api.canonical import assert_canonical_flow
     # legacy eighth stage validates by mapping onto converse (§9.1)
     assert assert_canonical_flow(("research", "synthesize")) == ("research", "converse")
-    from product.core.flow import FlowViolation
+    from slidein_api.canonical import FlowViolation  # canonical authority type
     with pytest.raises(FlowViolation):
         assert_canonical_flow(("research", "quantum_stage"))
 
@@ -75,3 +75,31 @@ def test_config_endpoint_projects_sections(client):
     d = client.get("/v1/workspace/config").json()
     assert "sections" in d and len(d["sections"]) == 7
     assert [s["section"] for s in d["sections"]][0] == "overview"
+
+
+def test_no_dual_flow_drift():
+    """Architecture §6: one machine definition. slidein_api owns it; the
+    product interim guard must stay identical (its removal condition is in
+    CURRENT_STATE.md)."""
+    from slidein_api.canonical import STAGE_IDS as API_STAGES
+    from product.core.flow import STAGE_IDS as PRODUCT_STAGES
+    assert API_STAGES == PRODUCT_STAGES
+
+
+def test_caller_cannot_self_verify(client):
+    from slidein_api.security import AuthContext
+    from slidein_api.api.routes import workspace as ws_routes
+    from slidein_api.api.app import app
+    from slidein_api.security import require_auth
+    c = client
+    # member-role caller sends verified=true -> stored unverified (Spec §7.1)
+    app.dependency_overrides[require_auth] = lambda: AuthContext(
+        tenant_id="ten_local", role="member", key_fingerprint="t", method="test")
+    try:
+        r = c.post("/v1/workspace/evidence", json={
+            "kind": "behavior", "fact": "user opened research module",
+            "verified": True, "confidence": 0.99})
+        assert r.status_code == 200, r.text
+        assert r.json()["verified"] is False
+    finally:
+        app.dependency_overrides.clear()

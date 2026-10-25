@@ -148,13 +148,18 @@ async def rollback_workspace(body: dict, auth: AuthContext = Depends(require_aut
 # --------------------------------------------------------------------------- #
 @router.post("/workspace/evidence")
 async def record_evidence(body: dict, auth: AuthContext = Depends(require_auth)):
+    # Spec §7.1: a caller must not mark its own evidence verified merely by
+    # sending verified=true — only admin/platform roles may verify.
+    role = _role(auth)
+    caller_verified = bool(body.get("verified", False)) and role in (
+        Role.TENANT_ADMIN, Role.PLATFORM_ADMIN, Role.SYSTEM)
     try:
         item = _adaptation.record_evidence(
             tenant_id=auth.tenant_id, kind=body["kind"], fact=body["fact"],
             source_ref=body.get("source_ref", "api"),
             confidence=float(body.get("confidence", 0.5)),
-            verified=bool(body.get("verified", False)),
-            caller_tenant_id=auth.tenant_id, role=_role(auth))
+            verified=caller_verified,
+            caller_tenant_id=auth.tenant_id, role=role)
     except Exception as exc:
         raise _to_http(exc)
     from ... import workspace_store as _wsp

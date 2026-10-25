@@ -2,7 +2,7 @@
 
 - Living implementation snapshot
 - Last locally verified: 2026-10-26
-- Repository revision inspected: `eacec26`; concurrent uncommitted setup changes were not modified by this documentation pass
+- Repository revision inspected: `9e87b46`, plus the uncommitted one-shot setup slice described in the 2026-10-26 setup section below
 - Scope: local source and tests; live VPS and external providers were not contacted
 - Product direction: `../product/PRODUCT_SPECIFICATION.md`
 - Target architecture: `../architecture/CANONICAL_ARCHITECTURE.md`
@@ -145,10 +145,12 @@ Dedicated client environments remain the initial managed deployment model. Share
 
 | Check | Observed result |
 |---|---|
-| `slidein-api` pytest | 179 passed; one `TestRunService` collection warning |
+| `slidein-api` pytest | 196 passed (188 + 8 one-shot setup flow tests); one `TestRunService` collection warning |
 | `product/tests/test_flow.py` | 4 passed; verifies stage identifiers, aliases, unknown-stage rejection, and adaptation integration |
 | `slidein-app` TypeScript | Passed |
-| `slidein-app` lint | Failed: one `no-assign-module-variable` error in `components/workspace/sidebar.tsx` |
+| `slidein-app` lint | Passed (the `no-assign-module-variable` error in `components/workspace/sidebar.tsx` was renamed away) |
+| `slidein-app` production build | Passed; `/setup` present in the route list |
+| `/setup` browser run (headless Chrome, live API) | generate → answer → controlled test → activation; both intake endpoints called; activation correctly refused with `Deployment is not ready to activate` |
 | Full local `product` pytest | 50 passed, 5 failed, 33 errors; local PostgreSQL unavailable and async workflow tests not runnable |
 | `workspace-app` targeted project tests | 13 passed, 2 failed from `server-only` imported in test runtime |
 | Marketing lint | Failed across included skill/worktree scripts and application files |
@@ -184,3 +186,51 @@ Phase 0–2 slice, per ADR-2026-10-26-canonical-product-convergence:
   customer-exposed. Owner's uncommitted slidein-app changes preserved.
 - Tests: 188 passed (5 new convergence tests incl. fail-closed adaptation
   apply, synthesize reconciliation, section totality).
+
+## 2026-10-26 — One-shot client setup slice
+
+The ~30-minute onboarding flow ("Set up a client": provide context → generate →
+review exceptions → connect tools → test → activate) is implemented as a
+vertical slice. Per-client instances only — no centralized control room, no
+per-client forks, no long wizard.
+
+- **Screen:** `/setup` in `slidein-app` (`components/workspace/setup/`),
+  five stages + active, sidebar entry "Client Setup", server actions for
+  generate / answers / probe / controlled test / activate.
+- **Engine:** `slidein_api/setup/` (sources → extract → questions → blueprint
+  → service), deterministic first because no LLM key is configured. State
+  lives in `Tenant.settings["setup"]` plus normal tenant records.
+- **Two entry points, one screen:** `POST /v1/setup/client` remains the intake
+  of record (profile + universal-flow first workflow + readiness);
+  `GET/POST /v1/tenants/{id}/setup(/generate|/answers)` serve the per-stage
+  state the screen renders. The UI action calls both so neither store is left
+  behind. See `slidein_api/setup/README.md`.
+- **Honesty enforced by tests:** unsupported asks (e.g. SMS) become proposed
+  enhancements, unsafe/local website sources are refused and shown, profile
+  provenance is confirmed-vs-assumed, and `active` is only returned when
+  activation actually passes. Blocking questions (postal address, sender,
+  lawful basis, approver) keep sending policy unwritten until answered.
+- **Observed gaps, not hidden:** activation is still refused with
+  `Deployment is not ready to activate` until CRM field maps and the readiness
+  gate pass; transport is `dry_run`, so a controlled test sends nothing.
+
+## 2026-10-26 — Deep-read reconciliation (all canonical docs read in full)
+
+Conflicts found and resolved against the canonical texts:
+1. ARCHITECTURE §6 (two flow definitions drift): the machine flow definition
+   MOVED into `slidein_api/canonical.py` (STAGE_IDS + aliases + FlowViolation
+   owned there). `product/core/flow.py` remains an interim guard, tied by
+   `test_no_dual_flow_drift` (byte-equality).
+   REMOVAL CONDITION: when product/ acquisition path is retired from the
+   request path (TASKS 1), delete product/core/flow.py and the equality test.
+2. SPEC §7.1 (caller self-verification): POST /workspace/evidence now only
+   honors `verified=true` from admin/platform roles; member/agent callers
+   persist unverified. Covered by test_caller_cannot_self_verify.
+3. ARCHITECTURE §5 (second permanent config system): adaptive workspace
+   tables remain as the instance-durable persistence of tenant capability
+   configuration; the REGISTRY merge with the canonical slidein-api module
+   registry (TASKS 2) is the next controlled step — target: one code-owned
+   registry in slidein_api, adaptive catalog deleted after callers migrate.
+   Owner: convergence program. Test: registry parity + lifecycle test.
+Noted, not yet done: Alembic (create_all still bootstrap), durable scheduler,
+production inbound connector, user/team sessions. No live sending performed.

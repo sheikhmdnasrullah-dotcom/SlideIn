@@ -80,8 +80,27 @@ LEGACY_STAGE_COMPAT: dict[str, str] = {
 }
 
 
+# THE machine flow definition — owned here (Architecture §6). The interim
+# guard in product/core/flow.py must stay byte-identical (equality-tested);
+# its removal condition is recorded in docs/project/CURRENT_STATE.md.
+STAGE_IDS: tuple[str, ...] = (
+    "configure", "discover", "research", "qualify",
+    "personalize", "outreach", "converse",
+)
+
+_LEGACY_ALIASES: dict[str, str] = {
+    "match_offer": "qualify", "evaluate": "qualify",
+    "validate": "outreach", "execute": "outreach",
+    "measure": "converse", "booking": "converse", "nurture": "converse",
+    **LEGACY_STAGE_COMPAT,
+}
+
+
+class FlowViolation(ValueError):
+    """Raised when a workflow proposes steps outside the universal flow."""
+
+
 def canonical_flow() -> tuple[str, ...]:
-    from product.core.flow import STAGE_IDS
     return STAGE_IDS
 
 
@@ -89,17 +108,16 @@ def assert_canonical_flow(steps: tuple[str, ...] | list[str]) -> tuple[str, ...]
     """Validate steps against the universal flow, accepting the reconciled
     legacy `synthesize` stage by mapping it onto converse. Off-flow steps are
     rejected before persistence."""
-    from product.core.flow import FlowViolation, STAGE_IDS, canonical_stage
     resolved = []
     for step in steps:
         s = step.strip().lower()
-        if s in LEGACY_STAGE_COMPAT:
-            resolved.append(LEGACY_STAGE_COMPAT[s])
+        if s in STAGE_IDS:
+            resolved.append(s)
             continue
-        stage = canonical_stage(s)
-        if stage is None:
+        aliased = _LEGACY_ALIASES.get(s)
+        if aliased is None:
             raise FlowViolation(
                 f"step {step!r} is off-flow; canonical stages: {' -> '.join(STAGE_IDS)}"
             )
-        resolved.append(stage)
+        resolved.append(aliased)
     return tuple(resolved)
