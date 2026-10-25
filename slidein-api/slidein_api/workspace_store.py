@@ -57,6 +57,40 @@ class WorkspaceProposalRow(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+class SetupStatusRow(Base):
+    __tablename__ = "setup_status"
+
+    tenant_id = Column(String(64), primary_key=True)
+    state = Column(String(32))
+    payload = Column(JSON)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+async def persist_setup_status(status) -> None:
+    async with session_scope() as s:
+        row = await s.get(SetupStatusRow, status.tenant_id)
+        if row is None:
+            row = SetupStatusRow(tenant_id=status.tenant_id)
+            s.add(row)
+        row.state = status.state
+        row.payload = {
+            "profile_id": status.profile_id,
+            "config_version": status.config_version,
+            "workflow_proposal_id": status.workflow_proposal_id,
+            "blockers": list(status.blockers),
+            "questions": list(status.questions),
+            "next_action": status.next_action,
+        }
+
+
+async def load_setup_status(tenant_id: str):
+    async with session_scope() as s:
+        row = await s.get(SetupStatusRow, tenant_id)
+        if row is None:
+            return None
+        return {"tenant_id": row.tenant_id, "state": row.state, **(row.payload or {})}
+
+
 async def persist_config(cfg) -> None:
     import uuid as _uuid
     from product.core.workspace import WidgetConfig

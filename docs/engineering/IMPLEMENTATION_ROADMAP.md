@@ -81,6 +81,8 @@ Each phase requires implementation, tests, documentation, and a demonstrated acc
 ### Tasks
 
 - Define one execution authority around canonical stage contracts and `StageRunner` semantics.
+- Move the seven-stage machine definition from the interim `product/core/flow.py` guard into `slidein-api`; fold `synthesize` into conversation/feedback with migrations and tested compatibility mappings.
+- Enforce canonical stage order and provenance before persisting workflow proposals; keep one machine definition rather than divergent copies.
 - Decide narrowly where LangGraph remains behind that authority; remove parallel ownership of acquisition state.
 - Add durable scheduling/queueing appropriate to the existing modular monolith.
 - Add idempotency keys for stages, sends, webhooks, and approval/resume actions.

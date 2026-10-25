@@ -56,6 +56,10 @@ UNSUPPORTED_CAPABILITIES: tuple[tuple[str, str], ...] = (
      "Billing is not a supported capability; would be a core-product enhancement."),
 )
 
+#: Outbound channels a client brief may ask for and this build cannot do.
+#: Scanned in free prose too, because that is where requests are stated.
+CHANNEL_REQUESTS: tuple[tuple[str, str], ...] = UNSUPPORTED_CAPABILITIES[:6]
+
 CRM_HINTS: tuple[tuple[str, str], ...] = (
     (r"hubspot", "hubspot"),
     (r"pipedrive", "pipedrive"),
@@ -74,8 +78,13 @@ def _detect_crm(text: str) -> str:
     return ""
 
 
-def _unsupported_requests(draft: dict) -> list[dict]:
-    corpus = " ".join(
+def detect_crm(text: str) -> str:
+    """Public alias: used to prefill the CRM question from the corpus."""
+    return _detect_crm(text)
+
+
+def _unsupported_requests(draft: dict, corpus: str = "") -> list[dict]:
+    text = " ".join(
         str((draft.get("fields", {}).get(key) or {}).get("value") or "")
         for key in (
             "service_scope", "integrations_required", "operational_constraints",
@@ -83,30 +92,42 @@ def _unsupported_requests(draft: dict) -> list[dict]:
         )
     )
     found: list[dict] = []
-    for pattern, reason in UNSUPPORTED_CAPABILITIES:
-        if re.search(pattern, corpus, re.IGNORECASE):
-            found.append({
-                "capability": reason.split(";")[0].rstrip("."),
-                "reason": reason,
-                "status": "proposed_core_enhancement",
-            })
+    seen: set[str] = set()
+
+    def scan(haystack: str, patterns: tuple[tuple[str, str], ...]) -> None:
+        for pattern, reason in patterns:
+            if reason in seen or not haystack:
+                continue
+            if re.search(pattern, haystack, re.IGNORECASE):
+                seen.add(reason)
+                found.append({
+                    "capability": reason.split(";")[0].rstrip("."),
+                    "reason": reason,
+                    "status": "proposed_core_enhancement",
+                })
+
+    scan(text, UNSUPPORTED_CAPABILITIES)
+    # Free prose is only scanned for channel requests: a brief that mentions
+    # invoices is not a request for billing, but "we want to send SMS" is.
+    scan(corpus or "", CHANNEL_REQUESTS)
     return found
 
 
-def _scope_flags(draft: dict, answers: dict) -> dict:
+def _scope_flags(draft: dict, answers: dict, corpus: str = "") -> dict:
     scope_text = " ".join([
         str((draft.get("fields", {}).get("service_scope") or {}).get("value") or ""),
         str((draft.get("fields", {}).get("approval_requirements") or {}).get("value") or ""),
         str(answers.get("service_scope") or ""),
-    ])
-    include_prospecting = not _NO_PROSPECTING.search(scope_text)
-    include_outreach = include_prospecting and not _NO_OUTBOUND.search(scope_text)
-    include_inbox = include_outreach and not _NO_INBOX.search(scope_text)
+    ]).strip()
+    haystack = " ".join([scope_text, corpus or ""])
+    include_prospecting = not _NO_PROSPECTING.search(haystack)
+    include_outreach = include_prospecting and not _NO_OUTBOUND.search(haystack)
+    include_inbox = include_outreach and not _NO_INBOX.search(haystack)
     return {
         "include_prospecting": include_prospecting,
         "include_outreach": include_outreach,
         "include_inbox": include_inbox,
-        "scope_text": scope_text.strip(),
+        "scope_text": scope_text,
     }
 
 
@@ -155,19 +176,24 @@ def propose_blueprint(
     answers: dict,
     *,
     tenant_name: str = "",
+    corpus: str = "",
 ) -> dict:
     """Build the proposed workspace for this business."""
     blueprint = get_blueprint("prospect_to_conversation", "1.0.0")
-    flags = _scope_flags(draft, answers)
+    flags = _scope_flags(draft, answers, corpus)
     enabled = _enabled_modules(flags)
     nav_order = list(enabled)
 
     scope_corpus = " ".join([
         flags["scope_text"],
         str((draft.get("fields", {}).get("integrations_required") or {}).get("value") or ""),
-        str(answers.get("crm_provider") or ""),
+        corpus or "",
     ])
-    crm_provider = str(answers.get("crm_provider") or "").strip() or _detect_crm(scope_corpus)
+    # Detection only ever prefills the question. A CRM becomes part of the
+    # configuration when — and only when — the operator answers for it.
+    detected_crm = _detect_crm(scope_corpus)
+    answered_crm = str(answers.get("crm_provider") or "").strip().lower()
+    crm_provider = "" if answered_crm in ("", "none") else answered_crm
 
     transport = str(answers.get("transport") or "dry_run").lower()
     if transport not in ("dry_run", "smtp"):
@@ -204,15 +230,18 @@ def propose_blueprint(
             "reason": "Opt-outs must be honoured before the first send.",
             "secret_ref": "",
         })
-    if crm_provider:
+    crm_name = crm_provider or detected_crm
+    if crm_name:
         required_integrations.append({
             "id": "crm",
-            "label": f"{crm_provider.title()} CRM",
-            "provider": crm_provider,
-            "required": str(answers.get("crm_required") or "").lower() in ("1", "true", "yes"),
+            "label": f"{crm_name.title()} CRM",
+            "provider": crm_name,
+            "required": bool(crm_provider),
             "probe": "unsupported",
-            "reason": "Field maps and credentials are needed before records sync.",
-            "secret_ref": f"{crm_provider.upper()}_API_KEY",
+            "reason": ("Field maps and a credential are required before records sync."
+                       if crm_provider else
+                       "Detected in the context; confirm the CRM question to enable it."),
+            "secret_ref": f"{crm_name.upper()}_API_KEY",
         })
 
     success_measures = [
@@ -259,7 +288,31 @@ def propose_blueprint(
         "modules": enabled,
     }
 
-    validation = validate_deployment_config(blueprint, deployment_config)
+    # The blueprint validates a *view* of the configuration: it names
+    # `sending.physical_address` and a top-level `transport`, while the
+    # saved deployment config uses `sending.physical_postal_address`.
+    legal_name = str((draft.get("fields", {}).get("legal_name") or {}).get("value") or "") or tenant_name
+    products = str((draft.get("fields", {}).get("products_services") or {}).get("value") or "")
+    icp_text = str((draft.get("fields", {}).get("ideal_customer_profile") or {}).get("value") or "")
+    offer_names = [p.strip() for p in re.split(r"[;\n]", products) if p.strip()]
+    validation_view: dict[str, Any] = {
+        "transport": transport,
+        "profile": {"business_name": legal_name},
+        "offers": [{"name": name} for name in offer_names],
+        "icps": [{"name": icp_text}] if icp_text else [],
+        "sending": {
+            "sender": deployment_config["sending"]["sender"],
+            "physical_address": deployment_config["sending"]["physical_postal_address"],
+            "lawful_basis": deployment_config["sending"]["lawful_basis"],
+        },
+        "approvals": dict(deployment_config["approvals"]),
+    }
+    if transport == "smtp":
+        # No credential is invented: the SMTP key stays absent until the
+        # operator registers and probes a real connection.
+        validation_view["integrations"] = {}
+
+    validation = validate_deployment_config(blueprint, validation_view)
     module_violations = [m for m in enabled if m not in MODULE_IDS]
 
     stages = list(blueprint.stages)
@@ -293,7 +346,7 @@ def propose_blueprint(
         },
         "scope": flags,
         "deployment_config": deployment_config,
-        "proposed_enhancements": _unsupported_requests(draft),
+        "proposed_enhancements": _unsupported_requests(draft, corpus),
         "validation": {
             "ok": validation.ok and not module_violations,
             "missing_required": list(validation.missing_required),

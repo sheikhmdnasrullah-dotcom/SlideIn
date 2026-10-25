@@ -9,6 +9,7 @@ import {
   Inbox,
   LayoutDashboard,
   MoreHorizontal,
+  Rocket,
   ScanSearch,
   Search,
   Settings2,
@@ -23,6 +24,7 @@ import { GlossTile } from "@/components/system/gloss-tile";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {
+  setup: Rocket,
   overview: LayoutDashboard,
   profile: Settings2,
   discovery: Compass,
@@ -77,8 +79,8 @@ export function WorkflowSidebar({
     enabledModules.includes(SECTION_MODULES[section.id] ?? section.id);
   const sectionRank = (section: SectionMeta) => {
     if (!moduleOrder?.length) return Number.MAX_SAFE_INTEGER;
-    const module = SECTION_MODULES[section.id] ?? section.id;
-    const idx = moduleOrder.indexOf(module);
+    const moduleId = SECTION_MODULES[section.id] ?? section.id;
+    const idx = moduleOrder.indexOf(moduleId);
     return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
   };
   const sections = GROUP_ORDER.map((group) => ({

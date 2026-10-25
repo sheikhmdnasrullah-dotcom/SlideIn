@@ -8,6 +8,7 @@ import "server-only";
 
 import { client, workspacePath } from "./client";
 import type {
+  ActivationStatus,
   ActivityLog,
   AutopilotStatus,
   Branding,
@@ -21,6 +22,7 @@ import type {
   DraftDetail,
   EffectiveTemplate,
   EvidenceItem,
+  FactoryConnection,
   Handoff,
   Icp,
   Offer,
@@ -33,8 +35,11 @@ import type {
   ProspectStatus,
   Qualification,
   Readiness,
+  SafeTestReport,
   SendingPolicy,
   SentMessage,
+  SetupReport,
+  SetupStatus,
   StageOutcome,
   StageRun,
   SuppressionRecord,
@@ -402,6 +407,51 @@ export const operations = {
     return client
       .get<Overview>(workspacePath("/overview", workspaceId))
       .then((overview) => overview.counts);
+  },
+
+  // ── client setup ─────────────────────────────────────────────────────────
+  /** The six named stages, open questions, blockers, and proposed blueprint. */
+  setupStatus(workspaceId: string) {
+    return client.get<SetupStatus>(workspacePath("/setup", workspaceId));
+  },
+  setupGenerate(workspaceId: string, body: Record<string, unknown>) {
+    return client.post<SetupReport>(workspacePath("/setup/generate", workspaceId), body);
+  },
+  setupAnswers(workspaceId: string, answers: Record<string, string>) {
+    return client.post<SetupReport>(workspacePath("/setup/answers", workspaceId), { answers });
+  },
+
+  // ── factory: connect, validate, test, activate ───────────────────────────
+  factoryConnections(workspaceId: string) {
+    return client
+      .get<{ data: FactoryConnection[]; total: number }>(
+        workspacePath("/factory/connections", workspaceId),
+      )
+      .then((value) => value?.data ?? []);
+  },
+  probeConnection(workspaceId: string, connectionId: string) {
+    return client.post<FactoryConnection>(
+      workspacePath(`/factory/connections/${connectionId}/probe`, workspaceId),
+    );
+  },
+  factoryValidation(workspaceId: string) {
+    return client.get<{
+      tenant_id: string;
+      ready: boolean;
+      failed_required: string[];
+      stages: import("./types").ValidationStage[];
+    }>(workspacePath("/factory/validation", workspaceId));
+  },
+  factoryActivation(workspaceId: string) {
+    return client.get<ActivationStatus>(workspacePath("/factory/activation", workspaceId));
+  },
+  activateWorkspace(workspaceId: string) {
+    return client.post<ActivationStatus>(
+      workspacePath("/factory/activation/activate", workspaceId),
+    );
+  },
+  factoryTest(workspaceId: string, mode: "sample" | "synthetic" = "synthetic") {
+    return client.post<SafeTestReport>(workspacePath("/factory/test", workspaceId), { mode });
   },
 };
 

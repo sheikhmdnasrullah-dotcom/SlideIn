@@ -14,11 +14,17 @@ import { revalidatePath } from "next/cache";
 import { ApiRequestError } from "./client";
 import { WORKSPACE_ID } from "./config";
 import { operations } from "./operations";
-import type { OsintResearchResult } from "./types";
+import type { OsintResearchResult, SetupReport } from "./types";
 
 export interface ActionResult {
   ok: boolean;
   message: string;
+}
+
+/** Setup actions also return the regenerated report so the screen can
+ * render the new questions and exceptions without waiting on a refresh. */
+export interface SetupActionResult extends ActionResult {
+  report?: SetupReport;
 }
 
 function failure(error: unknown): ActionResult {
@@ -493,6 +499,121 @@ export async function applyTemplateAction(
     revalidatePath("/", "layout");
     const label = effective.template?.label ?? templateId;
     return { ok: true, message: `Applied "${label}". Your existing settings were kept.` };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+// ── client setup ────────────────────────────────────────────────────────────
+
+function setupSources(formData: FormData): Record<string, unknown>[] {
+  const sources: Record<string, unknown>[] = [];
+  const context = str(formData.get("context"));
+  const website = str(formData.get("website"));
+  if (context) sources.push({ type: "notes", label: "operator context", text: context });
+  if (website) sources.push({ type: "website", url: website });
+  return sources;
+}
+
+export async function setupGenerateAction(
+  _prev: SetupActionResult,
+  formData: FormData,
+): Promise<SetupActionResult> {
+  const sources = setupSources(formData);
+  if (sources.length === 0) {
+    return {
+      ok: false,
+      message: "Add what the client gave you — a note, a brief, or their website.",
+    };
+  }
+  try {
+    const report = await operations.setupGenerate(WORKSPACE_ID, { sources });
+    revalidatePath("/setup");
+    revalidatePath("/profile");
+    revalidatePath("/overview");
+    const saved = report.profile.saved;
+    return {
+      ok: true,
+      message: saved
+        ? `Setup generated: profile, offers and ICP saved. ${report.status.open_blocking_questions.length} question(s) still need an answer.`
+        : `Context read. ${report.status.open_blocking_questions.length} question(s) still need an answer before the profile can be saved.`,
+      report,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function setupAnswersAction(
+  _prev: SetupActionResult,
+  formData: FormData,
+): Promise<SetupActionResult> {
+  const answers: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    if (typeof value === "string" && key.startsWith("answer:")) {
+      answers[key.slice("answer:".length)] = value.trim();
+    }
+  }
+  if (Object.keys(answers).length === 0) {
+    return { ok: false, message: "Nothing to save: answer at least one question." };
+  }
+  try {
+    const report = await operations.setupAnswers(WORKSPACE_ID, answers);
+    revalidatePath("/setup");
+    revalidatePath("/profile");
+    revalidatePath("/overview");
+    const open = report.status.open_blocking_questions.length;
+    return {
+      ok: true,
+      message:
+        open > 0
+          ? `Saved. ${open} required question(s) still open.`
+          : "Saved. Every required question is answered — review the exceptions next.",
+      report,
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+// ── factory: connect, test, activate ────────────────────────────────────────
+
+export async function probeConnectionAction(connectionId: string): Promise<ActionResult> {
+  try {
+    const row = await operations.probeConnection(WORKSPACE_ID, connectionId);
+    revalidatePath("/setup");
+    return row.status === "connected"
+      ? { ok: true, message: `${row.label}: connection verified.` }
+      : { ok: false, message: `${row.label}: ${row.last_error || row.status}.` };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function runSetupTestAction(): Promise<ActionResult> {
+  try {
+    const report = await operations.factoryTest(WORKSPACE_ID, "synthetic");
+    revalidatePath("/setup");
+    if (!report.passed) {
+      const failed = report.findings
+        .filter((f) => f.status !== "pass" && f.blocking)
+        .map((f) => f.check);
+      return { ok: false, message: `Test failed: ${failed.join(", ")}.` };
+    }
+    return { ok: true, message: "Controlled test passed — nothing was sent to a real mailbox." };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function activateWorkspaceAction(): Promise<ActionResult> {
+  try {
+    const status = await operations.activateWorkspace(WORKSPACE_ID);
+    revalidatePath("/setup");
+    revalidatePath("/overview");
+    return status.status === "active"
+      ? { ok: true, message: "Workspace activated." }
+      : { ok: false, message: `Activation returned ${status.status}.` };
   } catch (error) {
     return failure(error);
   }

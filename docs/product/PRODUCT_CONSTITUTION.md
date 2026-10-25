@@ -22,6 +22,8 @@ A complete, reliable business outcome is more valuable than another page, agent,
 
 ### 2.2 One product, not client forks
 
+Every client and industry uses the same ordered business flow: **Configure → Discover → Research → Qualify → Personalize → Outreach → Converse**, followed by Activity, Overview, and approved configuration refinement. Tools and policies vary beneath a stage; the client workflow does not fork. Learning and synthesis belong inside this loop, not in an additional top-level dashboard or stage.
+
 Industry and client differences belong in versioned knowledge, configuration, registered capabilities, integrations, permissions, and service entitlements. They do not justify separate frontends or divergent domain models.
 
 ### 2.3 The workspace is not the product

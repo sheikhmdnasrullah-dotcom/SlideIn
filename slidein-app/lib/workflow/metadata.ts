@@ -35,6 +35,14 @@ export interface SectionMeta {
 
 export const SECTIONS: SectionMeta[] = [
   {
+    id: "setup",
+    href: "/setup",
+    label: "Client Setup",
+    group: "setup",
+    stage: "configure",
+    description: "Context in, workspace out: generate, review exceptions, connect, test, activate.",
+  },
+  {
     id: "overview",
     href: "/overview",
     label: "Overview",

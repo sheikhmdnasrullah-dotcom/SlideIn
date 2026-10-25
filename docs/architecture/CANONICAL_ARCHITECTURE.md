@@ -138,6 +138,19 @@ The newer instance-durable workspace persistence is a useful starting point, but
 
 `StageRunner` and the stage contracts remain the public domain authority for the first workflow. They define required inputs, produced outputs, transitions, permissions, review conditions, failure codes, and audit records.
 
+The business flow is fixed at seven ordered stages:
+
+```text
+configure -> discover -> research -> qualify -> personalize -> outreach -> converse
+    ^                                                                    |
+    |                                                                    v
+approved configuration <---- overview <---- activity <---- outcomes ------
+```
+
+Tools, integrations, schemas, prompts, and policies attach beneath these stages. They do not create new top-level client workflows. The existing `synthesize` stage is an as-built eighth stage, not the target model: fold its useful learning/synthesis responsibility into `converse` and the activity/overview feedback loop, with a temporary compatibility mapping where required.
+
+`docs/UNIVERSAL_FLOW.md` and `product/core/flow.py` now provide an interim machine guard and provenance contract for this invariant. They do not make `product/core` the permanent customer domain. During convergence, move the machine definition into `slidein-api` with one canonical definition, tested compatibility imports/aliases, and a removal condition; do not leave two independent flow definitions to drift.
+
 There must be one authority for:
 
 - Starting work.

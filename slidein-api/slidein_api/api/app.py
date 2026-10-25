@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ..db import init_db
 from .. import workspace_store as _workspace_store  # noqa: F401  (register tables on Base before create_all)
 from ..errors import SlideinError
-from .routes import autopilot, config, factory, osint, outreach, overview, pipeline, system, workspace
+from .routes import autopilot, config, factory, osint, outreach, overview, pipeline, setup, system, workspace
 
 logger = logging.getLogger("slidein.api")
 
@@ -162,6 +162,7 @@ def create_app() -> FastAPI:
     app.include_router(factory.router, prefix=prefix, tags=["factory"])
     app.include_router(autopilot.router, prefix=prefix, tags=["autopilot"])
     app.include_router(workspace.router, prefix=prefix, tags=["workspace"])
+    app.include_router(setup.router, prefix=prefix, tags=["setup"])
     return app
 
 

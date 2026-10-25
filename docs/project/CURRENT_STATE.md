@@ -2,7 +2,7 @@
 
 - Living implementation snapshot
 - Last locally verified: 2026-10-26
-- Repository revision inspected: `a808b23`
+- Repository revision inspected: `eacec26`; concurrent uncommitted setup changes were not modified by this documentation pass
 - Scope: local source and tests; live VPS and external providers were not contacted
 - Product direction: `../product/PRODUCT_SPECIFICATION.md`
 - Target architecture: `../architecture/CANONICAL_ARCHITECTURE.md`
@@ -16,20 +16,29 @@ Slidein currently has multiple product centers, not one fully converged workspac
 | Area | Observed state | Canonical disposition |
 |---|---|---|
 | `slidein-app/` | Real Next.js customer workspace with server-side BFF, workflow navigation, backend-driven overview, prospect/draft/conversation pages | Canonical customer frontend |
-| `slidein-api/` | FastAPI workflow API with persistent acquisition records, stage contracts, approvals, sending policy, conversations, activity, and autopilot | Canonical backend/domain |
+| `slidein-api/` | FastAPI workflow API with persistent acquisition records, stage contracts, approvals, sending policy, conversations, activity, autopilot, and a new source-grounded setup intake/blueprint implementation | Canonical backend/domain |
 | `workspace-app/` | Broad Next.js internal console with many tool surfaces; acquisition command center consumes mock opportunities and hardcoded operational content | Internal/legacy; not customer workspace |
-| `product/` | Parallel Acquisition OS models/API plus adaptive core; main API mounts opportunities, command-center, and health routers | Do not expand as another product; absorb useful core concepts |
+| `product/` | Parallel Acquisition OS models/API plus adaptive core and an interim universal-flow guard; main API mounts opportunities, command-center, and health routers | Do not expand as another product; absorb useful core concepts |
 | `osint_core/`, `visitor_core/`, `unified/` | Useful enrichment/visitor prototypes with unauthenticated, non-tenant-scoped surfaces | Not customer-safe; adapt only after isolation and scope review |
 | Mail/deliverability stack | Go/KumoMTA/Lua/Python/Rust/Redis/Celery/Caddy/Docker and monitoring components | Retain behind verified canonical adapters |
 
 ## 2. Implemented canonical workflow
 
-The canonical stage sequence is:
+The existing `slidein-api` stage sequence is:
 
 ```text
 configure -> discover -> research -> qualify -> personalize
           -> outreach -> converse -> synthesize
 ```
+
+Commit `eacec26` also introduced `docs/UNIVERSAL_FLOW.md` and `product/core/flow.py`, which define the accepted seven-stage product invariant:
+
+```text
+configure -> discover -> research -> qualify -> personalize -> outreach -> converse
+          -> activity -> overview -> approved configuration refinement
+```
+
+These currently differ. Convergence must fold useful synthesis/learning behavior into `converse` and the activity/overview feedback loop, move the machine flow definition into the canonical API, and retain only tested compatibility mappings during migration. The `product/core` guard must not become a second permanent workflow authority.
 
 Verified code provides:
 
@@ -55,6 +64,7 @@ The adaptive layer currently includes:
 - LangGraph research/qualification/approval execution with SQLite checkpoints.
 - Configuration-driven navigation ordering in `slidein-app`.
 - Instance-database write-through persistence for workspace config versions, evidence, and proposals, added in `a808b23`.
+- A seven-stage flow/provenance guard in `product/core/flow.py`, with adaptation-time rejection of unknown stages and four focused tests, added in `eacec26`; ordering is not yet fully enforced by `assert_flow_aligned()`, and the canonical API still has its own stage enum.
 
 Remaining concerns:
 
@@ -136,6 +146,7 @@ Dedicated client environments remain the initial managed deployment model. Share
 | Check | Observed result |
 |---|---|
 | `slidein-api` pytest | 179 passed; one `TestRunService` collection warning |
+| `product/tests/test_flow.py` | 4 passed; verifies stage identifiers, aliases, unknown-stage rejection, and adaptation integration |
 | `slidein-app` TypeScript | Passed |
 | `slidein-app` lint | Failed: one `no-assign-module-variable` error in `components/workspace/sidebar.tsx` |
 | Full local `product` pytest | 50 passed, 5 failed, 33 errors; local PostgreSQL unavailable and async workflow tests not runnable |

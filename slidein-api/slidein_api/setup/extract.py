@@ -25,7 +25,10 @@ from .sources import Source
 
 FIELD_LABELS: dict[str, str] = {
     "legal_name": "Business name",
+    "website_url": "Website URL",
+    "industry": "Industry",
     "business_description": "Business description",
+    "core_value_prop": "Core value proposition",
     "business_model": "Business model",
     "products_services": "Products and services",
     "differentiators": "Differentiators",
@@ -57,10 +60,21 @@ ALIASES: dict[str, str] = {
     "company": "legal_name",
     "client": "legal_name",
     "name": "legal_name",
+    "website": "website_url",
+    "website url": "website_url",
+    "web site": "website_url",
+    "url": "website_url",
+    "site": "website_url",
+    "industry": "industry",
+    "sector": "industry",
+    "vertical": "industry",
     "business description": "business_description",
     "description": "business_description",
     "about": "business_description",
     "about us": "business_description",
+    "core value proposition": "core_value_prop",
+    "value prop": "core_value_prop",
+    "our promise": "core_value_prop",
     "business model": "business_model",
     "model": "business_model",
     "products": "products_services",
@@ -98,7 +112,6 @@ ALIASES: dict[str, str] = {
     "locations": "geography",
     "regions": "geography",
     "industries": "industries_served",
-    "industry": "industries_served",
     "verticals": "industries_served",
     "brand voice": "brand_voice",
     "voice": "brand_voice",
@@ -141,8 +154,36 @@ ALIASES: dict[str, str] = {
 }
 
 #: Prose patterns. These read a statement out of a sentence, so they are
-#: always `assumption` — the writer did not fill in a field.
+#: always `assumption` — the writer did not fill in a field. Only the first
+#: match per pattern is kept, so free text never manufactures a conflict.
 PROSE_PATTERNS: tuple[tuple[str, str, re.Pattern[str]], ...] = (
+    (
+        "legal_name",
+        "Opening sentence names the business",
+        re.compile(
+            r"^\s{0,3}([A-Z][\w&'.,-]{1,40}(?:\s+[A-Z][\w&'.,-]{1,40}){0,5})"
+            r"\s+(?:helps|helping|is an?|offers|provides|sells|works with)\b",
+            re.MULTILINE,
+        ),
+    ),
+    (
+        "products_services",
+        "Offer statement",
+        re.compile(
+            r"\b(?:we|they)\s+(?:sell|offer|provide|build|make|deliver|specialise in|"
+            r"specialize in)\s+([^.!?\n]{3,200})",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "core_value_prop",
+        "Stated promise",
+        re.compile(
+            r"\b(?:our (?:promise|value prop\w*)|the value proposition)\s*"
+            r"(?:is|:)\s*([^.!?\n]{4,200})",
+            re.IGNORECASE,
+        ),
+    ),
     (
         "exclusion_rules",
         "Negated audience statement",
@@ -337,19 +378,21 @@ def _claims_from_labels(source: Source) -> Iterable[Claim]:
 
 def _claims_from_prose(source: Source) -> Iterable[Claim]:
     for key, basis, pattern in PROSE_PATTERNS:
-        for match in pattern.finditer(source.text):
-            value = _clean(match.group(1))
-            if len(value) < 4:
-                continue
-            yield Claim(
-                key=key,
-                value=value,
-                status="assumption",
-                confidence=0.6,
-                source_id=source.id,
-                source_label=source.label,
-                basis=basis,
-            )
+        match = pattern.search(source.text)
+        if match is None:
+            continue
+        value = _clean(match.group(1))
+        if len(value) < 4:
+            continue
+        yield Claim(
+            key=key,
+            value=value,
+            status="assumption",
+            confidence=0.6,
+            source_id=source.id,
+            source_label=source.label,
+            basis=basis,
+        )
 
 
 def _claims_from_website(source: Source) -> Iterable[Claim]:
@@ -381,11 +424,13 @@ def _claims_from_website(source: Source) -> Iterable[Claim]:
                                 source.id, source.label, "website heading")
 
     for key, basis, pattern in PROSE_PATTERNS:
-        for match in pattern.finditer(source.text):
-            value = _clean(match.group(1))
-            if len(value) >= 4:
-                yield Claim(key, value, "assumption", 0.55,
-                            source.id, source.label, f"website {basis.lower()}")
+        match = pattern.search(source.text)
+        if match is None:
+            continue
+        value = _clean(match.group(1))
+        if len(value) >= 4:
+            yield Claim(key, value, "assumption", 0.55,
+                        source.id, source.label, f"website {basis.lower()}")
 
 
 def collect_claims(sources: list[Source]) -> list[Claim]:
@@ -471,16 +516,79 @@ def _normalise(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", (value or "").lower())[:120]
 
 
+#: Bucket → how the industry reads on screen. Used only when a keyword in
+#: the sources actually matched; `agency` is the silent fallback, so it
+#: never prefills an industry the sources did not support.
+INDUSTRY_LABELS: dict[str, str] = {
+    "mortgage": "Mortgage and lending",
+    "dental": "Dental",
+    "healthcare": "Healthcare",
+    "saas": "Software / SaaS",
+}
+
+
+def _set_field(
+    fields: dict[str, dict], key: str, value: str, status: str,
+    confidence: float, source_id: str, source_label: str, basis: str,
+) -> None:
+    if not value:
+        return
+    fields[key] = {
+        "key": key,
+        "label": FIELD_LABELS[key],
+        "value": _clean(value),
+        "status": status,
+        "confidence": confidence,
+        "sources": [source_id],
+        "basis": basis,
+    }
+
+
+def _fallbacks(fields: dict[str, dict], sources: list[Source]) -> str:
+    """Read the last few basics a source plainly states but no pattern
+    matched. Every fallback fills an *unknown* field and is marked as an
+    inference, so it still has to be confirmed."""
+    if not fields["website_url"]["value"]:
+        for source in sources:
+            if source.type == "website" and source.url and source.status in ("ready", "error"):
+                _set_field(fields, "website_url", source.url, "confirmed", 0.9,
+                           source.id, source.label,
+                           "supplied as the website source")
+                break
+
+    if not fields["business_description"]["value"]:
+        for source in sources:
+            if source.status not in ("ready", "truncated") or not source.text.strip():
+                continue
+            for line in source.text.splitlines():
+                sentence = line.strip().strip("#* ").strip()
+                if 20 <= len(sentence) <= 240:
+                    _set_field(fields, "business_description", sentence,
+                               "assumption", 0.5, source.id, source.label,
+                               "opening line of the supplied context")
+                    break
+            if fields["business_description"]["value"]:
+                break
+
+    hint = " ".join(filter(None, [
+        fields["legal_name"]["value"], fields["industries_served"]["value"],
+        fields["business_description"]["value"], fields["products_services"]["value"],
+    ]))
+    industry_key = _infer_industry_key(hint)
+    if not fields["industry"]["value"] and industry_key in INDUSTRY_LABELS:
+        _set_field(fields, "industry", INDUSTRY_LABELS[industry_key], "assumption",
+                   0.55, "sources", "all sources",
+                   "inferred from keywords in the supplied context — confirm")
+    return industry_key
+
+
 def extract_profile(sources: list[Source]) -> dict:
     """Sources → canonical business profile draft with provenance."""
     claims = collect_claims(sources)
     fields, conflicts = _resolve(claims)
+    industry_key = _fallbacks(fields, sources)
 
     corpus = "\n".join(s.text for s in sources if s.text)
-    legal_name = fields["legal_name"]["value"]
-    industry_hint = " ".join(filter(None, [legal_name, fields["industries_served"]["value"],
-                                           fields["business_description"]["value"]]))
-    industry_key = _infer_industry_key(industry_hint or "agency")
 
     unknown = [k for k, f in fields.items() if f["status"] == "unknown"]
     assumptions = [k for k, f in fields.items() if f["status"] == "assumption"]

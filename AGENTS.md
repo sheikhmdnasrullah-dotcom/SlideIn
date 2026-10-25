@@ -78,6 +78,8 @@ archived under `archived_rules/` for reference; they are not binding.
 
 ## Prospect Engagement Capability (conversations, chat, voice, meeting booking)
 
+> **2026-10-26 convergence note:** The Product Constitution, Product Specification, Canonical Architecture, accepted convergence ADR, and current Implementation Roadmap supersede older phase numbers and resolved questions below. Follow Phases 0–8, not the historical Phase 10 sequence. The first release now explicitly includes real inbound replies and owner/booking-link handoff; Notion primary booking plus custom booking links is the accepted provider direction. Other provider choices, live sending, production access, and external effects still require the applicable safety review and explicit authorization. Chat, voice, full calendar lifecycle, and broad engagement expansion remain deferred.
+
 This is part of the product vision (reply → AI-assisted conversation → meeting booking). It is **documented, not built**.
 
 - **Before touching replies, conversations, chat, voice, calendars, or booking, read:**

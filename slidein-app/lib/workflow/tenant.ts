@@ -15,6 +15,7 @@ import type { Branding } from "@/lib/api/types";
 /** Workspace section id → API module id (see slidein-api MODULE_REGISTRY). */
 export const SECTION_MODULES: Record<string, string> = {
   overview: "overview",
+  setup: "settings",
   profile: "settings",
   discovery: "discovery",
   research: "research",

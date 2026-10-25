@@ -771,3 +771,243 @@ export interface WorkspaceConfig {
   widgets: Array<{ module_id: string; widget_type: string; settings: Record<string, unknown> }>;
   integration_refs: string[];
 }
+
+// ── client setup ────────────────────────────────────────────────────────────
+
+export type SetupStageKey =
+  | "workspace_generated"
+  | "configuration_validated"
+  | "integrations_connected"
+  | "workflow_tested"
+  | "ready_for_approval"
+  | "active";
+
+export type SetupSourceStatus = "ready" | "error" | "unsupported" | "truncated";
+
+/** One operator-supplied input. `text` is what extraction actually read. */
+export interface SetupSource {
+  id: string;
+  type: string;
+  label: string;
+  text: string;
+  url: string;
+  filename: string;
+  status: SetupSourceStatus;
+  error: string;
+  char_count: number;
+  retrieved_at: string;
+}
+
+export interface SetupField {
+  key: string;
+  label: string;
+  value: string;
+  status: "confirmed" | "assumption" | "unknown";
+  confidence: number;
+  sources: string[];
+  basis: string;
+}
+
+export interface SetupConflict {
+  key: string;
+  label: string;
+  values: { value: string; source: string; status: string; confidence: number }[];
+  chosen: string;
+  chosen_from: string;
+  resolution: string;
+}
+
+export type SetupQuestionStatus = "open" | "prefilled" | "answered";
+
+export interface SetupQuestion {
+  key: string;
+  group: string;
+  prompt: string;
+  help: string;
+  default: string;
+  value: string;
+  status: SetupQuestionStatus;
+  required: boolean;
+  blocking: boolean;
+  kind: "text" | "choice";
+  options: string[];
+  unblocks: string;
+  answered_by: string;
+}
+
+export interface SetupEnhancement {
+  capability: string;
+  reason: string;
+  status: string;
+}
+
+export interface SetupIntegration {
+  id: string;
+  label: string;
+  provider: string;
+  required: boolean;
+  probe: string;
+  reason: string;
+  secret_ref: string;
+}
+
+export interface SetupBlueprint {
+  blueprint: {
+    name: string;
+    version: string;
+    title: string;
+    summary: string;
+    declared_stages: string[];
+    active_stages: string[];
+    approval_gates: { name: string; stage: string; approver_role: string; sla_hours: number }[];
+  };
+  modules: {
+    enabled: string[];
+    nav_order: string[];
+    registry_labels: Record<string, string>;
+  };
+  terminology: { sections: Record<string, string>; entities: Record<string, string> };
+  required_integrations: SetupIntegration[];
+  approval_policy: {
+    require_approval: boolean;
+    approver: string;
+    sla_hours: number;
+    boundaries: string[];
+  };
+  reporting: { success_measures: string[]; sections: string[] };
+  scope: {
+    include_prospecting: boolean;
+    include_outreach: boolean;
+    include_inbox: boolean;
+    scope_text: string;
+  };
+  proposed_enhancements: SetupEnhancement[];
+  validation: BlueprintValidation;
+}
+
+export interface BlueprintValidation {
+  ok: boolean;
+  missing_required: string[];
+  missing_integrations: string[];
+  unsupported: string[];
+  warnings: string[];
+  module_violations: string[];
+  reasons: string[];
+}
+
+export interface SetupBlocker {
+  kind: string;
+  id: string;
+  title: string;
+  detail: string;
+  remediation: string;
+  human_action: boolean;
+}
+
+export interface ValidationStage {
+  key: string;
+  title: string;
+  status: string;
+  message: string;
+  required: boolean;
+  remediation: string;
+  human_action: boolean;
+}
+
+export interface SetupChecklistItem {
+  key: SetupStageKey;
+  label: string;
+  done: boolean;
+  status: "pass" | "current" | "pending";
+  detail: string;
+}
+
+export interface FactoryConnection {
+  id: string;
+  provider: string;
+  label: string;
+  secret_ref: string;
+  scopes: string[];
+  status: string;
+  last_checked_at: string | null;
+  last_error: string;
+}
+
+export interface ActivationStatus {
+  tenant_id: string;
+  status: string;
+  is_active: boolean;
+  blueprint: string | null;
+  config_version: number | null;
+  activated_at: string | null;
+  activated_by: string | null;
+  last_test: {
+    mode: string;
+    passed: boolean;
+    config_version: number;
+    at: string;
+    actor: string;
+    findings: number;
+  } | null;
+}
+
+export interface SafeTestReport {
+  tenant_id: string;
+  mode: string;
+  passed: boolean;
+  findings: { check: string; status: string; message: string; blocking: boolean }[];
+  last_test: ActivationStatus["last_test"];
+}
+
+/** The six named stages plus everything the setup screen renders. */
+export interface SetupStatus {
+  tenant_id: string;
+  state: SetupStageKey;
+  states: Record<SetupStageKey, boolean>;
+  checklist: SetupChecklistItem[];
+  next_action: { label: string; target: string };
+  generated_at: string;
+  config_version: number | null;
+  attempt: number;
+  suppression_configured: boolean;
+  open_blocking_questions: SetupQuestion[];
+  blockers: SetupBlocker[];
+  sources: SetupSource[];
+  rejected_sources: { source: string; error: string }[];
+  validation: {
+    ready: boolean;
+    failed_required: string[];
+    stages: ValidationStage[];
+  };
+  activation: ActivationStatus;
+  connections: FactoryConnection[];
+  connection_state: Record<string, string>;
+  blueprint_validation: BlueprintValidation;
+  questions: SetupQuestion[];
+  answers: Record<string, string>;
+  profile: Record<string, SetupField> | null;
+  conflicts: SetupConflict[];
+  counts: Record<string, number>;
+  blueprint: SetupBlueprint | null;
+  proposed_enhancements: SetupEnhancement[];
+}
+
+/** Response of generate / answer: the report the screen shows inline. */
+export interface SetupReport {
+  tenant_id: string;
+  generated_at: string;
+  sources: SetupSource[];
+  rejected_sources: { source: string; error: string }[];
+  profile: {
+    fields: Record<string, SetupField>;
+    conflicts: SetupConflict[];
+    counts: Record<string, number>;
+    saved: boolean;
+    offer_created: boolean;
+    icp_created: boolean;
+  };
+  blueprint: SetupBlueprint;
+  questions: SetupQuestion[];
+  open_questions: Record<string, SetupQuestion[]>;
+  status: SetupStatus;
+}

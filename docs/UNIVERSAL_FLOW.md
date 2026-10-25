@@ -6,6 +6,8 @@
 > file (and may treat `product/core/flow.py` as the machine source of truth)
 > before designing features, workflows, modules, or integrations.
 
+> **Architecture boundary:** `product/core/flow.py` is the current interim guard, not a new permanent backend. The Canonical Architecture keeps `slidein-api` as the customer domain authority. Move this machine definition there during Phase 3, with tested compatibility mappings and one removal condition; do not maintain divergent flow definitions. The existing API's `synthesize` stage is an as-built compatibility concern: its learning responsibility belongs inside `converse` and the activity/overview feedback loop, not an eighth target stage.
+
 ## The flow — true for every client, every industry, every time
 
 ```
