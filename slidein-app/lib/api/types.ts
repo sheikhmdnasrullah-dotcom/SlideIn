@@ -739,3 +739,24 @@ export interface OsintEnrichOutcome {
     total: number;
   };
 }
+
+export interface AutopilotStatus {
+  enabled: boolean;
+  auto_approve: boolean;
+  send_enabled: boolean;
+  master_enabled: boolean;
+  interval_seconds: number;
+  batch: number;
+  max_sends: number;
+  transport: string;
+  ingest_sources: string[];
+  connector_chain: string[];
+  last_tick_at: string | null;
+  last_status: string;
+  last_error: string | null;
+  last_stats: Record<string, number>;
+  totals: Record<string, number>;
+  pipeline: Record<string, number>;
+  drafts: Record<string, number>;
+  open_conversations: number;
+}

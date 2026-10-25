@@ -31,7 +31,7 @@ class HoleheRunner:
     async def run(self, email: str, footprint: SocialFootprint, on_unit=None) -> list[dict]:
         if shutil.which(self._cmd.split()[0]):
             return await self._run_engine(email, on_unit)
-        return self._from_gravatar(email, footprint, on_unit)
+        return await self._from_gravatar(email, footprint, on_unit)
 
     async def _run_engine(self, email: str, on_unit) -> list[dict]:
         try:

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -13,18 +14,61 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..db import init_db
 from ..errors import SlideinError
-from .routes import config, factory, osint, outreach, overview, pipeline, system
+from .routes import autopilot, config, factory, osint, outreach, overview, pipeline, system
 
 logger = logging.getLogger("slidein.api")
 
 PUBLIC_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json", "/v1/contracts")
 
 
+async def _autopilot_loop(app: FastAPI) -> None:
+    """Background agent loop: advances every workspace tick by tick.
+
+    Started from the lifespan when `SLIDEIN_AUTOPILOT` is on (default).
+    Individual ticks never raise; a crash only logs and retries next cycle.
+    """
+    from ..services.autopilot import AutopilotConfig, run_all_tenants
+
+    cfg = AutopilotConfig.from_env()
+    if not cfg.master_enabled:
+        logger.info("autopilot loop disabled (SLIDEIN_AUTOPILOT=0)")
+        return
+    logger.info(
+        "autopilot loop starting (interval=%ss batch=%s max_sends=%s ingest=%s)",
+        cfg.interval_seconds, cfg.batch, cfg.max_sends, list(cfg.ingest_paths) or "none",
+    )
+    while True:
+        try:
+            results = await run_all_tenants(cfg)
+            advanced = sum(1 for r in results.values() if r.get("status") == "ok")
+            if results:
+                logger.debug("autopilot tick: %s/%s workspaces advanced", advanced, len(results))
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 — the loop outlives any single failure
+            logger.exception("autopilot cycle failed")
+        await asyncio.sleep(cfg.interval_seconds)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("slidein api starting")
     await init_db()
-    yield
+    autopilot_task: asyncio.Task | None = None
+    try:
+        from ..services.autopilot import AutopilotConfig
+
+        if AutopilotConfig.from_env().master_enabled:
+            autopilot_task = asyncio.create_task(_autopilot_loop(app))
+    except Exception:  # noqa: BLE001 — never block API startup on the loop
+        logger.exception("failed to start autopilot loop")
+    try:
+        yield
+    finally:
+        if autopilot_task is not None:
+            autopilot_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await autopilot_task
     logger.info("slidein api stopped")
 
 
@@ -115,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(osint.router, prefix=prefix, tags=["osint"])
     app.include_router(overview.router, prefix=prefix, tags=["overview"])
     app.include_router(factory.router, prefix=prefix, tags=["factory"])
+    app.include_router(autopilot.router, prefix=prefix, tags=["autopilot"])
     return app
 
 
