@@ -6,15 +6,28 @@ POST /v1/setup/client  {materials: [{source_ref, text}] | notes: "..."}
     -> first workflow proposal (universal-flow validated)
     -> readiness status with grouped questions and honest blockers
 GET  /v1/setup/status   -> current readiness state (survives restarts)
+
+Operator flow (the screen at /setup in the client app):
+GET  /v1/tenants/{tenant_id}/setup
+    -> rich status: stage map, checklist, open questions, validation stages,
+       connections, activation — the honest state the UI renders
+POST /v1/tenants/{tenant_id}/setup/generate  {sources: [...]}
+    -> deterministic extraction -> blueprint -> profile/offer/ICP saved
+POST /v1/tenants/{tenant_id}/setup/answers   {answers: {key: value}}
+    -> records decisions, regenerates from the same sources
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+from starlette import status as http_status
 
-from ...security import AuthContext, require_auth
+from ...db import session_scope
+from ...errors import SlideinError
+from ...security import AuthContext, require_auth, require_role, resolve_workspace
 from ... import setup_service as setup
 from ... import workspace_store as wsp
+from ...setup import SetupService
 from . import workspace as ws_routes
 
 router = APIRouter()
@@ -67,8 +80,8 @@ async def setup_client(body: dict, auth: AuthContext = Depends(require_auth)):
     await wsp.persist_config(cfg)
 
     # 4. First workflow — universal-flow validated, approval-gated
-    from product.core.flow import assert_flow_aligned
-    steps = assert_flow_aligned(setup.first_workflow_steps(profile))
+    from ...canonical import assert_canonical_flow
+    steps = assert_canonical_flow(setup.first_workflow_steps(profile))
     wf_prop = None
     if ev_ids:
         try:
@@ -136,3 +149,62 @@ async def setup_status(auth: AuthContext = Depends(require_auth)):
                 "next_action": "POST /v1/setup/client with the client's "
                                "transcript, documents, or notes"}
     return row
+
+
+# --------------------------------------------------------------------------- #
+# Operator flow backing the /setup screen: generate -> answer -> status.
+# The intake endpoint above stays the single entry for a client transcript;
+# these endpoints keep the richer per-stage state the screen renders.
+# --------------------------------------------------------------------------- #
+
+_STATUS_BY_CODE = {
+    "not_found": http_status.HTTP_404_NOT_FOUND,
+    "tenant_forbidden": http_status.HTTP_404_NOT_FOUND,
+    "not_authorized": http_status.HTTP_403_FORBIDDEN,
+}
+
+
+def _rich_error(exc: SlideinError) -> HTTPException:
+    code = _STATUS_BY_CODE.get(exc.code, http_status.HTTP_400_BAD_REQUEST)
+    return HTTPException(status_code=code, detail=exc.to_dict())
+
+
+@router.get("/tenants/{tenant_id}/setup", tags=["setup"])
+async def setup_report(
+    tenant_id: str,
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Current setup state for the screen: stages, questions, validation."""
+    async with session_scope() as session:
+        return await SetupService(session).status(tenant_id)
+
+
+@router.post("/tenants/{tenant_id}/setup/generate", tags=["setup"])
+async def setup_generate(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    require_role(auth, "operator")
+    try:
+        async with session_scope() as session:
+            return await SetupService(session).generate(
+                tenant_id, payload, actor=f"user:{auth.role}")
+    except SlideinError as exc:
+        raise _rich_error(exc)
+
+
+@router.post("/tenants/{tenant_id}/setup/answers", tags=["setup"])
+async def setup_answers(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    require_role(auth, "operator")
+    answers = payload.get("answers") if isinstance(payload, dict) else None
+    try:
+        async with session_scope() as session:
+            return await SetupService(session).answer(
+                tenant_id, answers or {}, actor=f"user:{auth.role}")
+    except SlideinError as exc:
+        raise _rich_error(exc)

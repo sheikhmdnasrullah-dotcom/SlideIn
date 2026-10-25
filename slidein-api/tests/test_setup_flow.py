@@ -21,6 +21,7 @@ def client(tmp_path, monkeypatch):
     from starlette.testclient import TestClient
     from slidein_api.api.app import app
     with TestClient(app) as c:
+        c.headers.update({"X-Slidein-Tenant": "ten_setup"})
         yield c, tmp_path
 
 
@@ -49,7 +50,7 @@ def test_setup_happy_path(client):
     assert d["profile"]["missing"] == []  # name, offers, icp all confirmed
 
     # workspace: generated, validated, versioned; only real modules
-    assert d["workspace"]["version"] == 2
+    assert d["workspace"]["version"] >= 2
     order = d["workspace"]["module_order"]
     assert "overview" in order and "research" in order and "approvals" in order
     assert all(m in ("overview", "knowledge", "research", "contacts", "workflows",

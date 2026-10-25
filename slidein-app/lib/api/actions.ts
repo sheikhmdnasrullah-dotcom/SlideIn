@@ -519,6 +519,7 @@ export async function setupGenerateAction(
   _prev: SetupActionResult,
   formData: FormData,
 ): Promise<SetupActionResult> {
+  const context = str(formData.get("context"));
   const sources = setupSources(formData);
   if (sources.length === 0) {
     return {
@@ -526,20 +527,35 @@ export async function setupGenerateAction(
       message: "Add what the client gave you — a note, a brief, or their website.",
     };
   }
+
+  // Two entry points, one screen: `/setup/client` is the intake of record for
+  // a client's context (profile + first workflow + readiness), and
+  // `/setup/generate` builds the per-stage state the screen renders.
+  let intakeError: unknown = null;
+  if (context) {
+    try {
+      await operations.setupClient({
+        materials: [{ source_ref: "operator context", text: context }],
+      });
+    } catch (error) {
+      intakeError = error;
+    }
+  }
+
   try {
     const report = await operations.setupGenerate(WORKSPACE_ID, { sources });
     revalidatePath("/setup");
     revalidatePath("/profile");
     revalidatePath("/overview");
     const saved = report.profile.saved;
-    return {
-      ok: true,
-      message: saved
-        ? `Setup generated: profile, offers and ICP saved. ${report.status.open_blocking_questions.length} question(s) still need an answer.`
-        : `Context read. ${report.status.open_blocking_questions.length} question(s) still need an answer before the profile can be saved.`,
-      report,
-    };
+    const message = saved
+      ? `Setup generated: profile, offers and ICP saved. ${report.status.open_blocking_questions.length} question(s) still need an answer.`
+      : `Context read. ${report.status.open_blocking_questions.length} question(s) still need an answer before the profile can be saved.`;
+    return intakeError
+      ? { ok: false, message: `${message} Intake note failed: ${failure(intakeError).message}`, report }
+      : { ok: true, message, report };
   } catch (error) {
+    if (intakeError) return failure(intakeError);
     return failure(error);
   }
 }
@@ -582,6 +598,7 @@ export async function probeConnectionAction(connectionId: string): Promise<Actio
   try {
     const row = await operations.probeConnection(WORKSPACE_ID, connectionId);
     revalidatePath("/setup");
+    if (!row) return { ok: false, message: "Probe returned no connection — check the integration." };
     return row.status === "connected"
       ? { ok: true, message: `${row.label}: connection verified.` }
       : { ok: false, message: `${row.label}: ${row.last_error || row.status}.` };

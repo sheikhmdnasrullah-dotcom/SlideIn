@@ -23,6 +23,7 @@ if _REPO_ROOT not in sys.path:
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ...security import AuthContext, require_auth
+from ... import canonical
 from product.core.adaptation import AdaptationEngine, EvidenceStore, InsufficientEvidence
 from product.core.capabilities import CapabilityRegistry
 from product.core.errors import CrossTenantAccess
@@ -114,6 +115,7 @@ async def get_workspace_config(auth: AuthContext = Depends(require_auth)):
         "nav_groups": {k: list(v) for k, v in cfg.nav_groups.items()},
         "widgets": [w.__dict__ for w in cfg.widgets],
         "integration_refs": list(cfg.integration_refs),
+        "sections": canonical.project_navigation(cfg.enabled_modules),
     }
 
 
@@ -206,12 +208,14 @@ async def apply_proposal(proposal_id: str, body: dict,
         rationale=entry["rationale"],
         status=ProposalStatus(entry["status"]))
     try:
-        if entry["risk"] == "consequential" and entry["status"] != "approved":
-            raise CrossTenantAccess("consequential change requires approval first")
+        # Owner decision (Canonical Convergence §3.4): adaptations require
+        # approval — no auto-apply bypass, regardless of risk tier.
+        if entry["status"] != "approved":
+            raise CrossTenantAccess("adaptations require approval before apply")
         cfg = _workspaces.apply(auth.tenant_id, proposal,
                                 caller_tenant_id=auth.tenant_id,
                                 role=_role(auth),
-                                auto_apply_low_risk=bool(body.get("auto_apply", False)))
+                                auto_apply_low_risk=False)
     except Exception as exc:
         raise _to_http(exc)
     entry["status"] = "applied"

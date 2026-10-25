@@ -168,3 +168,19 @@ CI explicitly ignores `product/tests/test_workflows.py`; the parallel product su
 7. Expand to additional channels only after the first complete loop passes acceptance.
 
 See `../engineering/IMPLEMENTATION_ROADMAP.md` for tasks and exit criteria.
+
+## 2026-10-26 — Canonical Convergence (branch `canonical-convergence`)
+
+Phase 0–2 slice, per ADR-2026-10-26-canonical-product-convergence:
+- `slidein_api/canonical.py`: ONE authority for (a) the seven stable
+  workspace sections and the total capability->section projection, (b) the
+  machine flow surface with the deliberate `synthesize -> converse`
+  compatibility mapping (§9.1 — legacy eighth stage validates, history safe).
+- `GET /v1/workspace/config` now returns the 7-section navigation projection.
+- §3.4 enforced at the API: adaptations REQUIRE approval — the auto-apply
+  bypass was removed (all risk tiers fail closed at apply).
+- Setup intake generates through the canonical flow authority.
+- Prototypes (osint_core/visitor_core/unified) remain isolated, not
+  customer-exposed. Owner's uncommitted slidein-app changes preserved.
+- Tests: 188 passed (5 new convergence tests incl. fail-closed adaptation
+  apply, synthesize reconciliation, section totality).

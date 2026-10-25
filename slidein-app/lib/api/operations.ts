@@ -420,6 +420,19 @@ export const operations = {
   setupAnswers(workspaceId: string, answers: Record<string, string>) {
     return client.post<SetupReport>(workspacePath("/setup/answers", workspaceId), { answers });
   },
+  /** The intake endpoint (`POST /v1/setup/client`): a client's transcript or
+   * notes in, business profile + first workflow + readiness out. */
+  setupClient(payload: {
+    materials?: { source_ref: string; text: string }[];
+    notes?: string;
+  }) {
+    return client.post<{
+      profile: { business_name: string | null; missing: string[]; contradictions: string[] };
+      workspace: { version: number; module_order: string[] };
+      first_workflow: { steps: string[]; approval_gate: boolean };
+      readiness: { state: string; blockers: string[]; questions: string[]; next_action: string };
+    }>("/v1/setup/client", payload);
+  },
 
   // ── factory: connect, validate, test, activate ───────────────────────────
   factoryConnections(workspaceId: string) {
@@ -430,9 +443,11 @@ export const operations = {
       .then((value) => value?.data ?? []);
   },
   probeConnection(workspaceId: string, connectionId: string) {
-    return client.post<FactoryConnection>(
-      workspacePath(`/factory/connections/${connectionId}/probe`, workspaceId),
-    );
+    return client
+      .post<{ connection: FactoryConnection }>(
+        workspacePath(`/factory/connections/${connectionId}/probe`, workspaceId),
+      )
+      .then((value) => value?.connection);
   },
   factoryValidation(workspaceId: string) {
     return client.get<{
