@@ -18,7 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { SECTIONS, type SectionMeta } from "@/lib/workflow/metadata";
+import { CANONICAL_LABELS, CANONICAL_ORDER, SECTIONS, SECTION_CANONICAL,
+  type SectionMeta } from "@/lib/workflow/metadata";
 import { SECTION_MODULES, brandInitials, safeLogoUrl } from "@/lib/workflow/tenant";
 import { GlossTile } from "@/components/system/gloss-tile";
 import { cn } from "@/lib/utils";
@@ -36,14 +37,6 @@ const ICONS: Record<string, LucideIcon> = {
   conversations: Inbox,
   activity: ActivityIcon,
 };
-
-const GROUP_LABELS: Record<SectionMeta["group"], string> = {
-  setup: "Setup",
-  pipeline: "Workflow",
-  history: "History",
-};
-
-const GROUP_ORDER: SectionMeta["group"][] = ["setup", "pipeline", "history"];
 
 /**
  * WorkflowSidebar: the persistent navigation, ordered by the workflow itself.
@@ -83,10 +76,12 @@ export function WorkflowSidebar({
     const idx = moduleOrder.indexOf(moduleId);
     return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
   };
-  const sections = GROUP_ORDER.map((group) => ({
+  const sections = CANONICAL_ORDER.map((group) => ({
     group,
-    label: GROUP_LABELS[group],
-    items: SECTIONS.filter((section) => section.group === group && visible(section))
+    label: CANONICAL_LABELS[group],
+    items: SECTIONS.filter((section) =>
+        (SECTION_CANONICAL[section.id] ?? section.group) === group
+        && visible(section))
       .map((section, i) => ({ section, i }))
       .sort((a, b) =>
         sectionRank(a.section) - sectionRank(b.section) || a.i - b.i)

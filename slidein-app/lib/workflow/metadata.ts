@@ -387,3 +387,43 @@ export function recoveryLabel(action: string | undefined): string {
   if (!action) return "—";
   return RECOVERY_LABELS[action] ?? action;
 }
+
+// ── canonical seven-section projection ─────────────────────────────────────
+// One universal navigation for every client (Canonical Convergence §3.5/§12):
+// existing routes stay as subsections INSIDE the seven stable sections.
+// Mirrors slidein_api/canonical.py — keep the two mappings in sync.
+
+export type CanonicalSection =
+  | "overview" | "business_setup" | "prospects_research" | "outreach"
+  | "conversations" | "activity" | "settings";
+
+export const CANONICAL_ORDER: CanonicalSection[] = [
+  "overview", "business_setup", "prospects_research", "outreach",
+  "conversations", "activity", "settings",
+];
+
+export const CANONICAL_LABELS: Record<CanonicalSection, string> = {
+  overview: "Overview",
+  business_setup: "Business Setup",
+  prospects_research: "Prospects & Research",
+  outreach: "Outreach",
+  conversations: "Conversations",
+  activity: "Activity",
+  settings: "Settings",
+};
+
+/** Existing section id -> canonical section (subsections, not new products). */
+export const SECTION_CANONICAL: Record<string, CanonicalSection> = {
+  overview: "overview",
+  setup: "business_setup",
+  profile: "business_setup",
+  discovery: "prospects_research",
+  research: "prospects_research",
+  osint: "prospects_research",
+  qualification: "prospects_research",
+  personalization: "outreach",
+  outreach: "outreach",
+  conversations: "conversations",
+  activity: "activity",
+  contracts: "settings",
+};
