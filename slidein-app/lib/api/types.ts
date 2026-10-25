@@ -760,3 +760,14 @@ export interface AutopilotStatus {
   drafts: Record<string, number>;
   open_conversations: number;
 }
+
+/** Adaptive workspace config (versioned, validated server-side). */
+export interface WorkspaceConfig {
+  tenant_id: string;
+  version: number;
+  enabled_modules: string[];
+  module_order: string[];
+  nav_groups: Record<string, string[]>;
+  widgets: Array<{ module_id: string; widget_type: string; settings: Record<string, unknown> }>;
+  integration_refs: string[];
+}

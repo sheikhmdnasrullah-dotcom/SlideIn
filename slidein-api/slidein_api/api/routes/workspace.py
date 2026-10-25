@@ -16,7 +16,7 @@ import uuid
 # `product` (the adaptive-workspace core) lives at the repo root next to
 # slidein-api; make it importable regardless of launch directory.
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          "..", "..", ".."))
+                                          "..", "..", "..", ".."))
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
@@ -220,12 +220,13 @@ async def start_execution(body: dict, auth: AuthContext = Depends(require_auth))
 async def get_execution(execution_id: str, auth: AuthContext = Depends(require_auth)):
     try:
         svc = _executor(auth.tenant_id)
+    except RuntimeError:
+        raise HTTPException(status_code=404, detail="no executions for tenant")
+    try:
         return await svc.get_execution(tenant_id=auth.tenant_id,
                                        execution_id=execution_id,
                                        caller_tenant_id=auth.tenant_id,
                                        role=_role(auth))
-    except RuntimeError:
-        raise HTTPException(status_code=404, detail="no executions for tenant")
     except Exception as exc:
         raise _to_http(exc)
 
@@ -235,10 +236,11 @@ async def resume_execution(execution_id: str, body: dict,
                            auth: AuthContext = Depends(require_auth)):
     try:
         svc = _executor(auth.tenant_id)
+    except RuntimeError:
+        raise HTTPException(status_code=404, detail="no executions for tenant")
+    try:
         return await svc.resume(tenant_id=auth.tenant_id,
                                 execution_id=execution_id,
                                 approved=bool(body.get("approved")))
-    except RuntimeError:
-        raise HTTPException(status_code=404, detail="no executions for tenant")
     except Exception as exc:
         raise _to_http(exc)

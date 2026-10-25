@@ -18,6 +18,7 @@ agent exceptions route to a FAILED terminal state, never a hang.
 
 from __future__ import annotations
 
+import asyncio
 import time
 import uuid
 from typing import Any, TypedDict
@@ -76,6 +77,17 @@ class AgenticWorkflowService:
         self._qualification_agent = qualification_agent
         self._saver = None
         self._graph = None
+        self._loop = None
+
+    async def _ensure(self) -> None:
+        """ (Re)build graph+checkpointer when the running loop changes.
+        Checkpoints live in SQLite, so execution state survives a rebuild
+        (this is what makes resume work across loops and process restarts)."""
+        loop = asyncio.get_running_loop()
+        if self._graph is not None and loop is self._loop:
+            return
+        await self._build()
+        self._loop = loop
 
     # ------------------------------------------------------------------ #
     async def _build(self):
@@ -195,6 +207,7 @@ class AgenticWorkflowService:
     # ------------------------------------------------------------------ #
     async def start(self, *, tenant_id: str, person: dict,
                     opportunity_id: str | None = None) -> dict:
+        await self._ensure()
         execution_id = uuid.uuid4().hex[:16]
         state: AgentWorkflowState = {
             "tenant_id": tenant_id,
@@ -214,6 +227,7 @@ class AgenticWorkflowService:
     async def resume(self, *, tenant_id: str, execution_id: str,
                      approved: bool) -> dict:
         """Resume an approval-paused execution. Only the owning tenant can."""
+        await self._ensure()
         from langgraph.types import Command
 
         config = {"configurable": {"thread_id": f"{tenant_id}:{execution_id}"}}
@@ -232,6 +246,7 @@ class AgenticWorkflowService:
 
     async def get_execution(self, *, tenant_id: str, execution_id: str,
                             caller_tenant_id: str | None, role: Role) -> dict:
+        await self._ensure()
         if role not in (Role.PLATFORM_ADMIN, Role.SYSTEM) \
                 and caller_tenant_id != tenant_id:
             raise CrossTenantAccess("cannot inspect another tenant's execution")

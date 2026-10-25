@@ -55,6 +55,7 @@ export function WorkflowSidebar({
   logoUrl,
   enabledModules,
   sectionLabels,
+  moduleOrder,
   className,
 }: {
   attentionCounts?: Record<string, number>;
@@ -65,6 +66,8 @@ export function WorkflowSidebar({
   enabledModules?: string[] | null;
   /** Template terminology overrides for section labels. */
   sectionLabels?: Record<string, string> | null;
+  /** Saved adaptive workspace order (module ids); sorts sections within groups. */
+  moduleOrder?: string[] | null;
   className?: string;
 }) {
   const pathname = usePathname();
@@ -72,10 +75,20 @@ export function WorkflowSidebar({
   const visible = (section: SectionMeta) =>
     !enabledModules ||
     enabledModules.includes(SECTION_MODULES[section.id] ?? section.id);
+  const sectionRank = (section: SectionMeta) => {
+    if (!moduleOrder?.length) return Number.MAX_SAFE_INTEGER;
+    const module = SECTION_MODULES[section.id] ?? section.id;
+    const idx = moduleOrder.indexOf(module);
+    return idx === -1 ? Number.MAX_SAFE_INTEGER : idx;
+  };
   const sections = GROUP_ORDER.map((group) => ({
     group,
     label: GROUP_LABELS[group],
-    items: SECTIONS.filter((section) => section.group === group && visible(section)),
+    items: SECTIONS.filter((section) => section.group === group && visible(section))
+      .map((section, i) => ({ section, i }))
+      .sort((a, b) =>
+        sectionRank(a.section) - sectionRank(b.section) || a.i - b.i)
+      .map((x) => x.section),
   })).filter((group) => group.items.length > 0);
 
   const displayName = brandName?.trim() || "Slidein";

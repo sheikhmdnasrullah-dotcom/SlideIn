@@ -41,12 +41,14 @@ export default async function WorkspaceLayout({
   let branding: Branding | null = null;
   let enabledModules: string[] | null = null;
   let sectionLabels: Record<string, string> | null = null;
+  let moduleOrder: string[] | null = null;
   try {
-    const [overview, brand, modules, template] = await Promise.all([
+    const [overview, brand, modules, template, workspace] = await Promise.all([
       operations.overview(WORKSPACE_ID, 5),
       operations.branding(WORKSPACE_ID),
       operations.modules(WORKSPACE_ID),
       operations.tenantTemplate(WORKSPACE_ID),
+      operations.workspaceConfig().catch(() => null),
     ]);
     const counts: Record<string, number> = {};
     for (const item of overview.attention) counts[sectionIdForStage(item.stage)] =
@@ -55,6 +57,7 @@ export default async function WorkspaceLayout({
     branding = brand.branding;
     enabledModules = modules.enabled;
     sectionLabels = template.terminology.sections ?? null;
+    moduleOrder = workspace?.module_order ?? null;
   } catch {
     // The workspace is usable without the API; every panel says why.
   }
@@ -66,6 +69,7 @@ export default async function WorkspaceLayout({
     logoUrl: branding?.logo_url || undefined,
     enabledModules,
     sectionLabels,
+    moduleOrder,
   };
   return (
     <div className="flex min-h-0 w-full flex-col lg:flex-row" style={themeStyle(branding)}>

@@ -41,6 +41,7 @@ import type {
   TemplateDoc,
   TemplateSummary,
   WorkspaceModules,
+  WorkspaceConfig,
 } from "./types";
 
 const page = <T,>(value: Page<T> | undefined, fallback: Page<T>): Page<T> => value ?? fallback;
@@ -113,6 +114,10 @@ export const operations = {
   },
   modules(workspaceId: string) {
     return client.get<WorkspaceModules>(workspacePath("/modules", workspaceId));
+  },
+  /** Adaptive workspace config — saved, versioned, per-tenant. Drives nav order. */
+  workspaceConfig() {
+    return client.get<WorkspaceConfig>("/v1/workspace/config");
   },
   saveModules(workspaceId: string, body: Record<string, unknown>) {
     return client.put<WorkspaceModules>(
