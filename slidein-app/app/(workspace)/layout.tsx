@@ -2,6 +2,7 @@ import type * as React from "react";
 
 import type { Metadata } from "next";
 
+import { AutoRefresh } from "@/components/workspace/auto-refresh";
 import { MobileNav } from "@/components/workspace/mobile-nav";
 import { WorkflowSidebar } from "@/components/workspace/sidebar";
 import { operations } from "@/lib/api/operations";
@@ -73,6 +74,7 @@ export default async function WorkspaceLayout({
         <WorkflowSidebar {...sidebarProps} />
       </div>
       <main className="min-h-0 min-w-0 grow overflow-y-auto">
+        <AutoRefresh seconds={60} />
         <div className="page-enter mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-5 md:px-10 md:py-10">
           {children}
         </div>

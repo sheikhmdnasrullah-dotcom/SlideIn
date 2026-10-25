@@ -9,6 +9,7 @@ import "server-only";
 import { client, workspacePath } from "./client";
 import type {
   ActivityLog,
+  AutopilotStatus,
   Branding,
   BusinessProfile,
   ConfigVersionRecord,
@@ -195,6 +196,22 @@ export const operations = {
     return client.post<OsintEnrichOutcome>(
       workspacePath(`/prospects/${prospectId}/osint`, workspaceId),
       body,
+    );
+  },
+
+  // ── autopilot ───────────────────────────────────────────────────────────
+  autopilot(workspaceId: string) {
+    return client.get<AutopilotStatus>(workspacePath("/autopilot", workspaceId));
+  },
+  setAutopilot(
+    workspaceId: string,
+    body: { enabled?: boolean; auto_approve?: boolean; send_enabled?: boolean },
+  ) {
+    return client.post<AutopilotStatus>(workspacePath("/autopilot", workspaceId), body);
+  },
+  runAutopilot(workspaceId: string) {
+    return client.post<{ tick: { status: string; stats: Record<string, number> } }>(
+      workspacePath("/autopilot/run", workspaceId),
     );
   },
 

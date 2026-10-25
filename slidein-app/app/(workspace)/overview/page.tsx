@@ -6,6 +6,7 @@ import { Surface } from "@/components/system/surface";
 import { Metric, MetricRow } from "@/components/system/metric";
 import { EmptyState } from "@/components/system/states";
 import { StatusBadge } from "@/components/system/status-badge";
+import { AutopilotCard } from "@/components/workspace/autopilot-card";
 import { PageFailure } from "@/components/workspace/page-failure";
 import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
@@ -20,6 +21,13 @@ export default async function OverviewPage() {
     overview = await operations.overview(WORKSPACE_ID, 10);
   } catch (error) {
     return <PageFailure error={error} module="overview" />;
+  }
+
+  let autopilot = null;
+  try {
+    autopilot = await operations.autopilot(WORKSPACE_ID);
+  } catch {
+    // The overview stays useful without the autopilot panel.
   }
 
   return (
@@ -52,6 +60,15 @@ export default async function OverviewPage() {
           </div>
         </Surface>
       </Section>
+
+      {autopilot && (
+        <Section
+          title="Autopilot"
+          description="The background agent loop: ingest, research, qualify, draft, approve, send."
+        >
+          <AutopilotCard status={autopilot} />
+        </Section>
+      )}
 
       <Section
         title="Attention queue"

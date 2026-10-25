@@ -52,11 +52,41 @@ The default transport is `dry_run`: a dispatch is recorded end-to-end
 Real sending is an explicit choice — set `transport: "smtp"` plus
 `smtp_host` / `smtp_port` / `smtp_username` / `smtp_password` on the send
 call. This matches the repository policy against accidental live traffic.
+For KumoMTA, set `SLIDEIN_TRANSPORT=kumo` (uses `KUMO_HOST`/`KUMO_SMTP_PORT`/
+`KUMO_AUTH_USER`/`KUMO_AUTH_PASS`, defaulting to the local submission port
+2587) — the per-send `transport` payload still wins over the environment.
+
+### Autopilot
+
+An autonomous background loop, started with the API process (no extra
+service). On each tick it advances every workspace through the same
+services and contracts the dashboard uses — ingest CSV leads, research,
+qualify, personalize, auto-approve (optional), send (optional), count
+replies — and persists its state to the `autopilot_state` table so the
+dashboard shows the last tick, totals and pipeline live.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `SLIDEIN_AUTOPILOT` | `1` | Master switch. `0` serves the API without the loop. |
+| `SLIDEIN_AUTOPILOT_INTERVAL` | `300` | Seconds between ticks. |
+| `SLIDEIN_AUTOPILOT_BATCH` | `10` | Prospects advanced per stage per tick. |
+| `SLIDEIN_AUTOPILOT_MAX_SENDS` | `5` | Dispatches per tick (still gated by policy). |
+| `SLIDEIN_AUTOPILOT_INGEST` | – | Comma-separated CSV lead files polled each tick (idempotent). |
+| `SLIDEIN_AUTOPILOT_CONNECTOR` | `openosint,website` | Research connector chain, tried in order. |
+
+Per-workspace switches (autopilot on/off, auto-approve, sending) live in
+the database and are toggled from the dashboard's Overview. Every send
+still passes the full gate stack — approval policy, suppression, rate
+limits, deliverability guard, compliance headers — and the transport
+respects `SLIDEIN_TRANSPORT` (default `dry_run`).
+
+Control plane: `GET/POST /v1/tenants/{id}/autopilot`,
+`POST /v1/tenants/{id}/autopilot/run` (immediate tick).
 
 ## Test it
 
 ```bash
-python -m pytest                 # 51 tests: contracts, journey, permissions
+python -m pytest                 # contracts, journey, permissions, autopilot, osint
 ```
 
 The suite runs against a throwaway SQLite file, so it needs no external

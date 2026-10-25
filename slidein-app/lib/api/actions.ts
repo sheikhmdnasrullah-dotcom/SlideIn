@@ -197,6 +197,49 @@ export async function runOsintResearchAction(
   }
 }
 
+// ── autopilot ───────────────────────────────────────────────────────────────
+
+export async function toggleAutopilotAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const which = str(formData.get("switch"));
+  const next = str(formData.get("value")) === "true";
+  if (which !== "enabled" && which !== "auto_approve" && which !== "send_enabled") {
+    return { ok: false, message: "Unknown autopilot switch." };
+  }
+  try {
+    await operations.setAutopilot(WORKSPACE_ID, { [which]: next });
+    revalidatePath("/overview");
+    const label =
+      which === "enabled" ? "autopilot" : which === "auto_approve" ? "auto-approve" : "sending";
+    return { ok: true, message: `${label} ${next ? "on" : "off"}.` };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function runAutopilotNowAction(): Promise<ActionResult> {
+  try {
+    const outcome = await operations.runAutopilot(WORKSPACE_ID);
+    revalidatePath("/overview");
+    const stats = outcome.tick.stats;
+    const touched = Object.entries(stats)
+      .filter(([, count]) => count > 0)
+      .map(([key, count]) => `${count} ${key}`)
+      .join(", ");
+    if (outcome.tick.status !== "ok") {
+      return { ok: false, message: `Tick ${outcome.tick.status}.${touched ? ` Did: ${touched}.` : ""}` };
+    }
+    return {
+      ok: true,
+      message: touched ? `Tick finished — ${touched}.` : "Tick finished — nothing to do.",
+    };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
 // ── drafts ─────────────────────────────────────────────────────────────────
 
 export async function approveDraftAction(

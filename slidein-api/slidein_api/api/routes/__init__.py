@@ -1,5 +1,6 @@
 """Route modules for the Slidein workflow API."""
 
-from . import config, factory, osint, outreach, overview, pipeline, system
+from . import autopilot, config, factory, osint, outreach, overview, pipeline, system, workspace
 
-__all__ = ["config", "factory", "osint", "outreach", "overview", "pipeline", "system"]
+__all__ = ["autopilot", "config", "factory", "osint", "outreach", "overview",
+           "pipeline", "system", "workspace"]
