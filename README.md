@@ -2,10 +2,11 @@
 
 > **An agentic system that finds prospects, captures leads, and reaches out to them.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-orange)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.13%2B-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![License: BSL 1.1](https://img.shields.io/badge/License-Business%20Source%201.1-000000?logo=bookseller)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![KumoMTA](https://img.shields.io/badge/KumoMTA-Apache--2.0-orange)](https://github.com/KumoCorp/kumomta)
 
 One self-hosted stack for the entire outbound motion: prospect research,
 lead qualification, personalized outreach, campaign management, and the
@@ -109,7 +110,7 @@ configure ──▶ discover ──▶ research ──▶ qualify ──▶ pers
                                                         overview ◀── activity ◀──┘
 ```
 
-Every arrow is a declared contract (`slidein-api/slidein_api/contracts.py`):
+Every arrow is a declared contract (`docs/architecture/CONTRACTS.md`):
 required inputs, produced outputs, permitted status transitions, failure
 codes with retry behaviour, and the recovery action to surface. Nothing
 advances implicitly — `StageRunner` validates each call and records a
@@ -137,7 +138,8 @@ Stores: `gophish.db` (campaigns), `deliverability_state.db`
 PostgreSQL (product + agent layer); Redis (queues/cache).
 
 Full docs: `docs/architecture/OVERVIEW.md` (as-built),
-`docs/architecture/SYSTEM_ARCHITECTURE.md` (authoritative spec).
+`docs/architecture/SYSTEM_ARCHITECTURE.md` (authoritative spec),
+`docs/architecture/CONTRACTS.md` (stage contracts).
 
 ## Current status (verified 2026-10-13)
 
@@ -162,11 +164,11 @@ Full matrix: `docs/project/CURRENT_STATE.md`. Debt:
 
 ## Tech stack
 
-Go (campaign/admin app) · Python (deliverability, product API, universal
-core, slidein-api agent workflow, job_api) · Rust (reacher engine) · Lua
-(KumoMTA policy) · Next.js + TypeScript (dashboard, client workspace) ·
-Docker Compose, Caddy, PostgreSQL, SQLite, Redis, NATS,
-Prometheus/Grafana.
+Go (campaign/admin app) · Python 3.12+ (deliverability, product API,
+universal core, slidein-api agent workflow, job_api) · Rust (reacher
+engine) · Lua (KumoMTA policy) · Next.js 16 + TypeScript (dashboard,
+client workspace) · Docker Compose, Caddy, PostgreSQL, SQLite, Redis,
+NATS, Prometheus/Grafana.
 
 ## Local development
 
@@ -189,9 +191,17 @@ dev copies `.env.example` to `.env` and fills placeholders.
 ## Testing
 
 ```bash
-go test ./...
-python3 -m unittest discover -s deliverability/tests -p "test_*.py"
+# Go (campaign/admin app + core libraries)
+gofmt -l . && go vet ./... && go test ./...
+
+# Python — deliverability engine + lab
+.venv/bin/python -m pytest deliverability/tests/ -q
+.venv/bin/python -m pytest kumomta-lab/tests -q
+
+# Python — universal core boundary tests (DB-free, fast)
 .venv/bin/python -m pytest product/tests/test_core_boundaries.py -q
+
+# Secret hygiene — never commit credentials
 bash scripts/check-secrets.sh
 ```
 
@@ -226,17 +236,16 @@ Small, tested, documented PRs welcome — read `CONTRIBUTING.md` and the
 
 ## License
 
-MIT — see `LICENSE`. The Go backend derives from
-[Gophish](https://github.com/gophish/gophish) (MIT, © Jordan Wright).
-SlideIn modifications © Nasrullah Tanim. Warmbly, reacher, and
-Agent-Reach retain their own permissive licenses; see `NOTICE`.
+SlideIn is licensed under the **Business Source License 1.1**
+(see `LICENSE`). Commercial use is permitted for self-hosting on your own
+infrastructure under the Additional Use Grant; reselling or operating it
+as a hosted service for third parties requires a separate commercial
+license from the author (open a GitHub issue).
 
-## Managed private installs — $350/mo
-
-Don't want to operate this? Managed installs on **your own VPS**:
-setup, monitoring, deliverability reviews, and warmup guidance — your
-infrastructure and data stay yours. Open a GitHub issue to start.
-
+The Go backend derives from [Gophish](https://github.com/gophish/gophish)
+(MIT, © Jordan Wright). Warmbly, reacher, and Agent-Reach retain their
+own permissive licenses; see `NOTICE`. A clean-room provenance declaration
+is included in `LICENSE`.
 
 ## Prospect engagement (planned capability)
 
@@ -244,3 +253,13 @@ The product vision extends past outreach: reply → AI-assisted conversation →
 Specification: `docs/product/PROSPECT_ENGAGEMENT.md`; architecture: `docs/architecture/ENGAGEMENT_ARCHITECTURE.md`;
 tasks: `docs/engineering/IMPLEMENTATION_ROADMAP.md` (Phase 10 expansion); open questions: `docs/project/OPEN_QUESTIONS.md`.
 Not built yet; status in `docs/project/CURRENT_STATE.md`.
+
+## About
+
+The internet's most powerful client acquisition secrets, unified into one actionable framework.
+
+[www.slideinventure.com](https://www.slideinventure.com)
+
+### Topics
+
+agentic · campaign-management · docker · email-deliverability · email-verification · go · kumo-mta · lead-generation · multi-tenant · nextjs · outreach · prospecting · python · sales-automation · self-hosted · smtp

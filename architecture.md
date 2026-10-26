@@ -71,7 +71,7 @@ graph TB
 ## 2. Platform Learning vs. Tenant Isolation Pattern
 
 ### 2.1 The Founder's Dilemma
-When a paying client subscribes (e.g. $350/mo), the agent runs continuously on their behalf. The client's business operates in a specific niche with proprietary target lists, value propositions, and customer dialogues. 
+When a client subscribes, the agent runs continuously on their behalf. The client's business operates in a specific niche with proprietary target lists, value propositions, and customer dialogues. 
 **The Risk:** Without rigorous architectural boundaries, the AI agent will either:
 1. Suffer from *Tenant Drift* — warping the core software to serve only that specific client's business logic.
 2. Suffer from *Data Contamination* — leaking proprietary tactics, leads, or messaging nuances from Tenant A to Tenant B.

@@ -74,7 +74,7 @@ blocklisted); develop locally, send from the VPS.
 
 If you'd rather not operate this yourself, managed private installs
 (setup on your VPS, monitoring, deliverability reviews) are available
-from the author at a flat monthly rate — open an issue on GitHub to ask.
+from the author — open an issue on GitHub to ask.
 
 ## Licenses (all permissive, no paid seats)
 

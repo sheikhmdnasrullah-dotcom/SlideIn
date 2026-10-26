@@ -100,3 +100,4 @@ kumomta-lab/scripts/vps-audit-live.txt
 *.pem
 *.key
 !**/dummy*.key
+.kimi-code/
