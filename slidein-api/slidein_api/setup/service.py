@@ -24,6 +24,7 @@ from ..factory.activation import ActivationService
 from ..factory.configs import DeploymentConfigService
 from ..factory.connections import ConnectionService
 from ..factory.validation import ValidationService
+from ..identity import IdentityService
 from ..models import Tenant
 from ..services.config import ConfigService
 from ..services.modules import ModulesService
@@ -44,6 +45,7 @@ SETUP_STAGES: tuple[tuple[str, str], ...] = (
     ("configuration_validated", "Configuration validated"),
     ("integrations_connected", "Integrations connected"),
     ("workflow_tested", "Workflow tested"),
+    ("owner_ready", "Owner access ready"),
     ("ready_for_approval", "Ready for approval"),
     ("active", "Active"),
 )
@@ -57,6 +59,8 @@ STAGE_TARGETS: dict[str, dict[str, str]] = {
                                "target": "#integrations"},
     "workflow_tested": {"label": "Run the first controlled test",
                         "target": "#test"},
+    "owner_ready": {"label": "Create the owner login for Console and Dashboard",
+                    "target": "#access"},
     "ready_for_approval": {"label": "Review the setup and request approval",
                            "target": "#review"},
     "active": {"label": "Open the workspace overview", "target": "/overview"},
@@ -424,9 +428,10 @@ class SetupService:
         )
         tested = validated and not stage_failed(("safe_test",))
         active = str(activation.get("status")) == "active"
+        owner_ready = await IdentityService(self.session).has_owner(tenant_id)
         ready = (
             generated and validated and integrations_connected and tested
-            and not blocking and not active
+            and owner_ready and not blocking and not active
         )
 
         derived = {
@@ -434,6 +439,7 @@ class SetupService:
             "configuration_validated": validated,
             "integrations_connected": integrations_connected,
             "workflow_tested": tested,
+            "owner_ready": owner_ready,
             "ready_for_approval": ready,
             "active": active,
         }
@@ -501,6 +507,16 @@ class SetupService:
                 "detail": "Live transport is selected but the credential is absent.",
                 "remediation": "Register and probe the connection, or keep dry-run "
                                 "transport for the first test.",
+                "human_action": True,
+            })
+        if not owner_ready:
+            blockers.append({
+                "kind": "owner_access",
+                "id": "owner_login",
+                "title": "No owner login exists for this workspace",
+                "detail": "Console and Dashboard cannot be signed in to until an "
+                          "owner account has been created.",
+                "remediation": "Create the owner login in the Access step below.",
                 "human_action": True,
             })
 
@@ -602,6 +618,12 @@ def _stage_detail(
         if derived[key]:
             return f"Safe test passed on config v{last_test.get('config_version')}."
         return "No passing safe test on the active configuration."
+    if key == "owner_ready":
+        return (
+            "Owner login exists — Console and Dashboard can be signed in to."
+            if derived[key]
+            else "No login exists yet; create the owner account in the Access step."
+        )
     if key == "ready_for_approval":
         if derived[key]:
             return f"{len(blocking)} open question(s) remain before approval."

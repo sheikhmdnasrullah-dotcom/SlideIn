@@ -24,9 +24,11 @@ from starlette import status as http_status
 
 from ...db import session_scope
 from ...errors import SlideinError
+from ...identity import IdentityService, interfaces_for, user_payload
 from ...security import AuthContext, require_auth, require_role, resolve_workspace
 from ... import setup_service as setup
 from ... import workspace_store as wsp
+from ...services.config import ConfigService
 from ...setup import SetupService
 from . import workspace as ws_routes
 
@@ -208,3 +210,50 @@ async def setup_answers(
                 tenant_id, answers or {}, actor=f"user:{auth.role}")
     except SlideinError as exc:
         raise _rich_error(exc)
+
+
+@router.post("/tenants/{tenant_id}/setup/owner", tags=["setup"])
+async def setup_owner(
+    tenant_id: str,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Create the owner login that opens Console and Dashboard (operator+).
+
+    Idempotent by design: when the workspace already has an owner the
+    existing account is reported and nothing is reset. The generated
+    password is returned exactly once — it is never stored in clear text.
+    """
+    require_role(auth, "operator")
+    email = str(payload.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail={"code": "validation_error",
+                    "message": "email is required",
+                    "details": {}, "recovery_action": "provide_email",
+                    "retryable": False},
+        )
+    async with session_scope() as session:
+        await ConfigService(session).ensure_tenant(tenant_id, name=tenant_id)
+        identity = IdentityService(session)
+        if await identity.has_owner(tenant_id):
+            users = await identity.list_users(tenant_id)
+            owners = [u for u in users if u["role"] in ("admin", "operator")]
+            return {
+                "created": False,
+                "reason": "owner_exists",
+                "owner": owners[0] if owners else None,
+                "owners": owners,
+                "interfaces": ["console", "dashboard"],
+            }
+        user, password = await identity.create_user(
+            tenant_id, email, role="admin", name=str(payload.get("name") or "")
+        )
+        return {
+            "created": True,
+            "user": user_payload(user),
+            "password": password,
+            "interfaces": interfaces_for(user.role),
+            "note": "This password is shown once and cannot be retrieved again.",
+        }

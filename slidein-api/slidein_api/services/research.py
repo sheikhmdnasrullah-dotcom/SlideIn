@@ -33,6 +33,7 @@ from typing import Any, Iterable
 
 from ..errors import ProviderError, SlideinError
 from ..ids import new_id
+from ..integrations.firecrawl import FirecrawlAdapter
 from ..integrations.openosint import DEFAULT_LOOKUPS, OpenOSINTAdapter
 from ..models import EvidenceItem, Prospect, VerificationStatus
 from ..serialize import evidence
@@ -397,15 +398,27 @@ class ResearchService:
                     details={"lookups": [r.summary() for r in results]},
                     recovery_action="retry_stage",
                 )
-        elif connector == "website" or not supplied_claims:
-            if connector == "website" or connector == "supplied":
+        elif connector in {"website", "firecrawl", "supplied"} or not supplied_claims:
+            domain = (prospect.company_domain or prospect.email.split("@")[-1]).strip().strip(".")
+            if connector == "firecrawl":
+                try:
+                    for raw in await FirecrawlAdapter().scrape(domain):
+                        claims.append(Claim(**raw))
+                except ProviderError:
+                    if not claims:
+                        website = WebsiteConnector(offline=offline_connector)
+                        claims.extend(website.collect(prospect, depth=depth))
+            elif connector in {"website", "supplied"}:
                 try:
                     website = WebsiteConnector(offline=offline_connector)
                     claims.extend(website.collect(prospect, depth=depth))
                 except ProviderError:
-                    # A website failure is only fatal when nothing else
-                    # produced evidence.
-                    if not claims:
+                    # Configured Firecrawl is the deterministic website fallback.
+                    # With no key, preserve the original source_unavailable error.
+                    if not claims and FirecrawlAdapter().api_key:
+                        for raw in await FirecrawlAdapter().scrape(domain):
+                            claims.append(Claim(**raw))
+                    elif not claims:
                         raise
             else:
                 raise SlideinError(

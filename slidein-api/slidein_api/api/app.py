@@ -15,7 +15,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from ..db import init_db
 from .. import workspace_store as _workspace_store  # noqa: F401  (register tables on Base before create_all)
 from ..errors import SlideinError
-from .routes import autopilot, config, factory, osint, outreach, overview, pipeline, setup, system, workspace
+from .routes import auth, autopilot, config, factory, osint, outreach, overview, pipeline, setup, system, tools, workspace
 
 logger = logging.getLogger("slidein.api")
 
@@ -100,7 +100,7 @@ def create_app() -> FastAPI:
     @app.exception_handler(SlideinError)
     async def _slidein_error_handler(request: Request, exc: SlideinError):
         status = 404 if exc.code in ("tenant_forbidden", "not_found", "prospect_not_found", "draft_not_found") else (
-            403 if exc.code == "not_authorized" else 400
+            403 if exc.code in ("not_authorized", "session_invalid") else 400
         )
         return JSONResponse(
             status_code=status,
@@ -153,6 +153,7 @@ def create_app() -> FastAPI:
         return {"status": "healthy", "service": "slidein-api", "version": "1.0.0"}
 
     prefix = "/v1"
+    app.include_router(auth.router, prefix=prefix, tags=["auth"])
     app.include_router(system.router, prefix=prefix, tags=["system"])
     app.include_router(config.router, prefix=prefix, tags=["configuration"])
     app.include_router(pipeline.router, prefix=prefix, tags=["pipeline"])
@@ -163,6 +164,7 @@ def create_app() -> FastAPI:
     app.include_router(autopilot.router, prefix=prefix, tags=["autopilot"])
     app.include_router(workspace.router, prefix=prefix, tags=["workspace"])
     app.include_router(setup.router, prefix=prefix, tags=["setup"])
+    app.include_router(tools.router, prefix=prefix, tags=["tools"])
     return app
 
 

@@ -16,6 +16,7 @@ from ...factory.owners import OwnerService
 from ...factory.schemas import CrmMapInput
 from ...factory.testrun import TestRunService
 from ...factory.validation import ValidationService
+from ...identity import IdentityService, interfaces_for, user_payload
 from ...security import AuthContext, require_auth, require_role, resolve_workspace
 from ...services.config import ConfigService
 
@@ -48,8 +49,12 @@ async def provision_tenant(
     payload: dict = Body(...),
     auth: AuthContext = Depends(require_auth),
 ) -> dict:
-    """Create a client workspace row. Admin only. The workspace API key is
-    still added to the server secret store by hand (documented manual step)."""
+    """Provision a client workspace **and everything it needs to be used**:
+    the tenant row, a workspace API key (no env edit required) and — when
+    an owner email is supplied — the first Console/Dashboard login.
+
+    Both the API key and the generated password are returned exactly once.
+    Admin only."""
     require_role(auth, "admin")
     tenant_id = str(payload.get("tenant_id") or "").strip()
     if not tenant_id:
@@ -64,10 +69,43 @@ async def provision_tenant(
         row = await ConfigService(session).ensure_tenant(
             tenant_id, name=str(payload.get("name") or tenant_id),
         )
+        identity = IdentityService(session)
+        key_id, raw_key = await identity.create_api_key(
+            tenant_id,
+            role=str(payload.get("key_role") or "operator"),
+            label=f"{tenant_id} default",
+        )
+        owner_payload = payload.get("owner") or {}
+        owner = None
+        if str(owner_payload.get("email") or "").strip():
+            created = await identity.ensure_owner(
+                tenant_id,
+                str(owner_payload.get("email") or ""),
+                name=str(owner_payload.get("name") or ""),
+            )
+            if created is not None:
+                user, raw_password = created
+                owner = {
+                    "user": user_payload(user),
+                    "password": raw_password,
+                    "interfaces": interfaces_for(user.role),
+                    "note": "This password is shown once and cannot be retrieved again.",
+                }
+            else:
+                owner = {"created": False, "reason": "owner_exists"}
         return {
             "tenant": row,
+            "api_key": {
+                "id": key_id,
+                "key": raw_key,
+                "role": str(payload.get("key_role") or "operator"),
+                "note": "Store this key now — it is not shown again.",
+            },
+            "owner": owner,
+            "interfaces": ["console", "dashboard"],
             "next_steps": [
-                "Add an API key for this tenant to SLIDEIN_API_KEYS.",
+                "Store the API key (server-side only) — no SLIDEIN_API_KEYS edit needed.",
+                "Hand the owner login to the client: Console and Dashboard share it.",
                 "Save a deployment config for the tenant.",
                 "Complete intake, then run factory validation.",
             ],

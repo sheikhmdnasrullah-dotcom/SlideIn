@@ -1,12 +1,15 @@
 import type * as React from "react";
+import { redirect } from "next/navigation";
 
 import type { Metadata } from "next";
 
 import { AutoRefresh } from "@/components/workspace/auto-refresh";
 import { MobileNav } from "@/components/workspace/mobile-nav";
 import { WorkflowSidebar } from "@/components/workspace/sidebar";
+import { WorkspaceMismatch } from "@/components/workspace/workspace-mismatch";
 import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
+import { dashboardUrl, requireConsoleSession } from "@/lib/auth/session";
 import type { Branding } from "@/lib/api/types";
 import { SECTIONS } from "@/lib/workflow/metadata";
 import { themeStyle } from "@/lib/workflow/tenant";
@@ -37,6 +40,17 @@ export default async function WorkspaceLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const session = await requireConsoleSession();
+  if (!session) {
+    // requireConsoleSession redirects; this keeps the type honest.
+    redirect("/login");
+  }
+  if (session.tenant_id !== WORKSPACE_ID) {
+    return (
+      <WorkspaceMismatch sessionTenant={session.tenant_id} workspaceId={WORKSPACE_ID} />
+    );
+  }
+
   let attentionCounts: Record<string, number> | undefined;
   let branding: Branding | null = null;
   let enabledModules: string[] | null = null;
@@ -70,6 +84,12 @@ export default async function WorkspaceLayout({
     enabledModules,
     sectionLabels,
     moduleOrder,
+    user: {
+      name: session.name?.trim() || session.email,
+      email: session.email,
+      role: session.role,
+    },
+    dashboardHref: dashboardUrl("/dashboard"),
   };
   return (
     <div className="flex min-h-0 w-full flex-col lg:flex-row" style={themeStyle(branding)}>

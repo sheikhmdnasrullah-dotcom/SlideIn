@@ -84,6 +84,9 @@ Each phase requires implementation, tests, documentation, and a demonstrated acc
 - Move the seven-stage machine definition from the interim `product/core/flow.py` guard into `slidein-api`; fold `synthesize` into conversation/feedback with migrations and tested compatibility mappings.
 - Enforce canonical stage order and provenance before persisting workflow proposals; keep one machine definition rather than divergent copies.
 - Decide narrowly where LangGraph remains behind that authority; remove parallel ownership of acquisition state.
+- Extend the canonical tool registry/coverage planner into a bounded execution orchestrator; account for every stage tool as ready or explicitly skipped rather than running every package.
+- Persist per-tool attempts, configuration/wiring/policy skips, source provenance, fallback selection, budgets, and unresolved capabilities without secrets.
+- Keep ECC engineering-only; add runtime adapters individually after license/security review and hermetic tests, never by environment-variable presence alone.
 - Add durable scheduling/queueing appropriate to the existing modular monolith.
 - Add idempotency keys for stages, sends, webhooks, and approval/resume actions.
 - Implement bounded automatic retries with backoff, jitter where useful, and terminal review/dead-letter states.

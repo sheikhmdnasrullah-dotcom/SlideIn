@@ -9,6 +9,7 @@ import "server-only";
 
 import { API_BASE_URL, API_KEY, WORKSPACE_ID } from "./config";
 import { ApiRequestError } from "./errors";
+import { readSessionToken } from "@/lib/auth/session";
 import type { ApiError } from "./types";
 
 export { ApiRequestError };
@@ -36,7 +37,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     Accept: "application/json",
     "X-Slidein-Tenant": WORKSPACE_ID,
   };
-  if (API_KEY) headers.Authorization = `Bearer ${API_KEY}`;
+  // The signed-in user's session is the credential, so the API applies that
+  // person's role. The environment key stays as the fallback for server work
+  // that runs with no signed-in user (local development, auth disabled).
+  const sessionToken = await readSessionToken();
+  if (sessionToken) headers.Authorization = `Bearer ${sessionToken}`;
+  else if (API_KEY) headers.Authorization = `Bearer ${API_KEY}`;
   if (body !== undefined) headers["Content-Type"] = "application/json";
 
   let response: Response;

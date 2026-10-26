@@ -769,3 +769,71 @@ class AutopilotState(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
+
+
+# ---------------------------------------------------------------------------
+# Identity — one login, two interfaces
+# ---------------------------------------------------------------------------
+
+class User(Base):
+    """A person who signs in to Console or Dashboard for one client instance.
+
+    `role` reuses the API's existing ladder (`viewer` / `operator` /
+    `admin`) so every `require_role` guard applies unchanged to session
+    callers. `service` stays machine-only and can never be a user role.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    #: Login identifier, stored lowercase and unique across the instance.
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
+    role: Mapped[str] = mapped_column(String(16), default="viewer", nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),)
+
+
+class UserSession(Base):
+    """A signed-in session. The raw token only ever lives in the client's
+    HttpOnly cookie; the database stores its digest so a leak of the table
+    cannot be replayed."""
+
+    __tablename__ = "user_sessions"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ApiKey(Base):
+    """A server-to-server credential issued to one workspace (the BFF's
+    fallback and any integration). Env keys in `SLIDEIN_API_KEYS` keep
+    working exactly as before; these rows let provisioning issue a key
+    without an env edit."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    label: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    role: Mapped[str] = mapped_column(String(16), default="operator", nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -8,6 +8,8 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  LogOut,
+  Monitor,
   MoreHorizontal,
   Rocket,
   ScanSearch,
@@ -18,11 +20,21 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { logoutAction } from "@/lib/auth/actions";
+import { Button } from "@/components/ui/button";
+
 import { CANONICAL_LABELS, CANONICAL_ORDER, SECTIONS, SECTION_CANONICAL,
   type SectionMeta } from "@/lib/workflow/metadata";
 import { SECTION_MODULES, brandInitials, safeLogoUrl } from "@/lib/workflow/tenant";
 import { GlossTile } from "@/components/system/gloss-tile";
 import { cn } from "@/lib/utils";
+
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Owner",
+  operator: "Operator",
+  viewer: "Viewer",
+  service: "Service",
+};
 
 const ICONS: Record<string, LucideIcon> = {
   setup: Rocket,
@@ -51,6 +63,8 @@ export function WorkflowSidebar({
   enabledModules,
   sectionLabels,
   moduleOrder,
+  user,
+  dashboardHref,
   className,
 }: {
   attentionCounts?: Record<string, number>;
@@ -63,6 +77,10 @@ export function WorkflowSidebar({
   sectionLabels?: Record<string, string> | null;
   /** Saved adaptive workspace order (module ids); sorts sections within groups. */
   moduleOrder?: string[] | null;
+  /** Signed-in identity — renders the account block and the sign-out action. */
+  user?: { name: string; email: string; role: string } | null;
+  /** Absolute Dashboard URL for the Console <-> Dashboard switcher. */
+  dashboardHref?: string;
   className?: string;
 }) {
   const pathname = usePathname();
@@ -173,6 +191,53 @@ export function WorkflowSidebar({
           </div>
         ))}
       </nav>
+
+      {dashboardHref && (
+        <div className="flex flex-col gap-2 border-t border-rule px-3 pt-3 pb-2">
+          <span className="px-3 font-label text-ink-faint">Interface</span>
+          <div className="flex items-center gap-1 rounded-pill bg-hover-tint p-1">
+            <span className="flex h-7 grow items-center justify-center gap-1.5 rounded-pill bg-surface font-sans text-xs font-medium text-ink-strong shadow-raised">
+              <Monitor className="size-3.5" aria-hidden />
+              Console
+            </span>
+            <a
+              href={dashboardHref}
+              className="flex h-7 grow items-center justify-center gap-1.5 rounded-pill font-sans text-xs font-medium text-ink-muted transition-colors hover:text-ink-strong focus-ring"
+            >
+              Dashboard
+            </a>
+          </div>
+        </div>
+      )}
+
+      {user && (
+        <div className="flex items-center gap-3 border-t border-rule px-4 py-3">
+          <GlossTile size={30} float={false}>
+            <span className="font-sans text-[11px] font-semibold text-ink-strong">
+              {brandInitials(user.name)}
+            </span>
+          </GlossTile>
+          <div className="min-w-0 grow">
+            <div className="truncate font-sans text-[13px] leading-4 font-medium text-ink-strong">
+              {user.name}
+            </div>
+            <div className="truncate font-label text-ink-faint">
+              {ROLE_LABELS[user.role] ?? user.role}
+            </div>
+          </div>
+          <form action={logoutAction}>
+            <Button
+              type="submit"
+              variant="quiet"
+              size="icon-sm"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <LogOut className="size-4" aria-hidden />
+            </Button>
+          </form>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1 border-t border-rule px-4 py-4">
         <span className="font-label text-ink-faint">Workspace</span>

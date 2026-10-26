@@ -21,6 +21,8 @@ export function MobileNav({
   logoUrl,
   enabledModules,
   sectionLabels,
+  user,
+  dashboardHref,
 }: {
   attentionCounts?: Record<string, number>;
   workspaceId: string;
@@ -28,6 +30,8 @@ export function MobileNav({
   logoUrl?: string | null;
   enabledModules?: string[] | null;
   sectionLabels?: Record<string, string> | null;
+  user?: { name: string; email: string; role: string } | null;
+  dashboardHref?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const displayName = brandName?.trim() || "Slidein";
@@ -99,6 +103,8 @@ export function MobileNav({
                 logoUrl={logoUrl}
                 enabledModules={enabledModules}
                 sectionLabels={sectionLabels}
+                user={user}
+                dashboardHref={dashboardHref}
                 className={cn("h-full w-full border-r-0")}
               />
             </div>
