@@ -68,14 +68,11 @@ port 25 open**, one base domain for the software, one or more sender
 domains, and DNS control. As root:
 
 ```bash
-git clone git@github.com:sheikhmdnasrullah-dotcom/SlideIn.git && cd SlideIn
+git clone https://github.com/sheikhmdnasrullah-dotcom/SlideIn.git && cd SlideIn
 sudo ./install.sh --base-domain client.com \
                   --mail-domains send1.com,send2.com \
                   --admin-email you@client.com
 ```
-
-Access to the source is granted to licensees. If you cannot clone it,
-contact the author.
 
 The installer (idempotent, dry-run with `--dry-run`) provisions Docker,
 Caddy + HTTPS, KumoMTA (per-domain DKIM), GoPhish (built + configured,

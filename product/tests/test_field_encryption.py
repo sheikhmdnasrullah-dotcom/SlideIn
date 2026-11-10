@@ -171,7 +171,7 @@ class TestCalendarCredentialsAtRest:
                     "INSERT INTO users (id, org_id, tenant_id, email, name,"
                     " calendar_provider, calendar_credentials, active, created_at,"
                     " updated_at) VALUES (:id, :org, :org, :email, 'Legacy User',"
-                    " 'google', :creds::jsonb, true, now(), now())"
+                    " 'google', CAST(:creds AS jsonb), true, now(), now())"
                 ),
                 {"id": user_id, "org": org_id, "email": f"{org_id}-legacy@example.com",
                  "creds": '{"provider": "google", "access_token": "legacy-plain"}'},
@@ -218,7 +218,7 @@ class TestCalendarCredentialsAtRest:
                     "INSERT INTO users (id, org_id, tenant_id, email, name,"
                     " calendar_provider, calendar_credentials, active, created_at,"
                     " updated_at) VALUES (:id, :org, :org, :email, 'Legacy User',"
-                    " 'google', :creds::jsonb, true, now(), now())"
+                    " 'google', CAST(:creds AS jsonb), true, now(), now())"
                 ),
                 {"id": user_id, "org": org_id, "email": f"{org_id}-mig@example.com",
                  "creds": '{"provider": "google", "access_token": "legacy-plain"}'},
