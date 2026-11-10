@@ -129,3 +129,6 @@ deliverability/sandbox_test_and_batch_sender.py
 .agents/
 bash_events/
 conversations/
+
+# Engineering-only vendored tool (was a broken submodule pointer without .gitmodules)
+external/ECC/
