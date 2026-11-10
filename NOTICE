@@ -18,3 +18,7 @@ Third-party components used as separate services/images (not vendored):
   image behind the local job API in `reacher/`.
 - Agent-Reach (https://github.com/Panniantong/Agent-Reach) — MIT License,
   Copyright (c) Agent Eyes. Installed from upstream at deploy time.
+
+SlideIn and the SlideIn / Slidein Venture names and logos are trademarks of
+the Licensor. The license does not grant any right to use them, except for
+reasonable and customary descriptive use of the project name.

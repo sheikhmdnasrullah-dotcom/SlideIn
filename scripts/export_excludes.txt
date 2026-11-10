@@ -1,0 +1,6 @@
+# Paths (shell globs, relative to repo root) removed from a public export.
+deliverability/sample/test_*.eml
+.claude
+.kilo
+.agents
+.kimi-code
