@@ -1,0 +1,12 @@
+title = "SlideIn gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives (documentation examples, not credentials)"
+paths = [
+  '''docs/product/PRODUCT_CONSTITUTION\.md''',
+  '''deliverability/SETUP_GUIDE\.md''',
+  '''slidein-api/slidein_api/identity\.py''',
+]

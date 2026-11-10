@@ -210,7 +210,7 @@ kumo.on('get_egress_path_config', function(routing_domain, egress_source, site_n
   return kumo.make_egress_path {
     -- EHLO identifies the sending server (not the sender domain): one
     -- hostname that resolves to this VPS. Never use email.tanim.tech
-    -- (points at 153.76.249.166, not us).
+    -- (points at <other-host-ip>, not us).
     ehlo_domain = 'mail.nasrullahtanim.me',
     connection_limit = config.connection_limit,
     max_ready = config.max_ready,

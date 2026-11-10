@@ -17,7 +17,7 @@ sys.path.insert(0, str(HERE))
 
 from preflight_verifier import load_config
 from advanced_deliverability import build_bulletproof_email
-from dispatch_custom_batch11 import send_smtp, check_seed_placement
+from seed_tools import send_smtp, check_seed_placement
 
 config = load_config()
 

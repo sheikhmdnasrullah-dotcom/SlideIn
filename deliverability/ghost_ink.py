@@ -272,7 +272,7 @@ if __name__ == "__main__":
         import sys
         HERE = Path(__file__).parent
         sys.path.insert(0, str(HERE))
-        from dispatch_custom_batch11 import send_smtp, check_seed_placement, load_config
+        from seed_tools import send_smtp, check_seed_placement, load_config
         
         cfg = load_config()
         seed_acc = cfg['seed_accounts'][0]

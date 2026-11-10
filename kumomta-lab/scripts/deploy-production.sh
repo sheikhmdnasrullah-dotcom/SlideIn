@@ -5,7 +5,7 @@
 # ============================================================
 set -euo pipefail
 
-VPS="${1:-root@169.58.207.75}"
+VPS="${1:?usage: $0 root@<vps-ip>}"
 VPS_IP="${VPS##*@}"
 PASS="${VPS_PASS:?set VPS_PASS env var}"
 KUMO_AUTH_PASS="${KUMO_AUTH_PASS:?set KUMO_AUTH_PASS env var}"

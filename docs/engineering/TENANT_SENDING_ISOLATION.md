@@ -39,7 +39,7 @@ bytes leave from.
 
 | Question | Confirmed answer |
 |---|---|
-| Do all tenants currently use one public IP? | **Yes.** Live DNS (`docs/deployment/DNS_RECORDS.md`) authorizes exactly one address — `ip4:169.58.206.20` (SPF), and the same address is `sending_ip` in `deliverability/config.production.json`. There is no `egress_pool` / `make_egress_source` configuration anywhere: `kumomta-lab/policy/production_init.lua` never calls `kumo.make_egress_source` / `make_egress_pool`, so every message uses the host's default interface. |
+| Do all tenants currently use one public IP? | **Yes.** Live DNS (`docs/deployment/DNS_RECORDS.md`) authorizes exactly one address — `ip4:<PRIMARY_VPS_IP>` (SPF), and the same address is `sending_ip` in `deliverability/config.production.json`. There is no `egress_pool` / `make_egress_source` configuration anywhere: `kumomta-lab/policy/production_init.lua` never calls `kumo.make_egress_source` / `make_egress_pool`, so every message uses the host's default interface. |
 | Can KumoMTA select a tenant-specific egress pool today? | **Yes, but it is not used.** The vendored KumoMTA docs (`kumomta-src/docs/userguide/configuration/sendingips.md`) document egress sources, pools, and weighted round-robin, and `queue.lua` supports per-tenant `egress_pool` assignment (`queues.toml` / `[tenant.'x'] egress_pool = '...'`). Nothing in our production `production_init.lua` calls the queue helper, so no tenant is ever assigned a pool. |
 | Is the tenant identity passed into KumoMTA as metadata or otherwise reliably preserved? | **No.** KumoMTA can read a `X-Tenant`/`X-Campaign` header (`queue.lua` reads `tenant_header`/`campaign_header`), but our production policy never calls `queue_helper:apply(msg)`, so KumoMTA never learns a tenant. `slidein-api` stamps `X-Slidein-Tenant` and `X-Slidein-Draft-Id` **server-side** on the message it injects (`services/outreach.py`), so the identity is trusted there — but it is a header for attribution, not a routing decision. |
 | Is tenant-to-egress routing deterministic, or could messages accidentally fall back? | **Fallback is real and currently happens.** KumoMTA's own FAQ (`kumomta-src/docs/faq/egress_pool_unspecified.md`) states that an undefined pool makes mail leave from the host default, and `queuemanagement.md` says an unspecified pool is used when no pool is set. Our policy file neither defines pools nor assigns them, so every message implicitly uses the host default. |
@@ -198,7 +198,7 @@ destructive migration):
   EHLO/PTR must match. This requires the operator — it is not a code task.
 * **Required DNS/rDNS per sending domain.** Already established for the
   three SlideIn domains (SPF, DKIM, DMARC, PTR for
-  `169.58.206.20`). New IPs need new A/AAAA + PTR records pushed via
+  `<PRIMARY_VPS_IP>`). New IPs need new A/AAAA + PTR records pushed via
   Cloudflare (see `docs/deployment/DNS_RECORDS.md`).
 * **KumoMTA egress configuration.** `kumomta-lab/policy/production_init.lua`
   is the file to edit (operator-authored, reviewed per

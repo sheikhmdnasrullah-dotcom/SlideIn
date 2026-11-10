@@ -443,7 +443,7 @@ def dispatch_via_kumomta(
     from email import policy
 
     kumo = config.get("kumo", {})
-    host = kumo.get("host", "169.58.207.75")
+    host = kumo.get("host", "127.0.0.1")
     port = int(kumo.get("port", 2587))
     user = kumo.get("user", "outbound")
     password = kumo.get("password") or os.environ.get("KUMO_AUTH_PASS", "local-dev-password")

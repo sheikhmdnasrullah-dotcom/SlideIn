@@ -1,6 +1,6 @@
 #!/bin/bash
 # Complete KumoMTA setup script for VPS
-# Run this on: ssh root@169.58.207.75
+# Run this on: ssh root@<mail-vps-ip>
 set -e
 
 echo "=== Step 1: Install KumoMTA ==="
@@ -67,6 +67,6 @@ finally:
 echo "=== Setup complete ==="
 echo "Next steps:"
 echo "1. Add DKIM TXT record: kumo._domainkey.nasrullahtanim.me"
-echo "2. Add PTR record for 169.58.207.75 -> mail.nasrullahtanim.me"
+echo "2. Add PTR record for <mail-vps-ip> -> mail.nasrullahtanim.me"
 echo "3. Update local config.json with kumo.user/password"
 echo "4. Run: python3 cli.py send /tmp/test_send.eml tanimsyt@gmail.com hello@nasrullahtanim.me"

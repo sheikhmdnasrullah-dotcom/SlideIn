@@ -38,7 +38,7 @@ Existing market tools (Apollo, Clay, Instantly, Smartlead, GlockApps) force oper
   - Configures ICP parameters, sets daily send caps, reviews AI-generated dossiers, and refines messaging angles.
   - Monitors deliverability health (SPF/DKIM/DMARC status, bounce rates, spam flags).
 - **The System Administrator:**
-  - Manages the underlying VPS infrastructure (`169.58.206.20`), KumoMTA mail routing, Warmbly warmup clusters, and Reacher validation engines.
+  - Manages the underlying VPS infrastructure (`<PRIMARY_VPS_IP>`), KumoMTA mail routing, Warmbly warmup clusters, and Reacher validation engines.
 
 ### 2.2 Commercial Tiering & Multi-Tenant Mandate
 - **Subscription Baseline:** $350/month per tenant.
@@ -120,7 +120,7 @@ $$\text{DISCOVER} \longrightarrow \text{ENRICH} \longrightarrow \text{VERIFY} \l
 
 ### 5.1 Deliverability & Infrastructure
 - **Placement Target:** >90% Primary Inbox placement on major providers (Google Workspace, Microsoft 365).
-- **Transport Reliability:** 99.9% uptime on MTA engine (`169.58.206.20`).
+- **Transport Reliability:** 99.9% uptime on MTA engine (`<PRIMARY_VPS_IP>`).
 - **Rate Limiting:** Provider-specific pacing strictly enforced in KumoMTA policy.
 
 ### 5.2 Performance & Responsiveness

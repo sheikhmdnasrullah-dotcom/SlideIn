@@ -16,7 +16,7 @@ The workspace contains **three overlapping backend subsystems** with shared resp
 | `product/` | "Acquisition OS" API + universal multi-tenant core (learning scopes, agents, evaluation) | Stage 1; partially tested; CI-excluded workflows |
 | `workspace-app/` | Next.js 16 ops console (Supabase auth) with ~50 internal API routes, its **own** nodemailer + GoPhish send path, Temporal + Mastra agents | Deployed (PM2 on VPS); second ungated send path |
 
-Supporting infrastructure (live, out of scope to change without approval): KumoMTA, GoPhish, reacher, Warmbly, Grafana/Prometheus on VPS `169.58.206.20`.
+Supporting infrastructure (live, out of scope to change without approval): KumoMTA, GoPhish, reacher, Warmbly, Grafana/Prometheus on VPS `<PRIMARY_VPS_IP>`.
 
 Tenant model today: **API-key auth, one key = one tenant = one role** (`security.py:27` roles: `viewer, service, operator, admin`). Tenant isolation is enforced by per-query `tenant_id` filters inside services, gated by `resolve_workspace()` (`security.py:195-209`); cross-tenant access returns **404** (no existence oracle). There is no RLS, no membership model, no user accounts.
 

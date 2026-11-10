@@ -1,6 +1,6 @@
 # Contributing to SlideIn
 
-Thanks for your interest in contributing. This project is in **alpha**:
+Thanks for your interest in contributing. This project is in **beta**:
 small, focused contributions that improve correctness, tests, or docs are
 the most helpful right now.
 

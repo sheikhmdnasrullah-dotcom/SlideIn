@@ -10,7 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Repository documentation aligned with the product positioning: README
   rewritten around evidence-backed, approval-gated outreach; project status
-  standardized on "alpha"; `CLAUDE.md` replaced with current agent
+  standardized on "beta"; `CLAUDE.md` replaced with current agent
   instructions; fixed references to a nonexistent `CONTRACTS.md`.
 
 ### Added

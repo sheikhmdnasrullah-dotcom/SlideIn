@@ -120,7 +120,7 @@ def main():
 
     # 1. KumoMTA connectivity
     print("[1/6] KumoMTA Connectivity")
-    kumo_host = config.get("kumo", {}).get("host", "169.58.207.75")
+    kumo_host = config.get("kumo", {}).get("host", "127.0.0.1")
     kumo_port = config.get("kumo", {}).get("port", 2587)
     result = check_kumomta_running(kumo_host, kumo_port)
     print(f"  KumoMTA {kumo_host}:{kumo_port}: {result['status']} - {result['detail']}")
@@ -155,7 +155,7 @@ def main():
 
     # 4. FCrDNS
     print("[4/6] FCrDNS")
-    ip = config.get("sending_ip", "169.58.207.75")
+    ip = config.get("sending_ip", "127.0.0.1")
     fqdn = "mail.nasrullahtanim.me"
     result = check_fcrdns(ip, fqdn)
     print(f"  {ip} -> {fqdn}: {result['status']} - {result['detail']}")

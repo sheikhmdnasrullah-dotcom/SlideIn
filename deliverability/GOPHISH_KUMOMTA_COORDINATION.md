@@ -1,12 +1,12 @@
 # GoPhish ↔ KumoMTA Coordination
 
-Verified and wired on VPS `169.58.207.75` (2026-09-08).
+Verified and wired on VPS `<MAIL_VPS_IP>` (2026-09-08).
 
 ## What's set up
 
 - **KumoMTA** (`/opt/kumomta`, systemd `kumomta.service`) listens on `0.0.0.0:2587`
   (submission) and `127.0.0.1:8000` (admin). Signs DKIM for `nasrullahtanim.me`
-  with selector `dkim`; egress source `169.58.207.75`, EHLO `mail.nasrullahtanim.me`.
+  with selector `dkim`; egress source `<MAIL_VPS_IP>`, EHLO `mail.nasrullahtanim.me`.
 - **GoPhish** SMTP sending profiles (IDs 9/10/11) point at KumoMTA:
   - `KumoMTA - hello@nasrullahtanim.me`  → `127.0.0.1:2587`, auth `admin`
   - `KumoMTA - talk@nasrullahtanim.me`   → `127.0.0.1:2587`, auth `admin`
@@ -15,11 +15,11 @@ Verified and wired on VPS `169.58.207.75` (2026-09-08).
 
 ## Deliverability baseline (verified)
 
-- FCrDNS: `mail.nasrullahtanim.me` ↔ `169.58.207.75` ↔ PTR — **match**
-- SPF `v=spf1 mx -all` — **pass** (mx = `169.58.207.75`)
+- FCrDNS: `mail.nasrullahtanim.me` ↔ `<MAIL_VPS_IP>` ↔ PTR — **match**
+- SPF `v=spf1 mx -all` — **pass** (mx = `<MAIL_VPS_IP>`)
 - DKIM selector `dkim._domainkey.nasrullahtanim.me` — **published & matches key**
 - DMARC `v=DMARC1; p=quarantine` — **enforcing**
-- VPS IP `169.58.207.75` — **not on Spamhaus/SpamCop/SORBS/AbuseAT/CBL**
+- VPS IP `<MAIL_VPS_IP>` — **not on Spamhaus/SpamCop/SORBS/AbuseAT/CBL**
 - Test send from all 3 profiles → owned seed Gmail: **all 3 landed in INBOX**
 
 ## Notes / next steps

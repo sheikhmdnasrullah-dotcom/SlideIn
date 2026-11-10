@@ -31,7 +31,7 @@ Git: parent dir is not a repo. `saas/` @ `main 53ce000` with 7 dirty files
 | Deliverability | `saas/deliverability/webhook_server.py` | Implemented, partially verified. SES/SendGrid/Postmark/Mailgun handlers + signature check present; full bodies not re-read here. |
 | Marketing site | `marketing-site/app/` | Home renders `Hero` only; other sections unmounted-but-retained. Routes exist: contact, insights(+slug), portfolio, pricing, process, ai-pipeline-emas. Page bodies (except home) unconfirmed. |
 | Deploy tooling | `saas/install.sh`, `docker-compose.local.yml`, `workspace-app/ecosystem.config.cjs` | Implemented. Single-host installer (v0.2.0, idempotent), local mailpit/redis compose, PM2 config. `ansible-playbook/site.yml` role unclear (uninspected). |
-| Docs vs reality | `saas/docs/` | CURRENT_STATE capability matrix (#1–#37) matches spot checks. Live-VPS claims (`169.58.206.20`, api/workspace hosts) **not reachable from here — unverified**. |
+| Docs vs reality | `saas/docs/` | CURRENT_STATE capability matrix (#1–#37) matches spot checks. Live-VPS claims (`<PRIMARY_VPS_IP>`, api/workspace hosts) **not reachable from here — unverified**. |
 
 Not implemented (confirmed): billing/entitlements, IMAP inbound (replies go
 nowhere), rehearsed backup/restore, monitoring alert routes, booking provider.

@@ -9,7 +9,7 @@
 > **Version:** 1.0.0  
 > **Status:** Draft summary (see docs/ for canonical)  
 > **System Scope:** End-to-end Multi-Tenant Agentic Outreach & Deliverability Platform  
-> **Production VPS:** `169.58.206.20` (Ubuntu, Docker, Caddy, KumoMTA, GoPhish, Warmbly)  
+> **Production VPS:** `<PRIMARY_VPS_IP>` (Ubuntu, Docker, Caddy, KumoMTA, GoPhish, Warmbly)  
 
 ---
 
@@ -37,7 +37,7 @@ graph TB
         PlatformGenome["Platform Learning Engine (Differential Heuristics)"]
     end
 
-    subgraph Tier0 ["Tier 0: Infrastructure & Transport Shield (VPS 169.58.206.20)"]
+    subgraph Tier0 ["Tier 0: Infrastructure & Transport Shield (VPS <PRIMARY_VPS_IP>)"]
         Caddy["Caddy Edge Reverse Proxy (HTTPS/LE)"]
         KumoMTA["KumoMTA (:2587 Auth Outbound / :8029 Admin)"]
         GoPhish["GoPhish Campaign Manager (:8333)"]
@@ -116,7 +116,7 @@ When a client subscribes, the agent runs continuously on their behalf. The clien
 
 ## 3. Tier Specifications
 
-### 3.1 Tier 0: Infrastructure & Transport (`169.58.206.20`)
+### 3.1 Tier 0: Infrastructure & Transport (`<PRIMARY_VPS_IP>`)
 - **Host OS:** Ubuntu LTS with Docker runtime and systemd supervision.
 - **KumoMTA:**
   - Inbound SMTP listener on `127.0.0.1:2587` requiring SASL plain authentication (`outbound`).

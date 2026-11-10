@@ -4,21 +4,22 @@
 
 [![CI](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/actions/workflows/ci.yml/badge.svg)](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/actions/workflows/ci.yml)
 [![License: BSL 1.1](https://img.shields.io/badge/License-Business%20Source%201.1-000000)](LICENSE)
-![Status: alpha](https://img.shields.io/badge/status-alpha-orange)
+![Status: beta](https://img.shields.io/badge/status-beta-yellow)
 
 SlideIn researches each prospect from sourced web evidence, qualifies them
 against your saved business profile, drafts personalized messages that cite
 only what the evidence supports, and sends only what a human has approved.
 It runs on a VPS and sender domains you own, and nothing phones home.
 
-**Status: alpha.** The seven-stage workflow, deliverability gate and
+**Status: beta.** The seven-stage workflow, deliverability gate and
 dashboard exist and are tested locally. Billing, multi-customer hosting and
 inbound mailbox hosting are not built. The authoritative, dated status is
 [`docs/project/CURRENT_STATE.md`](docs/project/CURRENT_STATE.md).
 
-**License:** Business Source License 1.1. Free to self-host for one
-organization's internal use; offering it as a hosted service to third
-parties needs a separate commercial license ([details](#license)).
+**License:** source-available under the Business Source License 1.1, not
+open source. You may self-host it for your own organization's internal use.
+Selling it, hosting it for others, or running it on behalf of clients needs
+a separate commercial license ([details](#license)).
 
 ## Why SlideIn
 
@@ -281,11 +282,19 @@ Small, tested, documented PRs welcome.
 
 ## License
 
-SlideIn is licensed under the **Business Source License 1.1**
-(see `LICENSE`). Commercial use is permitted for self-hosting on your own
-infrastructure under the Additional Use Grant; reselling or operating it
-as a hosted service for third parties requires a separate commercial
-license from the author (open a GitHub issue).
+SlideIn is source-available under the **Business Source License 1.1**
+(see `LICENSE`). The Additional Use Grant allows you to run it on
+infrastructure you control, for one organization's own internal operations.
+It does not allow:
+
+- hosting it for third parties or offering it as a service,
+- using it for your clients (agency, consultancy or white-label use),
+- selling, sublicensing or bundling it into a paid product,
+- removing notices or presenting it as your own.
+
+For anything outside the grant, contact the author for a commercial license
+(open a GitHub issue). Under BSL 1.1, each version converts to Apache 2.0 on
+its Change Date (see `LICENSE`).
 
 The Go backend derives from [Gophish](https://github.com/gophish/gophish)
 (MIT, © Jordan Wright). Warmbly, reacher, and Agent-Reach retain their

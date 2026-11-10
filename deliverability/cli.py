@@ -156,13 +156,13 @@ def main(argv):
         domain = argv[2] if len(argv) > 2 else cfg.get("sending_domain", "tanim.tech")
         ip = argv[3] if len(argv) > 3 else cfg.get("sending_ip")
         subs = cfg.get("sending_subdomains", [])
-        rep = dns_checks.audit_domain(domain, ip, cfg.get("dkim_selectors"), subs)
-        for c in rep.checks:
+        audit_result = dns_checks.audit_domain(domain, ip, cfg.get("dkim_selectors"), subs)
+        for c in audit_result.checks:
             print(f"{c.status:5} {c.name}: {c.detail}")
         bl = dns_checks.audit_blacklists(ip) if ip else []
         for c in bl:
             print(f"{c.status:5} {c.name}: {c.detail}")
-        print("\nISSUES:", "; ".join(rep.issues) or "none")
+        print("\nISSUES:", "; ".join(audit_result.issues) or "none")
         return
 
     if cmd == "analyze":

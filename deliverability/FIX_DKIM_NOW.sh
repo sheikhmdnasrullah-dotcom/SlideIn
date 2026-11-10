@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # FIX DKIM SIGNING ON PRODUCTION SERVER
-# Run this on: ssh root@169.58.207.75
+# Run this on: ssh root@<mail-vps-ip>
 # ============================================================
 set -e
 

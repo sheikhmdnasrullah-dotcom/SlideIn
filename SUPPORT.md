@@ -1,6 +1,6 @@
 # Support
 
-This project is in **alpha** and maintained by a solo developer in public.
+This project is in **beta** and maintained by a solo developer in public.
 
 ## How to get help
 
@@ -16,7 +16,7 @@ This project is in **alpha** and maintained by a solo developer in public.
 
 - Honest answers about what is and isn't implemented
   (`docs/project/CURRENT_STATE.md` is the source of truth).
-- No guaranteed response time. This is an alpha project without a support
+- No guaranteed response time. This is a beta project without a support
   SLA.
 - Security issues: follow `SECURITY.md` — do **not** open a public issue.
 

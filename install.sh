@@ -3,8 +3,8 @@
 # SlideIn one-command installer — runs ON the target machine.
 #
 # Installs the full self-hosted stack on a fresh Ubuntu VPS:
-# KumoMTA + GoPhish + dashboard + Caddy (HTTPS) + monitoring,
-# lead verification (Reacher), Warmbly warmup, deliverability CLI.
+# KumoMTA + GoPhish + Console + Caddy (HTTPS) + monitoring,
+# Reacher, Warmbly warmup, research tools, and deliverability tooling.
 #
 # Usage (fresh VPS, as root):
 #   curl -fsSL https://raw.githubusercontent.com/sheikhmdnasrullah-dotcom/SlideIn/main/install.sh \
@@ -16,12 +16,14 @@
 #   ./install.sh --base-domain ... --mail-domains ... --admin-email ...
 #
 # Flags: --senders hello,talk,connect  --config client_intake.txt  --activate
+#        --mail-mode kumomta|google_workspace
+#        --google-workspace-email mail@example.com --google-workspace-secret-file path
 #        --minimal (skip Warmbly)  --non-interactive  --dry-run
 #        --regenerate-secrets  --help
 #
 # Idempotent: safe to rerun; existing secrets/keys/data are kept.
-# License: MIT. All bundled upstreams are permissive-licensed
-# (Apache-2.0 / MIT) — see NOTICE. No paid licenses required.
+# License: MIT. Blackbird remains a separately licensed external CLI and is
+# installed at runtime; its source is not bundled or derived into Slidein.
 # ============================================================
 set -euo pipefail
 
@@ -30,7 +32,8 @@ MAIN_REPO="https://github.com/sheikhmdnasrullah-dotcom/SlideIn.git"
 
 # ---- args ----
 BASE_DOMAIN=""; MAIL_DOMAINS=""; ADMIN_EMAIL=""; SENDERS="hello,talk,connect"
-CONFIG_FILE=""; ACTIVATE_ON_INSTALL=0
+CONFIG_FILE=""; ACTIVATE_ON_INSTALL=0; MAIL_MODE="kumomta"
+GOOGLE_WORKSPACE_EMAIL=""; GOOGLE_WORKSPACE_SECRET_FILE=""
 NON_INTERACTIVE=0; DRY_RUN=0; MINIMAL=0; REGEN_SECRETS=0
 
 usage() {
@@ -45,6 +48,9 @@ while [ $# -gt 0 ]; do
     --admin-email) ADMIN_EMAIL="${2:?}"; shift 2 ;;
     --senders) SENDERS="${2:?}"; shift 2 ;;
     --config) CONFIG_FILE="${2:?}"; shift 2 ;;
+    --mail-mode) MAIL_MODE="${2:?}"; shift 2 ;;
+    --google-workspace-email) GOOGLE_WORKSPACE_EMAIL="${2:?}"; shift 2 ;;
+    --google-workspace-secret-file) GOOGLE_WORKSPACE_SECRET_FILE="${2:?}"; shift 2 ;;
     --activate) ACTIVATE_ON_INSTALL=1; shift ;;
     --non-interactive) NON_INTERACTIVE=1; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
@@ -64,7 +70,7 @@ dry()  { [ "$DRY_RUN" = 1 ] && { log "[dry-run] would: $*"; return 0; }; return 
 valid_domain() { [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$ ]]; }
 valid_email()  { [[ "$1" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]]; }
 
-[ -n "$BASE_DOMAIN" ] || die "missing --base-domain (hosts the dashboard: app.<base>)"
+[ -n "$BASE_DOMAIN" ] || die "missing --base-domain (hosts the workspace: app.<base>)"
 [ -n "$MAIL_DOMAINS" ] || die "missing --mail-domains (comma-separated sender domains)"
 [ -n "$ADMIN_EMAIL" ] || die "missing --admin-email (contact + default sender identity)"
 valid_domain "$BASE_DOMAIN" || die "bad --base-domain: $BASE_DOMAIN"
@@ -88,9 +94,18 @@ KUMO_LAB=/opt/kumomta-lab; GOPH=/root/gophish; DELIV=/opt/deliverability
 REACH=/opt/reacher/job_api; WARMB=/opt/warmbly
 SECRETS_FILE=$SLIDEIN/.secrets.env
 
+if [ "$MAIL_MODE" != "kumomta" ] && [ "$MAIL_MODE" != "google_workspace" ]; then
+  die "--mail-mode must be kumomta or google_workspace"
+fi
+if [ "$MAIL_MODE" = "google_workspace" ]; then
+  [ -n "$GOOGLE_WORKSPACE_EMAIL" ] || GOOGLE_WORKSPACE_EMAIL="$ADMIN_EMAIL"
+  [ -z "$GOOGLE_WORKSPACE_SECRET_FILE" ] && GOOGLE_WORKSPACE_SECRET_FILE="$SLIDEIN/.google-workspace-imap-password"
+  [ -r "$GOOGLE_WORKSPACE_SECRET_FILE" ] || die "Google Workspace mode requires --google-workspace-secret-file (or $GOOGLE_WORKSPACE_SECRET_FILE)"
+fi
+
 echo "================================================"
 echo "  SlideIn installer v$INSTALL_VERSION"
-echo "  base: $BASE_DOMAIN   mail: $MAIL_DOMAINS"
+echo "  base: $BASE_DOMAIN   mail: $MAIL_DOMAINS   mode: $MAIL_MODE"
 echo "================================================"
 
 # ============================================================
@@ -119,14 +134,14 @@ if [ -z "$PUBLIC_IP" ]; then
   [ "$DRY_RUN" = 1 ] && { PUBLIC_IP="192.0.2.10"; warn "dry-run: using placeholder IP $PUBLIC_IP"; } || die "could not detect public IP (need outbound HTTPS)"
 fi
 log "public IP: $PUBLIC_IP"
-# Port 25 egress is non-negotiable for an MTA.
+# Port 25 egress is required only for the private KumoMTA route.
 P25_OK=0
-if [ "$DRY_RUN" = 0 ]; then
+if [ "$DRY_RUN" = 0 ] && [ "$MAIL_MODE" = "kumomta" ]; then
 for mx in mx.zoho.com gmail-smtp-in.l.google.com; do
   if timeout 8 bash -c "cat < /dev/null > /dev/tcp/$mx/25" 2>/dev/null; then P25_OK=1; break; fi
 done
 fi
-if [ "$P25_OK" = 0 ] && [ "$DRY_RUN" = 0 ]; then
+if [ "$MAIL_MODE" = "kumomta" ] && [ "$P25_OK" = 0 ] && [ "$DRY_RUN" = 0 ]; then
   msg="port 25 outbound is BLOCKED — request unblocking from your VPS host, then rerun"
   [ "$NON_INTERACTIVE" = 1 ] && die "$msg" || { warn "$msg"; read -rp "Continue anyway? [y/N] " c; [ "$c" = y ] || exit 1; }
 fi
@@ -141,7 +156,7 @@ log "PHASE 2: system dependencies"
 dry "apt install + docker + caddy + node20 + pm2 + ufw" || {
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl gnupg openssl python3 python3-venv python3-pip jq dnsutils rsync git ufw openssh-server > /dev/null
+apt-get install -y -qq ca-certificates curl gnupg openssl python3 python3-venv python3-pip jq dnsutils rsync git ufw openssh-server gh subfinder spamassassin rspamd > /dev/null
 command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
 docker compose version >/dev/null || die "docker compose plugin missing after docker install"
 # Caddy (official apt repo).
@@ -152,7 +167,7 @@ if ! command -v caddy >/dev/null; then
   curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt | tee /etc/apt/sources.list.d/caddy-stable.list > /dev/null
   apt-get update -qq && apt-get install -y -qq caddy
 fi
-# Node 20 (proven with this dashboard) + pm2.
+# Node 20 (proven with this console) + pm2.
 if ! command -v node >/dev/null || ! node --version | grep -q "v20\."; then
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
   apt-get install -y -qq nodejs
@@ -173,21 +188,18 @@ log "deps OK: $(docker --version | head -c 30), $(caddy version | head -c 20), $
 # PHASE 3: layout + sources
 # ============================================================
 log "PHASE 3: layout + sources"
-dry "clone $MAIN_REPO + dashboard repo to $SLIDEIN" || {
+dry "clone $MAIN_REPO + console repo to $SLIDEIN" || {
 mkdir -p "$SLIDEIN" "$KUMO_LAB"/{policy,dkim,monitoring,compose,secrets} \
   /opt/kumomta/etc/policy /root/gophish "$DELIV" "$REACH" "$WARMB" "$APPDST"
 if [ -f ./install.sh ] && [ -d ./kumomta-lab ]; then
   log "local repo detected — copying instead of cloning"
   cp -a . "$REPO.tmp" && rm -rf "$REPO" && mv "$REPO.tmp" "$REPO"
-  if [ -d ./workspace-app ] && [ ! -e "$APP_SRC" ]; then cp -a ./workspace-app "$APP_SRC"; fi
 else
   [ -d "$REPO/.git" ] || git clone --depth 1 "$MAIN_REPO" "$REPO"
   (cd "$REPO" && git pull --ff-only 2>/dev/null || true)
 fi
-[ -d "$APP_SRC/.git" ] || git clone --depth 1 "$APP_REPO" "$APP_SRC"
-(cd "$APP_SRC" && git pull --ff-only 2>/dev/null || true)
 [ -f "$REPO/kumomta-lab/policy/production_init.lua" ] || die "main repo incomplete (policy missing)"
-[ -f "$APP_SRC/package.json" ] || die "dashboard repo incomplete (package.json missing)"
+[ -f "$REPO/slidein-app/package.json" ] || die "canonical console repo incomplete (package.json missing)"
 }
 
 # ============================================================
@@ -211,7 +223,7 @@ gen() { # gen VAR [bytes]: set + persist unless present (or regen forced)
 }
 gen KUMO_AUTH_PASS; gen KUMO_ADMIN_PASS; gen GOPHISH_API_KEY 32
 gen GRAFANA_ADMIN; gen JOB_API_SECRET; gen REACHER_SECRET
-gen INTERNAL_API_SECRET; gen VAULT_MASTER_KEY 32
+gen INTERNAL_API_SECRET; gen VAULT_MASTER_KEY 32; gen ADMIN_PASSWORD 16
 # shellcheck disable=SC1090
 . "$SECRETS_FILE"
 echo "$GOPHISH_API_KEY" > /root/gophish/api_key.txt && chmod 600 /root/gophish/api_key.txt
@@ -276,7 +288,7 @@ src = src.replace(old_domains, "local DOMAINS = {\n" + "".join(f"  '{d}',\n" for
 assert "'nasrullahtanim.me'" in src, "policy fallback default missing"
 src = src.replace("'nasrullahtanim.me'", f"'{primary}'")
 old_note = """    -- hostname that resolves to this VPS. Never use email.tanim.tech
-    -- (points at 153.76.249.166, not us)."""
+    -- (points at <other-host-ip>, not us)."""
 assert old_note in src, "policy EHLO note drifted"
 src = src.replace(old_note, "    -- hostname that resolves to this VPS (and only such a hostname).")
 assert "tanim." not in src, "author domains remain in policy"
@@ -398,9 +410,9 @@ log "deliverability CLI ready (precheck failures before DNS setup are expected)"
 }
 
 # ============================================================
-# PHASE 9: Slidein API & client dashboard
+# PHASE 9: Slidein API & client console
 # ============================================================
-log "PHASE 9: Slidein API & client dashboard"
+log "PHASE 9: Slidein API & client console"
 dry "setup slidein-api (:8100) + slidein-app (:3000) + optional bootstrap" || {
 # shellcheck disable=SC1090
 . "$SECRETS_FILE"
@@ -413,12 +425,53 @@ rsync -a --delete --exclude .venv --exclude __pycache__ --exclude .pytest_cache 
 [ -x "$SLIDEIN_API_DIR/.venv/bin/python" ] || python3 -m venv "$SLIDEIN_API_DIR/.venv"
 "$SLIDEIN_API_DIR/.venv/bin/pip" install -q -r "$SLIDEIN_API_DIR/requirements.txt" || warn "pip install had warnings"
 
+GOOGLE_PASSWORD=""
+if [ "$MAIL_MODE" = "google_workspace" ]; then
+  GOOGLE_PASSWORD="$(tr -d '\r\n' < "$GOOGLE_WORKSPACE_SECRET_FILE")"
+  chmod 600 "$GOOGLE_WORKSPACE_SECRET_FILE"
+fi
 cat > "$SLIDEIN_API_DIR/.env" << APIENV
 SLIDEIN_DB_PATH=$SLIDEIN_API_DIR/data/slidein.db
-SLIDEIN_AUTH_MODE=disabled
+SLIDEIN_AUTH_MODE=enforced
+SLIDEIN_DEFAULT_TENANT=ten_default
 INTERNAL_API_SECRET=$INTERNAL_API_SECRET
 VAULT_MASTER_KEY=$VAULT_MASTER_KEY
+REACHER_URL=http://127.0.0.1:8090
+REACHER_SECRET=$REACHER_SECRET
+OPENOSINT_CLI=/usr/local/bin/openosint
 APIENV
+# The 14-day Warmbly mailbox-warmup rule: with Warmbly part of this install,
+# live campaign sends stay gated until warmup completes. Loopback http — the
+# Warmbly API is bound to 127.0.0.1:8180 by warmbly/docker-compose.yml.
+# WARMBLY_API_TOKEN (Warmbly UI -> Settings -> API keys, READ+WRITE emails
+# scopes) is picked up from $SECRETS_FILE when present; without it the rule
+# reports "cannot verify" and stays closed until the token is added.
+if [ "$MINIMAL" = 0 ]; then
+  cat >> "$SLIDEIN_API_DIR/.env" << APIENV
+WARMBLY_URL=http://127.0.0.1:8180
+APIENV
+  if [ -n "${WARMBLY_API_TOKEN:-}" ]; then
+    echo "WARMBLY_API_TOKEN=$WARMBLY_API_TOKEN" >> "$SLIDEIN_API_DIR/.env"
+  fi
+fi
+if [ "$MAIL_MODE" = "kumomta" ]; then
+  cat >> "$SLIDEIN_API_DIR/.env" << APIENV
+SLIDEIN_TRANSPORT=kumo
+KUMO_HOST=127.0.0.1
+KUMO_SMTP_PORT=2587
+KUMO_AUTH_USER=outbound
+KUMO_AUTH_PASS=$KUMO_AUTH_PASS
+APIENV
+else
+  cat >> "$SLIDEIN_API_DIR/.env" << APIENV
+SLIDEIN_TRANSPORT=smtp
+SLIDEIN_SMTP_HOST=smtp.gmail.com
+SLIDEIN_SMTP_PORT=587
+SLIDEIN_SMTP_USER=$GOOGLE_WORKSPACE_EMAIL
+SLIDEIN_SMTP_PASS=$GOOGLE_PASSWORD
+GOOGLE_WORKSPACE_IMAP_PASSWORD=$GOOGLE_PASSWORD
+APIENV
+fi
 chmod 600 "$SLIDEIN_API_DIR/.env"
 
 cat > /etc/systemd/system/slidein-api.service << UNITEOF
@@ -445,6 +498,24 @@ for _ in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/8100) 2>/dev/null && break; 
 (echo > /dev/tcp/127.0.0.1/8100) 2>/dev/null || die "slidein-api never came up on :8100"
 log "  slidein-api live on :8100"
 
+BOOT_RESPONSE="$(curl -fsS --max-time 10 -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\",\"name\":\"Owner\",\"tenant_id\":\"ten_default\"}" \
+  http://127.0.0.1:8100/v1/auth/bootstrap || true)"
+BOOT_TOKEN="$(printf '%s' "$BOOT_RESPONSE" | jq -r '.token // ""' 2>/dev/null || true)"
+if [ -n "$BOOT_TOKEN" ]; then
+  if [ "$MAIL_MODE" = "google_workspace" ]; then
+    curl -fsS --max-time 10 -X PUT -H "Authorization: Bearer $BOOT_TOKEN" -H 'Content-Type: application/json' \
+      -d "{\"provider\":\"google_workspace\",\"enabled\":true,\"imap_host\":\"imap.gmail.com\",\"imap_port\":993,\"username\":\"$GOOGLE_WORKSPACE_EMAIL\",\"secret_ref\":\"GOOGLE_WORKSPACE_IMAP_PASSWORD\"}" \
+      http://127.0.0.1:8100/v1/tenants/ten_default/mail/provider || die "Google Workspace mail configuration failed"
+  else
+    curl -fsS --max-time 10 -X PUT -H "Authorization: Bearer $BOOT_TOKEN" -H 'Content-Type: application/json' \
+      -d '{"provider":"kumomta","enabled":false}' \
+      http://127.0.0.1:8100/v1/tenants/ten_default/mail/provider || die "KumoMTA mail configuration failed"
+  fi
+else
+  log "  existing workspace found; preserved users and mail configuration"
+fi
+
 # 9B: Client Instance Bootstrap (if --config supplied or bundle exists)
 TENANT_ID="ten_default"
 if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
@@ -459,7 +530,7 @@ if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
   "${BOOTSTRAP_CMD[@]}" || warn "Client bootstrap reported warnings — check validation checklist"
 fi
 
-# 9C: Slidein Client Dashboard (:3000 Next.js app via PM2)
+# 9C: Slidein Console (:3000 Next.js app via PM2)
 log "  Deploying slidein-app (:3000)..."
 mkdir -p "$CLIENT_APP_DST"
 rsync -a --delete --exclude .git --exclude node_modules --exclude .next \
@@ -467,7 +538,7 @@ rsync -a --delete --exclude .git --exclude node_modules --exclude .next \
 cat > "$CLIENT_APP_DST/.env.local" << ENVEOF
 SLIDEIN_API_URL=http://127.0.0.1:8100
 SLIDEIN_WORKSPACE_ID=$TENANT_ID
-SLIDEIN_AUTH_MODE=disabled
+SLIDEIN_AUTH_MODE=enforced
 NEXT_PUBLIC_APP_URL=https://$APP_HOST
 PORT=3000
 ENVEOF
@@ -542,7 +613,10 @@ else
   touch "$WARMB/.env" && chmod 600 "$WARMB/.env"
   for kv in "TRACKING_DOMAIN=$WARM_TRACK" "APP_URL=https://$WARM_HOST" \
             "API_PUBLIC_URL=https://$WARM_API" "CORS_ALLOW_ORIGINS=https://$WARM_HOST" \
-            "WEBSOCKET_URL=wss://$WARM_API/socket/websocket"; do
+            "WEBSOCKET_URL=wss://$WARM_API/socket/websocket" \
+            "BOX_GOOGLE_CLIENT_ID=${BOX_GOOGLE_CLIENT_ID:-}" \
+            "BOX_GOOGLE_CLIENT_SECRET=${BOX_GOOGLE_CLIENT_SECRET:-}" \
+            "BOX_GOOGLE_OAUTH_CONNECT=${BOX_GOOGLE_OAUTH_CONNECT:-false}"; do
     k="${kv%%=*}"; grep -q "^$k=" "$WARMB/.env" || echo "$kv" >> "$WARMB/.env"
   done
   bash "$REPO/warmbly/gen-warmbly-env.sh"
@@ -550,17 +624,26 @@ else
   # Warmbly's compose joins the kumo production net via its kumo-relay
   # alias (external name kumomta-production_production, created in Phase 6).
   (cd "$WARMB" && docker compose -p warmbly -f docker-compose.yml up -d)
-  log "Warmbly deployed — connect mailboxes in the Warmbly UI (https://$WARM_HOST) as the final step"
+  log "Warmbly deployed — connect mailboxes in the Warmbly UI (https://$WARM_HOST), then create an API key (Settings -> API keys, READ+WRITE emails) and set WARMBLY_API_TOKEN in $SLIDEIN_API_DIR/.env (restart slidein-api). Until then the 14-day warmup rule reports 'cannot verify' and keeps live campaigns closed."
   }
 fi
 
 # ============================================================
-# PHASE 13: Agent-Reach research tooling (best effort)
+# PHASE 13: research, browser, and mailbox runtimes
 # ============================================================
-log "PHASE 13: Agent-Reach"
-dry "pip install Agent-Reach from upstream" || {
-pip3 install --break-system-packages -q "git+https://github.com/Panniantong/Agent-Reach.git" 2>&1 | tail -2 || warn "Agent-Reach install failed — research features degrade (rerun installer later)"
-pip3 show agent-reach > /dev/null 2>&1 && log "Agent-Reach installed" || warn "Agent-Reach not importable — non-fatal"
+log "PHASE 13: research tools"
+dry "install official research/browser tools and verify commands" || {
+bash "$REPO/scripts/install_research_tools.sh" "$SLIDEIN"
+command -v subfinder >/dev/null || die "subfinder missing after apt install"
+command -v rspamc >/dev/null || die "rspamd missing after apt install"
+command -v spamassassin >/dev/null || die "SpamAssassin missing after apt install"
+command -v gh >/dev/null || die "GitHub CLI missing after apt install"
+(cd "$REPO/warmup-engine" && npm ci --no-audit --no-fund)
+[ -d "$REPO/warmup-engine/node_modules/bullmq" ] || die "BullMQ missing"
+[ -d "$REPO/warmup-engine/node_modules/nodemailer" ] || die "Nodemailer missing"
+[ -d "$REPO/warmup-engine/node_modules/imapflow" ] || die "ImapFlow missing"
+[ -d "$REPO/warmup-engine/node_modules/mailparser" ] || die "mailparser missing"
+log "research and mailbox runtimes smoke-checked"
 }
 
 # ============================================================
@@ -607,26 +690,21 @@ echo "================================================"
 echo "  INSTALL COMPLETE"
 echo "================================================"
 echo ""
-echo "Workspace:  https://$APP_HOST/  (client dashboard, also https://$BASE_DOMAIN/)"
-echo "API:        https://$API_HOST/  (FastAPI workflow engine)"
-echo "Console:    https://$CONSOLE_HOST/login  (user: admin — see temp password below)"
-echo "Tracking:   https://$TRACK_HOST/  (404 on / is correct)"
+echo "Console:    https://$APP_HOST/"
+echo "API:        https://$API_HOST/"
+echo "Tracking:   https://$TRACK_HOST/"
 if [ "$MINIMAL" = 0 ]; then
-  echo "Warmbly:    https://$WARM_HOST/  (inbox warmup platform)"
+  echo "Warmbly:    https://$WARM_HOST/"
+fi
+echo "Mail mode:  $MAIL_MODE"
+echo "Admin:      $ADMIN_EMAIL (password: ADMIN_PASSWORD in $SECRETS_FILE)"
+echo "Secrets:    $SECRETS_FILE"
+echo "DNS:        $DNS_FILE"
+if [ "$MAIL_MODE" = "kumomta" ]; then
+  echo "Mail:       set PTR $PUBLIC_IP -> $MAIL_HOST, then rerun for DNS verification"
+else
+  echo "Mail:       Google Workspace IMAP and SMTP configured"
 fi
 echo ""
-echo "Outbound Inboxes: Hybrid supported (Google Workspace / M365 for fast-start + KumoMTA for warmup)"
-echo "Secrets:    $SECRETS_FILE (root-only, mode 600 — back it up)"
-echo "DNS table:  $DNS_FILE"
-echo ""
-echo "NEXT STEPS:"
-echo "  1. Add DNS from $DNS_FILE, wait ~5 min, rerun installer to re-verify"
-echo "  2. Set PTR in your VPS panel: $PUBLIC_IP -> $MAIL_HOST"
-echo "  3. Verify mail auth: cd /opt/deliverability && python3 cli.py precheck"
-echo "  4. Bootstrap client: ./scripts/bootstrap_client_instance.py --input <intake.txt>"
-echo "  5. Connect mailboxes in Warmbly UI (https://$WARM_HOST) for gradual IP/domain warmup"
-echo ""
-echo "WARNINGS:"
-echo "  - Client outreach is gated by validation: run synthetic tests before activation."
-echo "  - Live campaigns require explicit operator activation (--activate)."
+echo "Warm up with Warmbly before increasing volume. Run controlled tests before live campaigns."
 
