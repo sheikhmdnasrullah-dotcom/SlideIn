@@ -9,6 +9,9 @@ import asyncio
 
 import pytest
 
+# langgraph is an optional, engineering-only dependency (see docs/project/TECHNICAL_DEBT.md).
+pytest.importorskip("langgraph")
+
 from product.core.errors import CrossTenantAccess
 from product.core.scopes import Role
 from product.services.agentic_workflow import AgenticWorkflowService
