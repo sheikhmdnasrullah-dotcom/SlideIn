@@ -60,13 +60,13 @@ running).
 6. **Stay in the flow.** Every feature maps onto the canonical
    seven-stage workflow: `configure → discover → research → qualify →
    personalize → outreach → converse`. Do not add, reorder, or skip stages
-   — see `docs/architecture/CONTRACTS.md`.
+   — see `slidein-api/slidein_api/contracts.py` and `docs/UNIVERSAL_FLOW.md`.
 7. **Keep it simple.** This is a modular monolith on purpose. New services or
    dependencies need a documented reason in the PR description.
 8. **One app, one shell.** The Console and Dashboard are two modes of one
    workspace, toggled by a single `ModeSwitcher`. Do not create a second
    dashboard, route tree, or shell — report gaps instead. See
-   `AGENTS.md` §3.
+   `docs/project/CURRENT_STATE.md` §1.
 
 ## Code map
 

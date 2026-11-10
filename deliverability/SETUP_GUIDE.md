@@ -30,12 +30,12 @@ Add these in your DNS provider (Cloudflare/Namecheap/etc):
 |------|------|-------|
 | TXT | `kumo._domainkey.nasrullahtanim.me` | `v=DKIM1; k=rsa; p=<paste public key from script>` |
 | TXT | `_dmarc.nasrullahtanim.me` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@nasrullahtanim.me; adkim=s; aspf=s` |
-| TXT | `nasrullahtanim.me` | `v=spf1 ip4:169.58.207.75 mx -all` |
-| PTR | `169.58.207.75` | `mail.nasrullahtanim.me` (request from VPS host) |
+| TXT | `nasrullahtanim.me` | `v=spf1 ip4:<MAIL_VPS_IP> mx -all` |
+| PTR | `<MAIL_VPS_IP>` | `mail.nasrullahtanim.me` (request from VPS host) |
 
 **Verify with:**
 ```bash
-python3 cli.py validate-dns nasrullahtanim.me 169.58.207.75
+python3 cli.py validate-dns nasrullahtanim.me <MAIL_VPS_IP>
 ```
 
 ## Local Config (already updated)

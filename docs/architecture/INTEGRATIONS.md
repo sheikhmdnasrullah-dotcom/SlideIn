@@ -23,7 +23,7 @@
 ## 2. Integration Contract Details
 
 ### 2.1 KumoMTA Submission Contract
-- **Endpoint:** `smtp://169.58.207.75:2587` (or `localhost:2587` in lab)
+- **Endpoint:** `smtp://<MAIL_VPS_IP>:2587` (or `localhost:2587` in lab)
 - **Authentication:** PLAIN / LOGIN with tenant-scoped credentials (`outbound:<password>`)
 - **Required Headers:**
   - `From: <authorized_identity@domain>`

@@ -11,10 +11,10 @@ VPS_PASS=<vps-root-password> KUMO_AUTH_PASS=<kumo-smtp-password> \
 
 ### 2. Configure DNS
 Add these records in Cloudflare for each domain:
-- **SPF**: `v=spf1 ip4:169.58.207.75 mx -all`
+- **SPF**: `v=spf1 ip4:<MAIL_VPS_IP> mx -all`
 - **DKIM**: `v=DKIM1; k=rsa; p=<public_key>` (see deploy output)
 - **DMARC**: `v=DMARC1; p=quarantine; rua=mailto:dmarc@<domain>; adkim=s; aspf=s`
-- **PTR**: `169.58.207.75 → mail.nasrullahtanim.me` (from host)
+- **PTR**: `<MAIL_VPS_IP> → mail.nasrullahtanim.me` (from host)
 
 ### 3. Verify
 ```bash
@@ -71,10 +71,10 @@ GoPhish (8080/8333) → KumoMTA (2587) → Internet Recipients
 
 ## Monitoring
 
-- **Grafana**: http://169.58.207.75:3000 (admin/admin)
-- **Prometheus**: http://169.58.207.75:9090
-- **KumoMTA**: http://169.58.207.75:8029
-- **GoPhish**: http://169.58.207.75:8333
+- **Grafana**: http://<MAIL_VPS_IP>:3000 (admin/admin)
+- **Prometheus**: http://<MAIL_VPS_IP>:9090
+- **KumoMTA**: http://<MAIL_VPS_IP>:8029
+- **GoPhish**: http://<MAIL_VPS_IP>:8333
 - **Alerts**: Configured for bounce rate, DKIM failures, placement drops
 
 ## Warmup Schedule

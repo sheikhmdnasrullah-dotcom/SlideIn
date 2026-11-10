@@ -31,7 +31,7 @@ docker-compose.yml     happyDeliver (analyzer) + monitor on VPS
 ## Local smoke test (no external accounts needed)
 ```
 python3 -m unittest tests.test_pipeline -v     # proves gate + circuit-breaker logic
-python3 core/dns_checks.py tanim.tech 153.76.249.166   # live auth audit
+python3 core/dns_checks.py tanim.tech <ADMIN_VPS_IP>   # live auth audit
 python3 core/analyzer.py sample/approved_template.eml  # A–F grade
 ```
 

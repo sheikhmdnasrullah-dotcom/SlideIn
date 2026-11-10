@@ -13,7 +13,7 @@
        │  GoPhish Profiles:     │  DKIM Signing            │  DMARC
        │  9: hello@            │  Selector: dkim          │  Policy:
        │  10: talk@            │  Domain: nasrullahtanim  │    quarantine
-       │  11: connect@         │  Source: 169.58.207.75   │
+       │  11: connect@         │  Source: <MAIL_VPS_IP>   │
        │                        │                          │
        │  Warmup Engine        │  Rate Limiting           │  Seed Tests
        │  (reputation)         │  (per-provider)          │  (placement)
@@ -48,8 +48,8 @@
 
 ## GoPhish Configuration
 
-- **Admin**: `https://email.tanim.tech` (or `http://169.58.207.75:8333`)
-- **Phish Server**: `http://169.58.207.75:8080`
+- **Admin**: `https://email.tanim.tech` (or `http://<MAIL_VPS_IP>:8333`)
+- **Phish Server**: `http://<MAIL_VPS_IP>:8080`
 - **SMTP Relay**: `<VPS_IP>:2587` (auth: `outbound` / `$KUMO_AUTH_PASS`)
 - **TLS**: Enabled for SMTP relay
 - **Send Delay**: 5 seconds between sends
@@ -83,19 +83,19 @@
 
 ## Monitoring
 
-- **Grafana**: `http://169.58.207.75:3000` (admin/admin)
-- **Prometheus**: `http://169.58.207.75:9090`
-- **KumoMTA Admin**: `http://169.58.207.75:8029/metrics`
+- **Grafana**: `http://<MAIL_VPS_IP>:3000` (change the default credentials immediately)
+- **Prometheus**: `http://<MAIL_VPS_IP>:9090`
+- **KumoMTA Admin**: `http://<MAIL_VPS_IP>:8029/metrics`
 - **Alerts**: Configured for bounce rate, DKIM failures, placement drops
 
 ## DNS Records Required
 
 All 3 domains (nasrullahtanim.me, tanim.social, tanim.tech):
-- SPF: `v=spf1 ip4:169.58.207.75 mx -all`
+- SPF: `v=spf1 ip4:<MAIL_VPS_IP> mx -all`
 - DKIM: `v=DKIM1; k=rsa; p=<public_key>`
 - DMARC: `v=DMARC1; p=quarantine; rua=mailto:dmarc@<domain>; adkim=s; aspf=s`
-- PTR: `169.58.207.75 → mail.nasrullahtanim.me`
-- FCrDNS: `mail.nasrullahtanim.me ↔ 169.58.207.75`
+- PTR: `<MAIL_VPS_IP> → mail.nasrullahtanim.me`
+- FCrDNS: `mail.nasrullahtanim.me ↔ <MAIL_VPS_IP>`
 
 ## Deployment
 
@@ -127,7 +127,7 @@ python3 campaign_worker.py
 | Emails going to spam | Seed placement < 80%, check warmup status |
 | KumoMTA not responding | `docker ps | grep kumomta`, check port 2587 |
 | DKIM failing | Verify DNS DKIM record matches private key |
-| SPF failing | Check `v=spf1 ip4:169.58.207.75 mx -all` DNS record |
+| SPF failing | Check `v=spf1 ip4:<MAIL_VPS_IP> mx -all` DNS record |
 | DMARC failing | Ensure From domain = DKIM domain |
 | FCrDNS mismatch | Verify PTR record matches mail.nasrullahtanim.me |
 | GoPhish not sending | Check GoPhish profiles point to KumoMTA:2587 |

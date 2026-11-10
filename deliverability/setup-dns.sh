@@ -5,9 +5,9 @@
 # ============================================================
 set -euo pipefail
 
-VPS="${1:-169.58.206.20}"
+VPS="${1:?usage: $0 <vps-ip>}"
 DOMAINS=("nasrullahtanim.me" "tanim.social" "tanim.tech")
-IP="${1:-169.58.206.20}"
+IP="${1:?usage: $0 <vps-ip>}"
 
 echo "================================================"
 echo "  DNS Configuration for Cold Email Deliverability"
@@ -61,7 +61,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "6. PTR Record (reverse DNS):"
 echo "   Type:    PTR"
-echo "   Name:    169.58.207.75"
+echo "   Name:    <mail-vps-ip>"
 echo "   Value:   mail.nasrullahtanim.me"
 echo "   (Request from your VPS hosting provider)"
 echo ""
@@ -91,10 +91,10 @@ echo "# Check DMARC:"
 echo "dig +short _dmarc.nasrullahtanim.me TXT"
 echo ""
 echo "# Check PTR:"
-echo "dig +short -x 169.58.207.75"
+echo "dig +short -x <mail-vps-ip>"
 echo ""
 echo "# Check FCrDNS (Forward/Reverse DNS Consistency):"
-echo "host mail.nasrullahtanim.me && host \$(host mail.nasrullahtanim.me | cut -d' ' -f4) | grep '169.58.207.75'"
+echo "host mail.nasrullahtanim.me && host \$(host mail.nasrullahtanim.me | cut -d' ' -f4) | grep '<mail-vps-ip>'"
 echo ""
 echo "# Check blacklists:"
 echo "curl -s 'https://check.spamhaus.org/' | head -1"

@@ -101,3 +101,34 @@ kumomta-lab/scripts/vps-audit-live.txt
 *.key
 !**/dummy*.key
 .kimi-code/
+
+# --- Private / operational material: never publish ---
+.quarantine/
+external/refine/
+archived_rules/
+visitor_core/tracker/dist/
+.initial_admin_credentials
+.slidein-vps-credentials
+*.csv
+!**/fixtures/*.csv
+!**/sample*.csv
+
+# One-off outreach dispatch scripts and recipient lists
+deliverability/dispatch_custom_batch*.py
+deliverability/run_batch*.py
+deliverability/batch_prospect_runner.py
+deliverability/batch_send_*.py
+deliverability/sandbox_test_and_batch_sender.py
+**/prospects*.json
+**/recipients*.json
+
+# Local agent/assistant state
+.aider*
+.claude/
+.kilo/
+.agents/
+bash_events/
+conversations/
+
+# Engineering-only vendored tool (was a broken submodule pointer without .gitmodules)
+external/ECC/

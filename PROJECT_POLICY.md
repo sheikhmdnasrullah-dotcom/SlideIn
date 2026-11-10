@@ -12,8 +12,8 @@ A research and tooling workspace for email deliverability:
   building, testing, and learning. You are free to build and experiment with
   whatever is useful for the project, including new sending experiments,
   detectors, analyzers, and infrastructure changes.
-- **Live**: the production assets. VPS `153.76.249.166` (Gophish + mail),
-  VPS `169.58.207.75` (mailcow + KumoMTA), the domains `tanim.tech`,
+- **Live**: the production assets. VPS `<ADMIN_VPS_IP>` (Gophish + mail),
+  VPS `<MAIL_VPS_IP>` (mailcow + KumoMTA), the domains `tanim.tech`,
   `tanim.social`, `nasrullahtanim.me`, and the lead lists.
 
 ## 2. What stays fixed
@@ -34,13 +34,13 @@ recoverable. Everything else is up to the owner's judgment.
    `deliverability/tests/` should stay green.
 5. **Back up before destructive ops** on the live VPS (db, mail config).
    Existing backup scripts in `kumomta-lab/scripts/` cover this.
-6. **License & Clean-Room Provenance (BSL 1.1)**: Free self-hosting for single-tenant internal use; competitors strictly prohibited from reselling as a commercial cloud service. Strictly NEVER copy or derive code from GPL OpenOutreach or other third-party GPL tools.
+6. **License & Clean-Room Provenance (BSL 1.1)**: Free self-hosting for one organization's own internal use only. No hosting for third parties, no use on behalf of clients (agency or white-label use), and no selling or bundling into a paid offering. Strictly NEVER copy or derive code from GPL OpenOutreach or other third-party GPL tools.
 7. **Deliverability Liability & Shared IP Isolation**: Shared VPS IPs must be protected from tenant abuse. Enforce per-tenant hourly/daily caps, Reacher pre-send verification, and rolling circuit breakers (quarantine tenant if bounce >3% or complaints >0.05% without impacting neighbor tenants).
 8. **Cold-Email Legal Invariants (CAN-SPAM / GDPR / CASL)**: Every outbound message requires: (a) verified B2B lawful basis, (b) clear plain-text opt-out and RFC 8058 `List-Unsubscribe` headers with instant zero-delay suppression, and (c) tenant physical postal address in the footer. Messages lacking a physical address are blocked at the gate.
 
 ## 3. How to work here
 
-- Read this file first, then look at [`SLIDEIN_PRODUCT_VISION.md`](file:///Users/nasrullahtanim/Downloads/01-Projects/email-master%20raw/SLIDEIN_PRODUCT_VISION.md) for the overarching product concept, business purpose, and architecture principles.
+- Read this file first, then look at [`docs/product/PRODUCT_CONSTITUTION.md`](docs/product/PRODUCT_CONSTITUTION.md) for the product concept and principles.
 - Consult `README.md` and `product/` for architecture and tooling context.
 - Old docs (`kumomta-lab/docs/`, runbooks) may describe the previous
   gate/circuit-breaker workflow. They are reference material, not binding
@@ -52,6 +52,5 @@ recoverable. Everything else is up to the owner's judgment.
 
 ## 4. Status
 
-- Previous policy: `EMAIL_SENDING_POLICY.md` (archived 2026-09-08, replaced
-  by this file). It documents the earlier campaign workflow; keep it around
-  as a record of how that track was run.
+- Previous policy: an earlier campaign-era sending policy was archived on
+  2026-09-08 and replaced by this file.

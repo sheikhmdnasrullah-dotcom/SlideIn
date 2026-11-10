@@ -26,7 +26,7 @@
 
 ## 2. Deliverability Liability & Shared IP Isolation
 
-### The Multi-Tenant Risk on Shared VPS (`169.58.206.20`)
+### The Multi-Tenant Risk on Shared VPS (`<PRIMARY_VPS_IP>`)
 When multiple client tenants share outgoing IPs through KumoMTA, a single bad actor or low-quality recipient list uploaded by Tenant A can cause high hard-bounces and spam complaints. This damages the reputation of the shared IP and harms delivery rates for Tenant B and Tenant C.
 
 ### Mitigation Architecture

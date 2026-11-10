@@ -84,3 +84,20 @@ def client(api_keys):
 @pytest.fixture
 def auth_headers():
     return {"Authorization": f"Bearer {TEST_KEY}"}
+
+
+import pytest_asyncio  # noqa: E402
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _dispose_db_engine_after_test():
+    """Drop pooled connections after each test.
+
+    The engine is module-level while pytest-asyncio runs each test in its own
+    event loop, so a connection created in one loop must not be reused in the
+    next (that produced 'Task pending ... attached to a different loop').
+    """
+    yield
+    from product.db.session import engine
+
+    await engine.dispose()

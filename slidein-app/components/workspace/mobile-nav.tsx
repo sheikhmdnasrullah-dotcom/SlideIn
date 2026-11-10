@@ -22,7 +22,6 @@ export function MobileNav({
   enabledModules,
   sectionLabels,
   user,
-  dashboardHref,
 }: {
   attentionCounts?: Record<string, number>;
   workspaceId: string;
@@ -31,7 +30,6 @@ export function MobileNav({
   enabledModules?: string[] | null;
   sectionLabels?: Record<string, string> | null;
   user?: { name: string; email: string; role: string } | null;
-  dashboardHref?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const displayName = brandName?.trim() || "Slidein";
@@ -44,7 +42,7 @@ export function MobileNav({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open ]);
+  }, [open]);
 
   return (
     <div className="lg:hidden">
@@ -83,8 +81,8 @@ export function MobileNav({
             <div className="flex justify-end p-2">
               <button
                 type="button"
-                onClick={() => setOpen(false)}
                 aria-label="Close navigation"
+                onClick={() => setOpen(false)}
                 className="flex size-10 items-center justify-center rounded-full text-ink-muted hover:bg-hover-tint hover:text-ink-strong focus-ring"
               >
                 <X className="size-[18px]" aria-hidden />
@@ -104,7 +102,6 @@ export function MobileNav({
                 enabledModules={enabledModules}
                 sectionLabels={sectionLabels}
                 user={user}
-                dashboardHref={dashboardHref}
                 className={cn("h-full w-full border-r-0")}
               />
             </div>

@@ -8,7 +8,7 @@
 
 ## 1. Production Topology
 
-- **Primary VPS:** `169.58.207.75` (Ubuntu Linux)
+- **Primary VPS:** `<MAIL_VPS_IP>` (Ubuntu Linux)
   - **KumoMTA:** Port 2587 (authenticated SMTP submission), Port 8029 (Admin API)
   - **GoPhish Admin:** Port 8333
   - **Mailcow Mail Server:** Inbound MX and mailbox management
@@ -59,7 +59,7 @@
 ## 4. Disaster Recovery Runbooks
 
 ### Runbook A: MTA Process Failure / Socket Unresponsive
-1. SSH into VPS: `ssh root@169.58.207.75`
+1. SSH into VPS: `ssh root@<MAIL_VPS_IP>`
 2. Check container status: `docker ps -a | grep kumomta`
 3. Inspect logs: `docker logs --tail 100 kumomta`
 4. Restart service: `docker compose -f kumomta-lab/compose/docker-compose.production.yml restart kumomta`

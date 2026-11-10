@@ -10,9 +10,13 @@ import { client, workspacePath } from "./client";
 import type {
   ActivationStatus,
   ActivityLog,
+  ApiJobRecord,
+  ApiKeyRecord,
+  BillingBalance,
   AutopilotStatus,
   Branding,
   BusinessProfile,
+  Capability,
   ConfigVersionRecord,
   ContractCatalog,
   Conversation,
@@ -25,12 +29,15 @@ import type {
   FactoryConnection,
   Handoff,
   Icp,
+  LedgerEntryRecord,
+  ManagedResourceRecord,
   Offer,
   OsintEnrichOutcome,
   OsintHealth,
   OsintResearchResult,
   Overview,
   Page,
+  PurchaseRecord,
   Prospect,
   ProspectStatus,
   Qualification,
@@ -45,8 +52,10 @@ import type {
   SuppressionRecord,
   TemplateDoc,
   TemplateSummary,
+  UsageRecord,
   WorkspaceModules,
   WorkspaceConfig,
+  ConsoleSectionMeta,
 } from "./types";
 
 const page = <T,>(value: Page<T> | undefined, fallback: Page<T>): Page<T> => value ?? fallback;
@@ -119,6 +128,23 @@ export const operations = {
   },
   modules(workspaceId: string) {
     return client.get<WorkspaceModules>(workspacePath("/modules", workspaceId));
+  },
+  consoleSections(workspaceId: string) {
+    return client.get<{ sections: ConsoleSectionMeta[] }>(
+      workspacePath("/console/sections", workspaceId)
+    );
+  },
+  saveConsoleSections(workspaceId: string, sections: ConsoleSectionMeta[]) {
+    return client.put<{ sections: ConsoleSectionMeta[] }>(
+      workspacePath("/console/sections", workspaceId),
+      sections,
+    );
+  },
+  recordConsoleBehavior(workspaceId: string, body: { section_id: string; kind: string; weight?: number }) {
+    return client.post<Record<string, unknown>>(
+      workspacePath("/console/behavior", workspaceId),
+      body
+    );
   },
   /** Adaptive workspace config — saved, versioned, per-tenant. Drives nav order. */
   workspaceConfig() {
@@ -417,6 +443,16 @@ export const operations = {
   setupGenerate(workspaceId: string, body: Record<string, unknown>) {
     return client.post<SetupReport>(workspacePath("/setup/generate", workspaceId), body);
   },
+  setupIntake(workspaceId: string, sources: Record<string, unknown>[]) {
+    return client.post<{ run: import("./types").SetupRun }>(
+      workspacePath("/setup/intake", workspaceId), { sources },
+    );
+  },
+  setupRun(workspaceId: string, runId: string) {
+    return client.get<{ run: import("./types").SetupRun; status: SetupStatus }>(
+      workspacePath(`/setup/runs/${runId}`, workspaceId),
+    );
+  },
   setupAnswers(workspaceId: string, answers: Record<string, string>) {
     return client.post<SetupReport>(workspacePath("/setup/answers", workspaceId), { answers });
   },
@@ -467,6 +503,66 @@ export const operations = {
   },
   factoryTest(workspaceId: string, mode: "sample" | "synthetic" = "synthetic") {
     return client.post<SafeTestReport>(workspacePath("/factory/test", workspaceId), { mode });
+  },
+
+  // ── billing & unified API ───────────────────────────────────────────────
+  billingBalance(workspaceId: string) {
+    return client.get<BillingBalance>(workspacePath("/billing/balance", workspaceId));
+  },
+  billingLedger(workspaceId: string, limit = 50) {
+    return client.get<{ entries: LedgerEntryRecord[] }>(
+      workspacePath("/billing/ledger", workspaceId),
+      { limit },
+    );
+  },
+  billingPurchases(workspaceId: string) {
+    return client.get<{ payments: PurchaseRecord[] }>(
+      workspacePath("/billing/purchases", workspaceId),
+    );
+  },
+  createPurchase(workspaceId: string, amountCents: number, idempotencyKey: string) {
+    return client.post<{ payment: PurchaseRecord }>(
+      workspacePath("/billing/purchases", workspaceId),
+      { amount_cents: amountCents, idempotency_key: idempotencyKey },
+    );
+  },
+  confirmPurchase(workspaceId: string, paymentId: string) {
+    return client.post<{ payment: PurchaseRecord; balance: BillingBalance }>(
+      workspacePath(`/billing/purchases/${paymentId}/confirm`, workspaceId),
+    );
+  },
+  billingResources(workspaceId: string) {
+    return client.get<{ resources: ManagedResourceRecord[] }>(
+      workspacePath("/billing/resources", workspaceId),
+    );
+  },
+  apiKeys(workspaceId: string) {
+    return client.get<{ api_keys: ApiKeyRecord[] }>(
+      workspacePath("/api-keys", workspaceId),
+    );
+  },
+  createApiKey(workspaceId: string, role: string, label: string) {
+    return client.post<{ api_key: ApiKeyRecord; secret: string }>(
+      workspacePath("/api-keys", workspaceId),
+      { role, label },
+    );
+  },
+  revokeApiKey(workspaceId: string, keyId: string) {
+    return client.del<{ revoked: boolean }>(
+      workspacePath(`/api-keys/${keyId}`, workspaceId),
+    );
+  },
+  apiJobs(workspaceId: string, limit = 50) {
+    return client.get<{ jobs: ApiJobRecord[] }>(
+      workspacePath("/jobs", workspaceId),
+      { limit },
+    );
+  },
+  apiUsage(workspaceId: string, limit = 50) {
+    return client.get<{ usage: UsageRecord[] }>(
+      workspacePath("/usage", workspaceId),
+      { limit },
+    );
   },
 };
 

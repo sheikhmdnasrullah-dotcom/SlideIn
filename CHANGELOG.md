@@ -6,7 +6,17 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Repository documentation aligned with the product positioning: README
+  rewritten around evidence-backed, approval-gated outreach; project status
+  standardized on "beta"; `CLAUDE.md` replaced with current agent
+  instructions; fixed references to a nonexistent `CONTRACTS.md`.
+
 ### Added
+
+- `docs/README.md` documentation index, `.github/CODEOWNERS`, and an issue
+  template config that routes security reports to private reporting.
 
 - Live production deployment on a single VPS (Ubuntu, Docker, Caddy):
   KumoMTA, GoPhish (systemd), Prometheus/Grafana/Alertmanager/Loki/Redis,

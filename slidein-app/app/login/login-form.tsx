@@ -1,9 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
-import { KeyRound, Loader2 } from "lucide-react";
+import { useActionState, useState } from "react";
+import { ArrowLeft, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 
-import { bootstrapAction, loginAction, type AuthFormState } from "@/lib/auth/actions";
+import {
+  bootstrapAction,
+  loginAction,
+  changePasswordAction,
+  type AuthFormState,
+} from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
@@ -30,6 +35,93 @@ export function LoginForm({
     undefined,
   );
 
+  const [changeState, changeFormAction, changePending] = useActionState<
+    AuthFormState | undefined,
+    FormData
+  >(changePasswordAction, undefined);
+
+  const [cancelled, setCancelled] = useState(false);
+
+  const mustChange =
+    !cancelled &&
+    (Boolean(state?.must_change_password) || Boolean(changeState?.must_change_password));
+  const activeUsername = changeState?.username || state?.username || "";
+
+  if (mustChange) {
+    return (
+      <form action={changeFormAction} className={cn("flex flex-col gap-5", className)}>
+        <input type="hidden" name="next" value={next} />
+        <input type="hidden" name="username" value={activeUsername} />
+
+        <div className="rounded-lg border border-rule bg-surface-subtle p-3.5 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-ink-strong font-medium text-sm">
+            <ShieldCheck className="size-4 text-flame-vivid" aria-hidden />
+            <span>Set your permanent password</span>
+          </div>
+          <p className="text-xs text-ink-muted">
+            Account <strong className="font-code text-ink-strong">{activeUsername}</strong> was
+            provisioned with an initial temporary password. Please create your permanent password to
+            continue.
+          </p>
+        </div>
+
+        <Field label="New password">
+          <Input
+            name="new_password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={6}
+            placeholder="At least 6 characters"
+          />
+        </Field>
+
+        <Field label="Confirm new password">
+          <Input
+            name="confirm_password"
+            type="password"
+            autoComplete="new-password"
+            required
+            minLength={6}
+            placeholder="Re-enter your new password"
+          />
+        </Field>
+
+        {changeState?.error && (
+          <p
+            role="alert"
+            className="rounded-md border border-status-danger bg-status-danger-bg px-3 py-2 font-sans text-sm text-status-danger"
+          >
+            {changeState.error}
+          </p>
+        )}
+
+        <Button type="submit" size="lg" dot disabled={changePending} className="w-full">
+          {changePending ? (
+            <>
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+              Saving password...
+            </>
+          ) : (
+            <>
+              <KeyRound className="size-4" aria-hidden />
+              Save password & enter workspace
+            </>
+          )}
+        </Button>
+
+        <button
+          type="button"
+          onClick={() => setCancelled(true)}
+          className="flex items-center justify-center gap-1.5 text-xs text-ink-muted hover:text-ink-strong transition-colors py-1 cursor-pointer"
+        >
+          <ArrowLeft className="size-3.5" aria-hidden />
+          Back to sign in
+        </button>
+      </form>
+    );
+  }
+
   return (
     <form action={formAction} className={cn("flex flex-col gap-5", className)}>
       <input type="hidden" name="next" value={next} />
@@ -40,13 +132,13 @@ export function LoginForm({
         </Field>
       )}
 
-      <Field label="Email">
+      <Field label="Username or email">
         <Input
           name="email"
-          type="email"
-          autoComplete="email"
+          type="text"
+          autoComplete="username"
           required
-          placeholder="you@company.com"
+          placeholder="admin or you@company.com"
         />
       </Field>
 
@@ -85,9 +177,8 @@ export function LoginForm({
         )}
       </Button>
 
-      <p className="font-code text-xs text-ink-faint">
-        workspace {workspaceId}
-      </p>
+      <p className="font-code text-xs text-ink-faint">workspace {workspaceId}</p>
     </form>
   );
 }
+

@@ -15,7 +15,7 @@ section, and even then only in batches of ≤ 10 with explicit human approval.
 
 ## 1. Where things stand (facts from the 2026-09-04 audit in this repo)
 
-Server `169.58.207.75` = `mail.nasrullahtanim.me` (Ubuntu 24.04, Docker).
+Server `<MAIL_VPS_IP>` = `mail.nasrullahtanim.me` (Ubuntu 24.04, Docker).
 Running today:
 
 | Service | State | Ports |
@@ -37,7 +37,7 @@ mirror) and the lab image is `ghcr.io/kumocorp/kumomta` (used by
 ## 2. Fresh read-only verification (run from your terminal)
 
 ```bash
-VPS=root@169.58.207.75
+VPS=root@<MAIL_VPS_IP>
 sshpass -p "$VPS_PASS" ssh -o ConnectTimeout=15 $VPS bash -s <<'EOF'
   echo "--- kumod? ---"; ls -l /opt/kumomta/sbin/kumod 2>&1
   /opt/kumomta/sbin/kumod --version 2>&1 || true
@@ -48,7 +48,7 @@ sshpass -p "$VPS_PASS" ssh -o ConnectTimeout=15 $VPS bash -s <<'EOF'
   echo "--- DNS now ---"
   dig +short MX nasrullahtanim.me; dig +short TXT nasrullahtanim.me
   dig +short TXT _dmarc.nasrullahtanim.me
-  dig +short -x 169.58.207.75
+  dig +short -x <MAIL_VPS_IP>
 EOF
 ```
 
@@ -232,16 +232,16 @@ Check what already exists first (Section 2) and merge — never duplicate.
 | Record | Name | Value |
 |---|---|---|
 | MX | `nasrullahtanim.me` | existing mailcow MX (do NOT change) |
-| SPF | `nasrullahtanim.me` TXT | `v=spf1 ip4:169.58.207.75 <keep existing mx/a includes> -all` |
+| SPF | `nasrullahtanim.me` TXT | `v=spf1 ip4:<MAIL_VPS_IP> <keep existing mx/a includes> -all` |
 | DKIM | `kumo._domainkey.nasrullahtanim.me` TXT | `v=DKIM1; k=rsa; p=<public key from Step 4>` |
 | DMARC | `_dmarc.nasrullahtanim.me` TXT | `v=DMARC1; p=none; rua=mailto:dmarc@nasrullahtanim.me; adkim=s; aspf=s` (tighten to `quarantine` after 2–4 clean weeks) |
 | TLS-RPT (optional) | `_smtp._tls.nasrullahtanim.me` TXT | `v=TLSRPTv1; rua=mailto:tlsrpt@nasrullahtanim.me` |
-| PTR | `169.58.207.75` (host panel / ticket) | `mail.nasrullahtanim.me` — request from the host; not settable in DNS |
+| PTR | `<MAIL_VPS_IP>` (host panel / ticket) | `mail.nasrullahtanim.me` — request from the host; not settable in DNS |
 
 Verify with the repo tooling:
 ```bash
 cd deliverability
-python3 cli.py validate-dns nasrullahtanim.me 169.58.207.75
+python3 cli.py validate-dns nasrullahtanim.me <MAIL_VPS_IP>
 ```
 
 ---
@@ -285,7 +285,7 @@ Run the acceptance sequence (per profile — render the .eml with that profile's
 From/Reply-To first):
 
 ```bash
-python3 cli.py validate-dns nasrullahtanim.me 169.58.207.75
+python3 cli.py validate-dns nasrullahtanim.me <MAIL_VPS_IP>
 python3 cli.py analyze sample/approved_template.eml        # grade must be >= A
 python3 cli.py seed-test <profile.eml>                     # must be 100% INBOX
 python3 cli.py gate-check <profile.eml>                    # must print APPROVED

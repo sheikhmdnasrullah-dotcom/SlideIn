@@ -30,6 +30,7 @@ from .deliverability_guard import (
     DeliverabilityGuard,
 )
 from .discovery import normalize_domain
+from .preflight import PreflightError, preflight_message, reacher_verification
 from .sending import CircuitBreakerError, CircuitBreakerService, SendingService
 from .suppression import SuppressionService
 from .transport import get_transport
@@ -160,6 +161,53 @@ class OutreachService:
 
     # -- sending ----------------------------------------------------------
 
+    async def preflight_draft(self, tenant_id: str, draft_id: str) -> dict:
+        """Run recipient MX + copy audit on an approved draft.
+
+        Read-only: does not mutate, does not send. Exposed so the Console
+        draft-review page can show deliverability preflight status before dispatch.
+        """
+        from ..models import MessageDraft
+
+        row = await self.session.get(MessageDraft, draft_id)
+        if row is None or row.tenant_id != tenant_id:
+            raise NotFoundError(
+                f"Draft {draft_id!r} does not exist in this workspace",
+                code="draft_not_found",
+                recovery_action="regenerate_draft",
+            )
+        prospect_row = await self.session.get(Prospect, row.prospect_id)
+        if prospect_row is None:
+            raise NotFoundError("The prospect this draft belongs to no longer exists")
+
+        address = str((await self.policy(tenant_id)).get("physical_postal_address") or "").strip()
+        guard = DeliverabilityGuard(tenant_id)
+        formatted_body = guard.format_compliant_body(row.body, physical_address=address)
+
+        result = preflight_message(prospect_row.email, row.subject, formatted_body)
+        verification = await reacher_verification(prospect_row.email)
+        from .warmup import WarmupService
+
+        warmup = await WarmupService(self.session).status(tenant_id, refresh=True)
+        return {
+            "draft": draft(row),
+            "warmup": warmup,
+            "preflight": {
+                "passed": result.passed,
+                "errors": result.errors,
+                "mx": {
+                    "domain": result.mx.domain,
+                    "valid": result.mx.valid,
+                    "verified": result.mx.verified,
+                    "mx_id": result.mx.mx_id,
+                    "provider": result.mx.provider,
+                    "detail": result.mx.detail,
+                },
+                "audit": result.audit,
+                "email_verification": verification,
+            },
+        }
+
     async def send_draft(
         self,
         *,
@@ -227,6 +275,21 @@ class OutreachService:
         guard = DeliverabilityGuard(tenant_id)
         guard.validate_pre_send_compliance(policy)
 
+        # Trusted identity propagation: the tenant and the sending
+        # campaign are stamped server-side from the authenticated draft,
+        # never from client input, so downstream systems can attribute
+        # every message and queue to exactly one tenant/campaign.
+        transport = get_transport(transport_config)
+
+        # The 14-day Warmbly warmup rule. Live transports only: recording a
+        # dry-run dispatch is not sending. This is the enforcement point the
+        # setup flow's warmup auto-start leads up to.
+        from .warmup import WarmupService
+
+        await WarmupService(self.session).enforce(
+            tenant_id, transport_name=transport.name
+        )
+
         configured_sender = sender_email or await self._default_sender(tenant_id, policy)
         if not configured_sender:
             raise ConfigError(
@@ -243,11 +306,48 @@ class OutreachService:
         address = str(policy.get("physical_postal_address") or "").strip()
         formatted_body = guard.format_compliant_body(row.body, physical_address=address)
 
-        # Trusted identity propagation: the tenant and the sending
-        # campaign are stamped server-side from the authenticated draft,
-        # never from client input, so downstream systems can attribute
-        # every message and queue to exactly one tenant/campaign.
-        transport = get_transport(transport_config)
+        # Pre-send deliverability preflight. Transfers the verified copy-audit
+        # practice from the live daemon (SpamHeuristicScanner) into the
+        # canonical send path. MX/NS validation is advisory — it is recorded
+        # in the dispatch payload and surfaced on draft review, but never
+        # blocks here, so an infrastructure-level transport failure (dead
+        # SMTP host) still records a SentMessage the operator can inspect.
+        # The spam-copy audit IS a hard gate for live transports: a draft
+        # whose copy trips spam heuristics must not go on the wire.
+        preflight = preflight_message(
+            prospect_row.email, row.subject, formatted_body
+        )
+        verification = await reacher_verification(prospect_row.email)
+        if transport.name != "dry_run" and verification["status"] != "safe":
+            raise PreflightError(
+                "Reacher did not verify this recipient as safe",
+                code="transport_rejected",
+                details={"retryable": False, "email_verification": verification},
+                recovery_action="review_prospect_status",
+            )
+        if transport.name != "dry_run" and not preflight.audit["passed"]:
+            raise PreflightError(
+                "Pre-send copy audit blocked this dispatch",
+                code="transport_rejected",
+                details={
+                    "retryable": False,
+                    "preflight": {
+                        "passed": False,
+                        "errors": preflight.audit["flags"],
+                        "mx": {
+                            "domain": preflight.mx.domain,
+                            "valid": preflight.mx.valid,
+                            "verified": preflight.mx.verified,
+                            "mx_id": preflight.mx.mx_id,
+                            "provider": preflight.mx.provider,
+                            "detail": preflight.mx.detail,
+                        },
+                        "audit": preflight.audit,
+                    },
+                },
+                recovery_action="approve_draft",
+            )
+
         result = transport.dispatch(
             sender=configured_sender,
             recipient=prospect_row.email,
@@ -278,6 +378,22 @@ class OutreachService:
             error_code=result.error_code,
             error_message=result.detail if not result.ok else "",
             authorized_by=row.approved_by or actor,
+            dispatch_payload={
+                "preflight": {
+                    "passed": preflight.passed,
+                    "errors": preflight.errors,
+                    "mx": {
+                        "domain": preflight.mx.domain,
+                        "valid": preflight.mx.valid,
+                        "verified": preflight.mx.verified,
+                        "mx_id": preflight.mx.mx_id,
+                        "provider": preflight.mx.provider,
+                        "detail": preflight.mx.detail,
+                    },
+                    "audit": preflight.audit,
+                    "email_verification": verification,
+                }
+            },
         )
         self.session.add(sent)
         await self.session.flush()

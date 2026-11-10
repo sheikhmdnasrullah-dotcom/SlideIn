@@ -27,6 +27,8 @@ from .models import (
     StageRun,
     SuppressionRecord,
     Tenant,
+    ToolAttempt,
+    ToolExecution,
 )
 
 
@@ -255,6 +257,7 @@ def sent_message(rec: SentMessage) -> dict:
         "queued_at": _iso(rec.queued_at),
         "sent_at": _iso(rec.sent_at),
         "status_updated_at": _iso(rec.status_updated_at),
+        "dispatch_payload": rec.dispatch_payload or {},
     }
 
 
@@ -348,6 +351,45 @@ def stage_run(rec: StageRun) -> dict:
         "output_snapshot": rec.output_snapshot or {},
         "started_at": _iso(rec.started_at),
         "finished_at": _iso(rec.finished_at),
+    }
+
+
+def tool_attempt(rec: ToolAttempt) -> dict:
+    return {
+        "id": rec.id,
+        "execution_id": rec.execution_id,
+        "tool_id": rec.tool_id,
+        "capabilities": list(rec.capabilities or []),
+        "status": rec.status,
+        "reason": rec.reason,
+        "error_code": rec.error_code,
+        "error_message": rec.error_message,
+        "missing": list(rec.missing or []),
+        "fallback_from": rec.fallback_from,
+        "evidence_ids": list(rec.evidence_ids or []),
+        "position": rec.position,
+        "duration_ms": rec.duration_ms,
+        "started_at": _iso(rec.started_at),
+        "finished_at": _iso(rec.finished_at),
+    }
+
+
+def tool_execution(rec: ToolExecution, attempts: list[ToolAttempt] | None = None) -> dict:
+    return {
+        "id": rec.id,
+        "tenant_id": rec.tenant_id,
+        "execution_key": rec.execution_key,
+        "stage": rec.stage,
+        "subject_type": rec.subject_type,
+        "subject_id": rec.subject_id,
+        "status": rec.status,
+        "requested_capabilities": list(rec.requested_capabilities or []),
+        "resolved_capabilities": list(rec.resolved_capabilities or []),
+        "output_snapshot": rec.output_snapshot or {},
+        "triggered_by": rec.triggered_by,
+        "started_at": _iso(rec.started_at),
+        "finished_at": _iso(rec.finished_at),
+        "attempts": [tool_attempt(attempt) for attempt in attempts or []],
     }
 
 

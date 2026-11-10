@@ -1,8 +1,8 @@
 """Autopilot — the autonomous background agent loop.
 
-Runs inside the API process (started from the FastAPI lifespan, no client
-required) and advances every enabled workspace through the SAME stage
-contracts, services and gates the dashboard uses:
+Runs through the canonical job execution path and advances every explicitly
+enabled workspace through the SAME stage contracts, services and gates the
+dashboard uses:
 
     ingest → research → qualify → personalize → approve → send → engage
 
@@ -16,12 +16,12 @@ defaults to `dry_run` unless `SLIDEIN_TRANSPORT` says otherwise.
 Configuration (env, all optional):
 
 ============================  ====================================================
-``SLIDEIN_AUTOPILOT``         ``0`` disables the whole loop. Default ``1``.
+``SLIDEIN_AUTOPILOT``         ``1`` enables the loop. Default ``0``.
 ``SLIDEIN_AUTOPILOT_INTERVAL`` Seconds between ticks. Default ``300``.
 ``SLIDEIN_AUTOPILOT_BATCH``   Prospects advanced per stage per tick. Default ``10``.
 ``SLIDEIN_AUTOPILOT_MAX_SENDS`` Dispatches per tick. Default ``5``.
 ``SLIDEIN_AUTOPILOT_INGEST``  Comma-separated CSV paths polled every tick.
-``SLIDEIN_AUTOPILOT_CONNECTOR`` Research connector chain. Default ``openosint,website``.
+``SLIDEIN_AUTOPILOT_CONNECTOR`` Research connector chain. Default ``orchestrated``.
 ============================  ====================================================
 
 Per-workspace switches (dashboard → Overview → Autopilot card, persisted in
@@ -56,6 +56,7 @@ from ..models import (
 from ..runtime import StageRunner
 from .config import ConfigService
 from .discovery import DiscoveryService
+from .inbound_mail import GoogleWorkspaceInboundService
 from .outreach import OutreachService
 from .personalization import PersonalizationService
 from .qualification import QualificationService
@@ -94,12 +95,12 @@ def _env_int(name: str, default: int) -> int:
 class AutopilotConfig:
     """Effective loop configuration for one process (env-derived)."""
 
-    master_enabled: bool = True
+    master_enabled: bool = False
     interval_seconds: int = 300
     batch: int = 10
     max_sends: int = 5
     ingest_paths: tuple[str, ...] = ()
-    connector_chain: tuple[str, ...] = ("openosint", "website")
+    connector_chain: tuple[str, ...] = ("orchestrated",)
 
     @classmethod
     def from_env(cls) -> "AutopilotConfig":
@@ -110,16 +111,16 @@ class AutopilotConfig:
         )
         chain = tuple(
             p.strip()
-            for p in _env("SLIDEIN_AUTOPILOT_CONNECTOR", "openosint,website").split(",")
+            for p in _env("SLIDEIN_AUTOPILOT_CONNECTOR", "orchestrated").split(",")
             if p.strip()
         )
         return cls(
-            master_enabled=_env_bool("SLIDEIN_AUTOPILOT", "1"),
+            master_enabled=_env_bool("SLIDEIN_AUTOPILOT", "0"),
             interval_seconds=_env_int("SLIDEIN_AUTOPILOT_INTERVAL", 300),
             batch=_env_int("SLIDEIN_AUTOPILOT_BATCH", 10),
             max_sends=_env_int("SLIDEIN_AUTOPILOT_MAX_SENDS", 5),
             ingest_paths=paths,
-            connector_chain=chain or ("website",),
+            connector_chain=chain or ("orchestrated",),
         )
 
 
@@ -571,7 +572,16 @@ async def tick(tenant_id: str, cfg: AutopilotConfig | None = None) -> dict:
                     else:
                         stats["send_failed"] += 1
 
-            # Engage: replies arrive via the inbound webhook; surface counts.
+            # Engage: webhook and configured mail providers feed the same records.
+            if "inbox" in steps:
+                try:
+                    inbound = await GoogleWorkspaceInboundService(session).poll(tenant_id)
+                    if inbound.get("status") == "ok":
+                        stats["inbound_processed"] += int(inbound.get("processed", 0))
+                        stats["inbound_failed"] += int(inbound.get("failed", 0))
+                except Exception:  # noqa: BLE001 - inbound failure must not stop the tick
+                    stats["inbound_error"] += 1
+                    logger.exception("Google Workspace inbound poll failed for %s", tenant_id)
             stats["replied"] = await _count(session, Prospect.tenant_id == tenant_id, Prospect.status == "replied")
             stats["opted_out"] = await _count(session, Prospect.tenant_id == tenant_id, Prospect.status == "opted_out")
 
@@ -736,6 +746,10 @@ async def set_switches(
             }
             | {"updated_by": actor},
         )
+        if enabled is False:
+            from .jobs import JobService
+
+            await JobService(session).cancel_pending_autopilot(tenant_id)
     return await status_payload(tenant_id)
 
 

@@ -77,6 +77,18 @@ async def session_scope() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # PostgreSQL aborts the whole transaction after a duplicate-column error,
+    # even when Python catches it. Keep this legacy upgrade separate so it can
+    # never roll back the schema created above.
+    try:
+        from sqlalchemy import text
+
+        async with engine.begin() as conn:
+            await conn.execute(
+                text("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT 0 NOT NULL")
+            )
+    except Exception:
+        pass
 
 
 async def reset_db() -> None:

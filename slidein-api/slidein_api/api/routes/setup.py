@@ -19,7 +19,7 @@ POST /v1/tenants/{tenant_id}/setup/answers   {answers: {key: value}}
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from starlette import status as http_status
 
 from ...db import session_scope
@@ -29,7 +29,9 @@ from ...security import AuthContext, require_auth, require_role, resolve_workspa
 from ... import setup_service as setup
 from ... import workspace_store as wsp
 from ...services.config import ConfigService
+from ...services.jobs import JobService, execution_mode
 from ...setup import SetupService
+from ...workers.runner import execute_job
 from . import workspace as ws_routes
 
 router = APIRouter()
@@ -181,6 +183,53 @@ async def setup_report(
         return await SetupService(session).status(tenant_id)
 
 
+@router.post("/tenants/{tenant_id}/setup/intake", tags=["setup"])
+async def setup_intake(
+    tenant_id: str,
+    background_tasks: BackgroundTasks,
+    payload: dict = Body(...),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Persist one free-form intake and its durable execution job."""
+    require_role(auth, "operator")
+    sources = payload.get("sources") or []
+    actor = f"user:{auth.role}"
+    try:
+        async with session_scope() as session:
+            service = SetupService(session)
+            run = await service.intake(tenant_id, {"sources": sources}, actor=actor)
+            job = await JobService(session).enqueue(
+                tenant_id=tenant_id,
+                kind="setup",
+                idempotency_key=f"setup:{run['id']}",
+                payload={"run_id": run["id"], "sources": sources, "actor": actor},
+            )
+            await service.attach_run_job(tenant_id, run["id"], job["id"])
+            run["job_id"] = job["id"]
+    except SlideinError as exc:
+        raise _rich_error(exc)
+    if execution_mode() == "celery":
+        from ...workers.dispatch import dispatch_job
+
+        await dispatch_job(job["id"])
+    else:
+        background_tasks.add_task(execute_job, job["id"], worker_id="inline:setup")
+    return {"run": run, "job": {"id": job["id"], "state": job["state"], "kind": job["kind"]}}
+
+
+@router.get("/tenants/{tenant_id}/setup/runs/{run_id}", tags=["setup"])
+async def setup_run_status(
+    tenant_id: str, run_id: str, auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    try:
+        async with session_scope() as session:
+            service = SetupService(session)
+            run = await service.run_status(tenant_id, run_id)
+            return {"run": run, "status": await service.status(tenant_id)}
+    except SlideinError as exc:
+        raise _rich_error(exc)
+
+
 @router.post("/tenants/{tenant_id}/setup/generate", tags=["setup"])
 async def setup_generate(
     tenant_id: str,
@@ -218,7 +267,7 @@ async def setup_owner(
     payload: dict = Body(...),
     auth: AuthContext = Depends(resolve_workspace),
 ) -> dict:
-    """Create the owner login that opens Console and Dashboard (operator+).
+    """Create the owner login that opens Console (operator+).
 
     Idempotent by design: when the workspace already has an owner the
     existing account is reported and nothing is reset. The generated
@@ -245,7 +294,7 @@ async def setup_owner(
                 "reason": "owner_exists",
                 "owner": owners[0] if owners else None,
                 "owners": owners,
-                "interfaces": ["console", "dashboard"],
+                "interfaces": ["console"],
             }
         user, password = await identity.create_user(
             tenant_id, email, role="admin", name=str(payload.get("name") or "")

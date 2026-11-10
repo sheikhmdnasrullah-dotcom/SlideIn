@@ -13,18 +13,20 @@ missing. `status` derives the six named stages the mission asks for, so
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..errors import ValidationError
+from ..errors import SlideinError, ValidationError
 from ..factory.activation import ActivationService
 from ..factory.configs import DeploymentConfigService
 from ..factory.connections import ConnectionService
 from ..factory.validation import ValidationService
 from ..identity import IdentityService
+from ..ids import new_id
 from ..models import Tenant
 from ..services.config import ConfigService
 from ..services.modules import ModulesService
@@ -33,12 +35,15 @@ from ..services.suppression import SuppressionService
 from ..services.templates import TemplateService
 from .blueprint import detect_crm, propose_blueprint
 from .extract import extract_profile
+from .llm import enhance_profile
 from .questions import apply_answers, build_questions, grouped, open_blocking
 from .sources import normalise_sources
 
 PROFILE_REQUIRED = (
     "legal_name", "website_url", "industry", "business_description", "core_value_prop",
 )
+
+logger = logging.getLogger("slidein.setup")
 
 SETUP_STAGES: tuple[tuple[str, str], ...] = (
     ("workspace_generated", "Workspace generated"),
@@ -59,7 +64,7 @@ STAGE_TARGETS: dict[str, dict[str, str]] = {
                                "target": "#integrations"},
     "workflow_tested": {"label": "Run the first controlled test",
                         "target": "#test"},
-    "owner_ready": {"label": "Create the owner login for Console and Dashboard",
+    "owner_ready": {"label": "Create the owner login for Console",
                     "target": "#access"},
     "ready_for_approval": {"label": "Review the setup and request approval",
                            "target": "#review"},
@@ -107,12 +112,78 @@ class SetupService:
         row.settings = settings
         await self.session.flush()
 
+    # -- asynchronous intake runs -------------------------------------------
+
+    async def intake(self, tenant_id: str, payload: dict, *, actor: str) -> dict:
+        sources = payload.get("sources") or []
+        if not isinstance(sources, list) or not sources:
+            raise ValidationError(
+                "Add notes, a transcript, a document, or a website before building the workspace",
+                code="setup_source_missing", recovery_action="provide_business_context",
+            )
+        await ConfigService(self.session).ensure_tenant(tenant_id)
+        block = await self._setup_block(tenant_id)
+        now = _now()
+        run = {
+            "id": new_id("setup_run"), "state": "queued", "created_at": now,
+            "started_at": "", "completed_at": "", "actor": actor,
+            "source_count": len(sources), "error": "",
+        }
+        block["run"] = run
+        await self._write_setup_block(tenant_id, block)
+        return run
+
+    async def attach_run_job(self, tenant_id: str, run_id: str, job_id: str) -> None:
+        """Link the durable execution ledger without changing setup ownership."""
+        block = await self._setup_block(tenant_id)
+        run = dict(block.get("run") or {})
+        if run.get("id") == run_id:
+            run["job_id"] = job_id
+            block["run"] = run
+            await self._write_setup_block(tenant_id, block)
+
+    async def run_status(self, tenant_id: str, run_id: str) -> dict:
+        run = (await self._setup_block(tenant_id)).get("run") or {}
+        if run.get("id") != run_id:
+            raise ValidationError(
+                "Setup run not found", code="not_found", recovery_action="check_setup_run",
+            )
+        return run
+
+    async def execute(self, tenant_id: str, run_id: str, sources: list, *, actor: str) -> dict:
+        """Execute in a worker-supplied session; persist failure without provider secrets."""
+        try:
+            await self.generate(
+                tenant_id, {"sources": sources, "_run_id": run_id}, actor=actor
+            )
+        except Exception as exc:  # noqa: BLE001 — background boundary persists a safe failure
+            await self.session.rollback()  # Do not commit partially generated business records.
+            block = await self._setup_block(tenant_id)
+            run = dict(block.get("run") or {})
+            if run.get("id") == run_id:
+                run.update({
+                    "state": "failed", "completed_at": _now(),
+                    "error": str(exc) if isinstance(exc, SlideinError) else "Setup generation failed",
+                    "error_code": exc.code if isinstance(exc, SlideinError) else "setup_failed",
+                    "retryable": exc.retryable if isinstance(exc, SlideinError) else True,
+                })
+                block["run"] = run
+                await self._write_setup_block(tenant_id, block)
+        return await self.run_status(tenant_id, run_id)
+
     # -- generate ----------------------------------------------------------
 
     async def generate(
         self, tenant_id: str, payload: dict, *, actor: str = "operator"
     ) -> dict:
         stored = await self._setup_block(tenant_id)
+        run_id = str(payload.get("_run_id") or new_id("setup_run"))
+        if payload.get("_run_id"):
+            run = dict(stored.get("run") or {})
+            if run.get("id") == run_id:
+                run.update({"state": "running", "started_at": _now(), "error": ""})
+                stored["run"] = run
+                await self._write_setup_block(tenant_id, stored)
         existing_answers = dict(stored.get("answers") or {})
 
         if "sources" in payload:
@@ -130,6 +201,7 @@ class SetupService:
         normalised = normalise_sources(sources_raw)
         sources = normalised.sources
         draft = extract_profile(sources)
+        draft = await enhance_profile(draft, sources)
         apply_answers(draft, answers)
 
         corpus = "\n".join(
@@ -177,10 +249,31 @@ class SetupService:
         if not await suppression.is_configured(tenant_id):
             await suppression.seed_defaults(tenant_id)
 
+        # Research starts automatically only after canonical readiness exists.
+        # This deliberately does not enable auto-approval or sending.
+        if (
+            await config.active_profile(tenant_id) is not None
+            and await config.active_icp(tenant_id) is not None
+            and bool(await config.list_offers(tenant_id))
+        ):
+            from ..services.autopilot import save_state
+
+            await save_state(self.session, tenant_id, {"enabled": True})
+
+        completed_at = _now()
+        previous_run = stored.get("run") or {}
+        run = {
+            "id": run_id, "state": "complete",
+            "created_at": previous_run.get("created_at") or completed_at,
+            "started_at": previous_run.get("started_at") or completed_at,
+            "completed_at": completed_at, "actor": actor,
+            "source_count": len(sources), "error": "",
+        }
         block = {
             "version": int(stored.get("version") or 0) + 1,
-            "generated_at": _now(),
+            "generated_at": completed_at,
             "generated_by": actor,
+            "run": run,
             "sources": [s.to_dict() for s in sources],
             "rejected": normalised.rejected,
             "answers": answers,
@@ -204,6 +297,8 @@ class SetupService:
         return {
             "tenant_id": tenant_id,
             "generated_at": block["generated_at"],
+            "run": run,
+            "extraction": draft.get("extraction") or {},
             "sources": block["sources"],
             "rejected_sources": block["rejected"],
             "profile": {
@@ -365,6 +460,15 @@ class SetupService:
         await OutreachService(self.session).save_policy(
             tenant_id, updates, actor=actor
         )
+        # The sending identity (sender → domain architecture) now exists, so
+        # the 14-day Warmbly warmup rule starts here: initial setup saves the
+        # policy, the warmup clock begins, and live campaigns stay gated until
+        # it completes. Best-effort by design — setup never fails on Warmbly.
+        from ..services.warmup import WarmupService
+
+        await WarmupService(self.session).maybe_start_after_setup(
+            tenant_id, actor=actor
+        )
         return True
 
     async def _register_connections(
@@ -514,8 +618,8 @@ class SetupService:
                 "kind": "owner_access",
                 "id": "owner_login",
                 "title": "No owner login exists for this workspace",
-                "detail": "Console and Dashboard cannot be signed in to until an "
-                          "owner account has been created.",
+                "detail": "Console cannot be signed in to until an owner account "
+                          "has been created.",
                 "remediation": "Create the owner login in the Access step below.",
                 "human_action": True,
             })
@@ -539,6 +643,8 @@ class SetupService:
             "checklist": checklist,
             "next_action": STAGE_TARGETS[current],
             "generated_at": block.get("generated_at", ""),
+            "run": block.get("run") or None,
+            "extraction": (block.get("draft") or {}).get("extraction") or {},
             "config_version": block.get("config_version"),
             "attempt": block.get("version", 0),
             "suppression_configured": suppression_ok,

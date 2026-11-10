@@ -31,7 +31,7 @@ graph TD
 ### Step 2: Infrastructure & Sending Domain Setup
 1. Assign or provision dedicated sending domain (e.g., `acme-outreach.com`).
 2. Add DNS records:
-   - SPF: `v=spf1 ip4:169.58.207.75 ~all`
+   - SPF: `v=spf1 ip4:<MAIL_VPS_IP> ~all`
    - DKIM: `kumo._domainkey` 2048-bit public key
    - DMARC: `v=DMARC1; p=reject; rua=mailto:dmarc@...`
    - MX: Points to Mailcow VPS

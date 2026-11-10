@@ -15,7 +15,15 @@ The canonical implementation is `slidein_api/integrations/tool_registry.py`. The
 - **Eligible:** the tool is wired and ready, its capability and target apply, and policy allows it.
 - **Executed:** an orchestrator made a recorded attempt. Coverage planning never implies execution.
 
-Environment variables alone never set `wired=True`. Current wired tools are WebsiteConnector, OpenOSINT, Firecrawl, and ECC. ECC is engineering-only and cannot enter prospect fan-out.
+Environment variables alone never set `wired=True`. Canonical research execution wires WebsiteConnector, OpenOSINT, and Firecrawl. Canonical setup, discovery, deterministic personalization, inbound webhook/conversation handling, MX/spam preflight, Reacher verification, SMTP, and KumoMTA submission also have real service paths. Consented Website Lead Capture and MaxMind GeoIP2 remain wired; ECC is engineering-only and cannot enter prospect fan-out. Warmbly, `warmup-engine`, optimization warmup, and the deliverability daemon are registered but deliberately unwired until tenant-safe adapters exist.
+
+## Website analytics and lead capture
+
+Website capture is an acquisition source inside the canonical product, not another dashboard or CRM. An operator connects a client-owned HTTPS domain in existing Settings, installs the generated snippet, and marks an explicit consent checkbox on the lead form. Anonymous page views create no Prospect. A valid explicitly submitted email creates or reuses the canonical Prospect with source and consent evidence, then stitches earlier consented events from the same website session.
+
+The public event endpoint is write-only and keyed by a site-specific key. It validates consent, event type, page origin, and event/session identifiers; external event IDs are idempotent per website. Connection responses report `remote_deployment=False`: Slidein generates installation code but does not modify a remote website. No fingerprinting, anonymous-email inference, or autonomous sending is permitted.
+
+Snowplow and RudderStack official browser adapters are installed but not canonically wired; their collector/data-plane infrastructure is separate and not running. LogSnag is operational-only and receives no personal or visitor tags. GeoIP2 is canonically wired to a local MMDB lookup for network context only; network/ASN data never proves identity, employer, or email. Refine remains evaluation-only under ADR-0001.
 
 ## Capability planning
 
@@ -32,15 +40,17 @@ Fallback chains contain only eligible tools, ordered by `(priority, id)` and ded
 
 ## Execution contract
 
-A future executor must add bounded concurrency, per-provider timeout, cost/time budgets, retry policy, idempotency, rate-limit handling, and persisted attempts. It must not weaken the coverage guarantee:
+`services/tool_orchestration.py` executes research tools sequentially in `(priority, tool id)` order with per-run attempt/time budgets, provider timeout handling, idempotent replay, and persisted `ToolExecution`/`ToolAttempt` rows. It does not weaken the coverage guarantee:
 
 1. Resolve the plan before execution.
 2. Attempt only eligible and applicable tools.
-3. Record every success/failure and fallback selection.
+3. Record every success/failure/skip and fallback selection.
 4. Preserve evidence provenance and untrusted-content boundaries.
-5. End with an unexecuted-capability ledger; never convert missing data or provider failure into mock success.
+5. End with an unresolved-capability ledger; never convert missing data or provider failure into mock success.
 
-Research returns source-backed `EvidenceItem` rows. Drafting must cite evidence IDs and fail explicitly if no real model provider succeeds. Live sending remains outside autonomous tool selection and requires separate authorization.
+The default research route and autopilot use the orchestrator. Explicit legacy connector names remain compatibility paths. `GET /v1/tenants/{id}/tools/executions` lists executions and `GET …/tools/executions/{execution_id}` returns the ordered attempt ledger with tenant isolation.
+
+Research returns source-backed `EvidenceItem` rows. Deterministic drafting cites evidence IDs; external model providers remain unwired and cannot replace a failed draft with canned prose. Live sending remains outside autonomous tool selection and requires separate authorization. Reacher verifies recipients before live dispatch; `safe` is required, and verification never implies consent.
 
 ## Adding a tool
 

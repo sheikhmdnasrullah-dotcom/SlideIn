@@ -51,7 +51,7 @@ async def provision_tenant(
 ) -> dict:
     """Provision a client workspace **and everything it needs to be used**:
     the tenant row, a workspace API key (no env edit required) and — when
-    an owner email is supplied — the first Console/Dashboard login.
+    an owner email is supplied — the first Console login.
 
     Both the API key and the generated password are returned exactly once.
     Admin only."""
@@ -102,10 +102,10 @@ async def provision_tenant(
                 "note": "Store this key now — it is not shown again.",
             },
             "owner": owner,
-            "interfaces": ["console", "dashboard"],
+            "interfaces": ["console"],
             "next_steps": [
                 "Store the API key (server-side only) — no SLIDEIN_API_KEYS edit needed.",
-                "Hand the owner login to the client: Console and Dashboard share it.",
+                "Hand the owner Console login to the client.",
                 "Save a deployment config for the tenant.",
                 "Complete intake, then run factory validation.",
             ],

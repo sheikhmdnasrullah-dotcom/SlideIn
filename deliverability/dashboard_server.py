@@ -109,13 +109,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="title">
       <h1>🚀 Email Deliverability Command Center <span class="badge-live">LIVE ACTIVE</span></h1>
       <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.35rem;">
-        VPS: 169.58.207.75 • KumoMTA Port 2587 • Dovecot IMAP: 993 • SOGo Webmail
+        VPS: 127.0.0.1 • KumoMTA Port 2587 • Dovecot IMAP: 993 • SOGo Webmail
       </p>
     </div>
     <div class="quick-links">
       <a href="https://mail.nasrullahtanim.me/SOGo/" target="_blank" class="btn btn-primary">📬 Open SOGo Webmail</a>
       <a href="https://mail.nasrullahtanim.me/" target="_blank" class="btn btn-secondary">⚙️ Mailcow Admin</a>
-      <a href="http://169.58.207.75:8029" target="_blank" class="btn btn-secondary">📊 KumoMTA API</a>
+      <a href="http://127.0.0.1:8029" target="_blank" class="btn btn-secondary">📊 KumoMTA API</a>
     </div>
   </div>
 

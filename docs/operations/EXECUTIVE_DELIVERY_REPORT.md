@@ -16,7 +16,7 @@ This report establishes the baseline of verified production infrastructure, oper
 
 ---
 
-## 2. Infrastructure & Production Status (`169.58.206.20`)
+## 2. Infrastructure & Production Status (`<PRIMARY_VPS_IP>`)
 
 The production infrastructure is live and operational on Ubuntu LTS with Caddy edge routing, Docker runtime, and systemd service supervision:
 
@@ -50,7 +50,7 @@ The production infrastructure is live and operational on Ubuntu LTS with Caddy e
 | Plan Tier | Price | Infrastructure Allocation | Feature Set |
 |---|---|---|---|
 | **Free / Open-Core** | $0 (Self-Hosted) | User's own local machine / VPS | Open-source CLI, basic discovery, local SQLite store, manual dispatch. |
-| **Cloud Managed** | **$350 / month** | Dedicated VPS slice (`169.58.206.20`), dedicated IP, warmed domains | Managed KumoMTA, Warmbly warmup, Reacher verification, 24/7 Telegram/Discord notifications, Notion booking sync, 24-hr agent fallback. |
+| **Cloud Managed** | **$350 / month** | Dedicated VPS slice (`<PRIMARY_VPS_IP>`), dedicated IP, warmed domains | Managed KumoMTA, Warmbly warmup, Reacher verification, 24/7 Telegram/Discord notifications, Notion booking sync, 24-hr agent fallback. |
 | **Enterprise Fleet** | Custom ($750+) | Multi-domain cluster, dedicated IP pool | Multi-mission orchestrations, white-label client portals, custom CRM webhooks. |
 
 ---

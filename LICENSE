@@ -5,16 +5,24 @@ Parameters
 Licensor: Nasrullah Tanim
 Licensed Work: SlideIn (including slidein-api, workspace-app, and deliverability orchestration)
 Additional Use Grant:
-    You are permitted to self-host and execute the Licensed Work on your own
-    infrastructure free of charge solely for the internal business operations of a
-    single organization.
-    
+    You are permitted to install and run the Licensed Work on infrastructure that you
+    control, free of charge, solely for the internal business operations of a single
+    legal entity, and only to contact people on that entity's own behalf.
+
     You are strictly PROHIBITED from:
     (1) Offering, reselling, or providing the Licensed Work, or any derivative work,
         as a hosted software-as-a-service (SaaS), managed service, platform-as-a-service,
         or commercial cloud offering to third parties.
-    (2) Sublicensing, leasing, or charging third parties for access to a hosted instance
-        of the Licensed Work.
+    (2) Using the Licensed Work, or any derivative work, to perform services for, or
+        send or manage communications on behalf of, any client, customer or other person
+        or organization other than the single entity that operates the installation
+        (for example agency, consultancy, lead-generation, outsourced-outreach or
+        white-label use).
+    (3) Selling, licensing, sublicensing, leasing, renting or otherwise charging for the
+        Licensed Work or any derivative work, or bundling either into a paid product,
+        service or subscription.
+    (4) Removing or altering license, copyright or attribution notices, or presenting
+        the Licensed Work or a derivative work as your own product.
 
 Change Date: October 16, 2030
 Change License: Apache License, Version 2.0
@@ -24,7 +32,9 @@ Change License: Apache License, Version 2.0
 Notice
 
 The Licensor hereby grants you the right to copy, modify, create derivative works,
-redistribute, and make non-production use of the Licensed Work.
+and make non-production use of the Licensed Work, and to redistribute it free of
+charge with this license and all notices intact. Redistribution for a fee, or as part
+of a paid offering, is not permitted.
 
 Production use of the Licensed Work is permitted solely pursuant to the Additional
 Use Grant above. If you wish to use the Licensed Work outside the Additional Use

@@ -13,7 +13,7 @@ Report privately via one of:
 
 Include: affected component/file path, reproduction steps, impact, and any
 suggested fix. You will receive an acknowledgement when the maintainer is
-available; this is a solo-maintained alpha project, so response times vary.
+available; this is a solo-maintained beta project, so response times vary.
 
 ## Supported versions
 

@@ -5,7 +5,7 @@
 #
 # Usage: VPS_PASS=xxx ./vps-deploy-lab.sh [root@host]
 set -euo pipefail
-VPS="${1:-root@169.58.207.75}"
+VPS="${1:?usage: $0 root@<vps-ip>}"
 PASS="${VPS_PASS:?set VPS_PASS env var}"
 LOCAL_ROOT="$(cd "$(dirname "$0")/.." && pwd)"      # kumomta-lab/
 REPO_ROOT="$(cd "$LOCAL_ROOT/.." && pwd)"            # email-master raw/

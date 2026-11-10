@@ -63,7 +63,7 @@
 16. **No Python linters** — CI gates Go only (`gofmt`/`vet`); Python has no
     ruff/flake8/mypy config. Fix: add ruff + CI job.
 17. **Stale deploy default** — `deploy-production.sh` still defaults
-    `VPS=root@169.58.207.75` (old box) when `$1` is omitted. Risk: a
+    `VPS=root@<MAIL_VPS_IP>` (old box) when `$1` is omitted. Risk: a
     bare rerun targets a dead host. Fix: default to the live IP or require
     the argument.
 18. **`refs/agents/*` checkpoint data** — local-only ref holds PII CSVs +

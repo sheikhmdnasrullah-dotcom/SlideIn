@@ -134,7 +134,7 @@ class PlacementOptimizer:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             
-            s = smtplib.SMTP("169.58.207.75", 2587, timeout=30)
+            s = smtplib.SMTP("127.0.0.1", 2587, timeout=30)
             s.ehlo()
             s.starttls(context=ctx)
             s.ehlo()

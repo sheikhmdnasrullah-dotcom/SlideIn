@@ -1,10 +1,8 @@
-"""Identity, sessions and cross-interface behaviour.
+"""Identity, sessions and Console behaviour.
 
-These tests are the proof that Console and Dashboard are two views of one
-system: a session minted by the login endpoint is accepted by every
-existing endpoint, hits the same `require_role` ladder as an API key, is
-bound to one workspace, and reads/writes the same records the other
-interface uses.
+A session minted by the login endpoint is accepted by every existing
+endpoint, hits the same `require_role` ladder as an API key, is bound to one
+workspace, and reads/writes the same canonical records.
 """
 
 from __future__ import annotations
@@ -55,7 +53,7 @@ def test_bootstrap_creates_first_admin_and_closes_itself(client):
     assert first.status_code == 200, first.text
     body = first.json()
     assert body["role"] == "admin"
-    assert body["interfaces"] == ["console", "dashboard"]
+    assert body["interfaces"] == ["console"]
     assert body["token"].startswith("st_")
 
     second = client.post(
@@ -82,7 +80,7 @@ def test_login_round_trip_and_identity(client, admin_headers):
     assert payload["email"] == "owner@example.com"
     assert payload["role"] == "admin"
     assert payload["tenant_id"] == TENANT_A
-    assert payload["interfaces"] == ["console", "dashboard"]
+    assert payload["interfaces"] == ["console"]
 
 
 def test_wrong_password_is_rejected_with_the_same_envelope(client, admin_headers):
@@ -142,7 +140,7 @@ def test_session_cookie_is_accepted_like_a_bearer_token(client, admin_headers):
 
 # -- roles and interfaces ----------------------------------------------------
 
-def test_viewer_session_may_only_open_the_dashboard(client, admin_headers):
+def test_viewer_session_may_open_console_read_only(client, admin_headers):
     _provision(client, admin_headers, TENANT_A)
     created = client.post(
         "/v1/auth/users",
@@ -151,12 +149,12 @@ def test_viewer_session_may_only_open_the_dashboard(client, admin_headers):
     )
     assert created.status_code == 200, created.text
     password = created.json()["password"]
-    assert created.json()["interfaces"] == ["dashboard"]
+    assert created.json()["interfaces"] == ["console"]
 
     token = _login(client, "reader@example.com", password).json()["token"]
     who = client.get("/v1/auth/session", headers=_session_headers(token)).json()
     assert who["role"] == "viewer"
-    assert who["interfaces"] == ["dashboard"]
+    assert who["interfaces"] == ["console"]
 
 
 def test_viewer_session_cannot_mutate_but_can_read(client, admin_headers):
@@ -194,7 +192,7 @@ def test_operator_session_may_run_pipeline_actions(client, admin_headers, config
     headers = _session_headers(token)
 
     who = client.get("/v1/auth/session", headers=headers).json()
-    assert who["interfaces"] == ["console", "dashboard"]
+    assert who["interfaces"] == ["console"]
 
     write = client.post(
         f"/v1/tenants/{TENANT_A}/discover",
@@ -371,11 +369,11 @@ def test_provisioning_creates_workspace_key_and_owner(client, admin_headers):
     assert body["api_key"]["key"]
     assert body["owner"]["password"]
     assert body["owner"]["user"]["email"] == "client@example.com"
-    assert body["interfaces"] == ["console", "dashboard"]
+    assert body["interfaces"] == ["console"]
 
     login = _login(client, "client@example.com", body["owner"]["password"])
     assert login.status_code == 200, login.text
-    assert login.json()["interfaces"] == ["console", "dashboard"]
+    assert login.json()["interfaces"] == ["console"]
 
 
 def test_setup_owner_endpoint_is_idempotent(client, admin_headers):

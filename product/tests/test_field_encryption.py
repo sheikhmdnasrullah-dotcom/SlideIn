@@ -18,7 +18,7 @@ import pytest_asyncio
 from sqlalchemy import select, text
 
 from product.core import field_encryption
-from product.db.models import User
+from product.db.models import Organization, User
 from product.db.repositories import BaseRepository
 from product.db.session import get_db_session, init_db
 
@@ -109,9 +109,13 @@ async def db():
     """Ensure tables exist; unique org per test, cleaned up afterwards."""
     await init_db()
     org_id = f"org_enc_{uuid.uuid4().hex[:12]}"
+    # users.org_id is a foreign key, so the organization must exist first.
+    async with get_db_session() as session:
+        session.add(Organization(id=org_id, org_id=org_id, tenant_id=org_id, name="Encryption Test", slug=org_id))
     yield org_id
     async with get_db_session() as session:
-        await session.execute(text(f"DELETE FROM users WHERE org_id = '{org_id}'"))
+        await session.execute(text("DELETE FROM users WHERE org_id = :org"), {"org": org_id})
+        await session.execute(text("DELETE FROM organizations WHERE id = :org"), {"org": org_id})
 
 
 @pytest.mark.asyncio
@@ -169,9 +173,10 @@ class TestCalendarCredentialsAtRest:
             await session.execute(
                 text(
                     "INSERT INTO users (id, org_id, tenant_id, email, name,"
-                    " calendar_provider, calendar_credentials, active, created_at,"
-                    " updated_at) VALUES (:id, :org, :org, :email, 'Legacy User',"
-                    " 'google', :creds::jsonb, true, now(), now())"
+                    " calendar_provider, calendar_credentials, active, email_verified,"
+                    " role, created_at, updated_at) VALUES (:id, :org, :org, :email,"
+                    " 'Legacy User', 'google', CAST(:creds AS jsonb), true, false,"
+                    " 'advisor', now(), now())"
                 ),
                 {"id": user_id, "org": org_id, "email": f"{org_id}-legacy@example.com",
                  "creds": '{"provider": "google", "access_token": "legacy-plain"}'},
@@ -216,9 +221,10 @@ class TestCalendarCredentialsAtRest:
             await session.execute(
                 text(
                     "INSERT INTO users (id, org_id, tenant_id, email, name,"
-                    " calendar_provider, calendar_credentials, active, created_at,"
-                    " updated_at) VALUES (:id, :org, :org, :email, 'Legacy User',"
-                    " 'google', :creds::jsonb, true, now(), now())"
+                    " calendar_provider, calendar_credentials, active, email_verified,"
+                    " role, created_at, updated_at) VALUES (:id, :org, :org, :email,"
+                    " 'Legacy User', 'google', CAST(:creds AS jsonb), true, false,"
+                    " 'advisor', now(), now())"
                 ),
                 {"id": user_id, "org": org_id, "email": f"{org_id}-mig@example.com",
                  "creds": '{"provider": "google", "access_token": "legacy-plain"}'},

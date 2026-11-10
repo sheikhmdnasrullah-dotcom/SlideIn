@@ -1,4 +1,4 @@
-"""Identity routes — one login for Console and Dashboard.
+"""Identity routes — one login for Console.
 
 POST /v1/auth/login      {email, password}        -> session token (shown once)
 POST /v1/auth/logout                              -> revoke the presented session
@@ -7,9 +7,9 @@ POST /v1/auth/bootstrap  {email, password?, name?} -> first admin, only while no
 GET  /v1/auth/users                               -> workspace users (admin)
 POST /v1/auth/users      {email, role, ...}       -> create a user (admin), password returned once
 
-Both frontends call these through their own BFF: the browser only ever
-holds the HttpOnly cookie, and every protected operation is still
-authorized here against the same `require_role` ladder.
+The Console BFF calls these routes: the browser only ever holds the HttpOnly
+cookie, and every protected operation is still authorized here against the same
+`require_role` ladder.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from ...identity import (
     session_response,
     user_payload,
 )
-from ...security import require_auth, require_role, presented_credential
+from ...security import auth_mode, require_auth, require_role, presented_credential
 from ...services.config import ConfigService
 
 router = APIRouter()
@@ -40,25 +40,113 @@ def _password(body: dict) -> str:
 @router.post("/auth/login", tags=["auth"])
 async def login(body: dict = Body(...)) -> dict:
     """Exchange credentials for a session token both interfaces accept."""
-    email = str(body.get("email") or "").strip().lower()
+    identifier = str(body.get("username") or body.get("email") or "").strip().lower()
     password = _password(body)
-    if not email or not password:
+
+    # Local development (SLIDEIN_AUTH_MODE=disabled): no real user store yet, so
+    # `admin`/`admin` is the documented local credential. On first login it
+    # bootstraps the dev admin for ten_local; on any later login it authenticates
+    # against the persisted account. This lets a local user sign in and reach the
+    # Console + Dashboard without going through /auth/bootstrap.
+    if auth_mode() == "disabled":
+        tenant_id = (
+            str(body.get("tenant_id") or "").strip()
+            or os.getenv("SLIDEIN_DEFAULT_TENANT")
+            or "ten_local"
+        )
+        if not identifier or not password:
+            raise ValidationError(
+                "Username/email and password are required",
+                code="validation_error",
+                recovery_action="provide_credentials",
+            )
+        async with session_scope() as session:
+            identity = IdentityService(session)
+            user = await identity.authenticate(identifier, password)
+            if user is None:
+                if await identity.count_users() > 0:
+                    raise PermissionDenied(
+                        "Username/email or password is incorrect",
+                        code="not_authorized",
+                        recovery_action="sign_in",
+                    )
+                await ConfigService(session).ensure_tenant(tenant_id, name=tenant_id)
+                user, _raw = await identity.create_user(
+                    tenant_id,
+                    identifier,
+                    role="admin",
+                    name=str(body.get("name") or ""),
+                    password=password,
+                    must_change_password=False,
+                )
+            token, expires = await identity.create_session(user)
+            return session_response(user, token, expires)
+
+    if not identifier or not password:
         raise ValidationError(
-            "Email and password are required",
+            "Username/email and password are required",
             code="validation_error",
             recovery_action="provide_credentials",
         )
     async with session_scope() as session:
         identity = IdentityService(session)
-        user = await identity.authenticate(email, password)
+        user = await identity.authenticate(identifier, password)
         if user is None:
             raise PermissionDenied(
-                "Email or password is incorrect",
+                "Username/email or password is incorrect",
                 code="not_authorized",
                 recovery_action="sign_in",
             )
         token, expires = await identity.create_session(user)
         return session_response(user, token, expires)
+
+
+@router.post("/auth/change-password", tags=["auth"])
+async def change_password(request: Request, body: dict = Body(...)) -> dict:
+    """Set a new password for the account and clear the must_change_password flag.
+
+    Can be called either with an active session (Authorization: Bearer st_...)
+    or by supplying { username, current_password, new_password }.
+    """
+    new_password = str(body.get("new_password") or "").strip()
+    if not new_password or len(new_password) < 6:
+        raise ValidationError(
+            "New password must be at least 6 characters long",
+            code="weak_password",
+            recovery_action="provide_password",
+        )
+
+    token = presented_credential(request) or ""
+    async with session_scope() as session:
+        identity = IdentityService(session)
+        user = None
+        if token:
+            res = await identity.get_session(token)
+            if res:
+                user = res[0]
+
+        if user is None:
+            identifier = str(body.get("username") or body.get("email") or "").strip().lower()
+            current_password = str(body.get("current_password") or "")
+            if not identifier or not current_password:
+                raise PermissionDenied(
+                    "Current password or active session is required to change password",
+                    code="not_authorized",
+                    recovery_action="provide_credentials",
+                )
+            user = await identity.authenticate(identifier, current_password)
+            if user is None:
+                raise PermissionDenied(
+                    "Current password or username/email is incorrect",
+                    code="not_authorized",
+                    recovery_action="provide_credentials",
+                )
+
+        updated_user = await identity.change_password(user.id, new_password)
+        new_token, expires = await identity.create_session(updated_user)
+        payload = session_response(updated_user, new_token, expires)
+        payload["message"] = "Password updated successfully"
+        return payload
 
 
 @router.post("/auth/logout", tags=["auth"])
@@ -75,9 +163,16 @@ async def logout(request: Request) -> dict:
 @router.get("/auth/session", tags=["auth"])
 async def session_info(request: Request) -> dict:
     """The identity behind the presented session — used by both frontends
-    to decide what to render. 401/403 when there is no live session."""
+    to decide what to render. 401/403 when there is no live session.
+
+    Local development with `SLIDEIN_AUTH_MODE=disabled` (set by `./dev`) does
+    not require sign-in: the dev bypass resolves an admin on `ten_local` and
+    this route serves it so the Console + Dashboard render on localhost.
+    """
     auth = await require_auth(request)
-    if not auth.is_session:
+    from ...security import auth_mode
+
+    if not auth.is_session and auth_mode() != "disabled":
         raise PermissionDenied(
             "No user session on this request. Sign in to continue.",
             code="session_invalid",
@@ -91,6 +186,7 @@ async def session_info(request: Request) -> dict:
         "email": auth.email or "",
         "name": auth.name or "",
         "user_id": auth.user_id or "",
+        "mode": "disabled" if auth.method == "disabled" else "session",
     }
 
 
@@ -162,19 +258,24 @@ async def create_user(body: dict = Body(...), auth=Depends(require_auth)) -> dic
             code="validation_error",
             recovery_action="choose_role",
         )
+    raw_given_pw = _password(body)
+    must_change = bool(body.get("must_change_password", True if not raw_given_pw else False))
+    identifier = str(body.get("username") or body.get("email") or "").strip().lower()
     async with session_scope() as session:
         identity = IdentityService(session)
         user, raw_password = await identity.create_user(
             tenant_id,
-            str(body.get("email") or ""),
+            identifier,
             role=role,
             name=str(body.get("name") or ""),
-            password=_password(body) or None,
+            password=raw_given_pw or None,
+            must_change_password=must_change,
         )
         return {
             "user": user_payload(user),
             "password": raw_password,
             "interfaces": interfaces_for(role),
+            "must_change_password": user.must_change_password,
             "note": "This password is shown once and cannot be retrieved again.",
         }
 
@@ -190,7 +291,7 @@ async def auth_state() -> dict:
         remaining = await IdentityService(session).count_users()
     return {
         "bootstrap_available": remaining == 0,
-        "interfaces": ["console", "dashboard"],
+        "interfaces": ["console"],
     }
 
 

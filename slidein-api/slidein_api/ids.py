@@ -34,7 +34,20 @@ PREFIXES = {
     "connection": "conn",
     "deploy_config": "deploycfg",
     "sending_config": "sendcfg",
-    "circuit_breaker": "cb",
+    "website": "site",
+    "website_event": "wevent",
+    "setup_run": "setuprun",
+    "task": "task",
+    "work_job": "job",
+    "tool_execution": "toolrun",
+    "tool_exec": "toolrun",
+    "tool_attempt": "tooltry",
+    "inbound_receipt": "ireceipt",
+    "price": "price",
+    "ledger": "ledger",
+    "resv": "resv",
+    "usage": "usage",
+    "pay": "pay",
 }
 
 

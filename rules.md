@@ -14,7 +14,7 @@
 
 ## 1. Deliverability & Mail Transport Rules
 
-These rules protect the production mail infrastructure (`169.58.206.20`) and preserve sender reputation:
+These rules protect the production mail infrastructure (`<PRIMARY_VPS_IP>`) and preserve sender reputation:
 
 ### 1.1 Authentication & Routing
 1. **Mandatory SMTP Authentication:** Every message submitted to KumoMTA (`:2587`) must authenticate via SASL (`outbound`). Anonymous relay is strictly forbidden.

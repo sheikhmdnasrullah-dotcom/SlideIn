@@ -404,6 +404,13 @@ export interface WorkspaceModules {
   template?: TemplatePointer | null;
 }
 
+export interface ConsoleSectionMeta {
+  id: string;
+  visible: boolean;
+  order: number;
+  label: string | null;
+}
+
 export interface TemplatePointer {
   id: string;
   version: number | null;
@@ -959,6 +966,24 @@ export interface SafeTestReport {
   last_test: ActivationStatus["last_test"];
 }
 
+export interface SetupRun {
+  id: string;
+  state: "queued" | "running" | "complete" | "failed";
+  created_at: string;
+  started_at: string;
+  completed_at: string;
+  actor: string;
+  source_count: number;
+  error: string;
+}
+
+export interface SetupExtraction {
+  mode: "deterministic" | "llm_grounded";
+  provider: string;
+  rejected_fields: string[];
+  context_truncated: boolean;
+}
+
 /** The six named stages plus everything the setup screen renders. */
 export interface SetupStatus {
   tenant_id: string;
@@ -967,6 +992,8 @@ export interface SetupStatus {
   checklist: SetupChecklistItem[];
   next_action: { label: string; target: string };
   generated_at: string;
+  run: SetupRun | null;
+  extraction: SetupExtraction;
   config_version: number | null;
   attempt: number;
   suppression_configured: boolean;
@@ -1010,4 +1037,113 @@ export interface SetupReport {
   questions: SetupQuestion[];
   open_questions: Record<string, SetupQuestion[]>;
   status: SetupStatus;
+}
+
+// ── Billing & unified API ──────────────────────────────────────────────────
+
+export interface BillingBalance {
+  purchased_credits: number;
+  used_credits: number;
+  held_credits: number;
+  available_credits: number;
+  catalog?: Capability[];
+}
+
+export interface Capability {
+  product_id: string;
+  version: number;
+  description: string;
+  billing_unit: string;
+  unit_price_credits: number;
+  package_price_credits: number | null;
+  included_allowances: Record<string, number>;
+  required_capabilities: string[];
+  usage_limits: Record<string, number>;
+  eligibility: Record<string, unknown>;
+  refund_policy: string;
+  status: string;
+  effective_from: string | null;
+  cost_model_validated: boolean;
+  executable?: boolean;
+  purchasable?: boolean;
+}
+
+export interface LedgerEntryRecord {
+  id: string;
+  tenant_id: string;
+  entry_type: string;
+  amount: number;
+  currency: string;
+  reason: string;
+  job_id: string | null;
+  payment_id: string | null;
+  idempotency_key: string | null;
+  created_by: string;
+  created_at: string | null;
+}
+
+export interface PurchaseRecord {
+  id: string;
+  tenant_id: string;
+  provider: string;
+  provider_payment_id: string;
+  amount_cents: number;
+  currency: string;
+  credits: number;
+  status: string;
+  credits_granted: boolean;
+  idempotency_key: string;
+  created_at: string | null;
+  confirmed_at: string | null;
+}
+
+export interface ApiKeyRecord {
+  id: string;
+  tenant_id: string;
+  label: string;
+  role: string;
+  created_at: string | null;
+  revoked: boolean;
+  last_used_at: string | null;
+}
+
+export interface ApiJobRecord {
+  id: string;
+  tenant_id: string;
+  kind: string;
+  idempotency_key: string;
+  state: string;
+  result: Record<string, unknown>;
+  attempts: number;
+  max_attempts: number;
+  run_at: string | null;
+  error_code: string;
+  error: string;
+  created_at: string | null;
+  completed_at: string | null;
+}
+
+export interface UsageRecord {
+  id: string;
+  job_id: string;
+  product_id: string;
+  provider: string;
+  units: number;
+  unit_type: string;
+  provider_cost_cents: number;
+  cost_basis: string;
+  created_at: string | null;
+}
+
+export interface ManagedResourceRecord {
+  id: string;
+  resource_type: string;
+  provider: string;
+  state: string;
+  allocation_period_days: number;
+  included_allowance: Record<string, number>;
+  product_id: string;
+  campaign_id: string | null;
+  provisioned_at: string | null;
+  expires_at: string | null;
 }

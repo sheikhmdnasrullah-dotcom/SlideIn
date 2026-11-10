@@ -1,9 +1,8 @@
 """Identity for the unified system: users, sessions and issued API keys.
 
-One client instance has one identity store. A person signs in once and
-the resulting session is accepted by **both** interfaces — Console
-(`workspace.*`) and Dashboard (`app.*`) forward it to this API, which is
-the only place that decides who someone is and what they may do.
+One client instance has one identity store. A person signs in once to the
+Console, and this API is the only place that decides who they are and what
+they may do.
 
 Design rules:
   * passwords are hashed with `hashlib.scrypt` (stdlib, no new deps);
@@ -12,8 +11,7 @@ Design rules:
     `security.require_role` already enforces, so session callers hit
     exactly the same guards as API-key callers;
   * `service` remains machine-only and can never be a human role;
-  * interface access is derived, never stored: `operator`/`admin` may use
-    Console and Dashboard, `viewer` only Dashboard.
+  * every human role opens Console; existing role guards control mutations.
 """
 
 from __future__ import annotations
@@ -22,6 +20,7 @@ import base64
 import hashlib
 import hmac
 import os
+import re
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -41,8 +40,7 @@ API_KEY_PREFIX = "sk_live_"
 
 #: Roles a human account may hold.
 HUMAN_ROLES = ("viewer", "operator", "admin")
-#: Roles that may open Console. Dashboard is open to every human role.
-CONSOLE_ROLES = ("operator", "admin")
+OWNER_ROLES = ("operator", "admin")
 
 _SCRYPT_N = 2 ** 14
 _SCRYPT_R = 8
@@ -53,12 +51,8 @@ _PASSWORD_ALPHABET = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def interfaces_for(role: str) -> list[str]:
-    """Which interfaces this role may open (stored nowhere, always derived)."""
-    if role in CONSOLE_ROLES:
-        return ["console", "dashboard"]
-    if role in HUMAN_ROLES:
-        return ["dashboard"]
-    return []
+    """Every human role opens Console; role guards control what it may change."""
+    return ["console"] if role in HUMAN_ROLES else []
 
 
 def hash_password(password: str) -> str:
@@ -129,6 +123,7 @@ def user_payload(user: User) -> dict:
         "role": user.role,
         "interfaces": interfaces_for(user.role),
         "is_active": user.is_active,
+        "must_change_password": getattr(user, "must_change_password", False),
         "created_at": _iso(user.created_at),
         "last_login_at": _iso(user.last_login_at),
     }
@@ -171,16 +166,17 @@ class IdentityService:
         role: str,
         name: str = "",
         password: str | None = None,
+        must_change_password: bool = False,
     ) -> tuple[User, str]:
         """Create a human account and return it with the raw password.
 
         The raw password is returned exactly once — it is never stored or
-        logged in clear text.
+        logged in clear text. Supports any valid username or email address.
         """
-        clean_email = (email or "").strip().lower()
-        if not clean_email or "@" not in clean_email:
+        clean_identifier = (email or "").strip().lower()
+        if not clean_identifier or len(clean_identifier) < 2 or not re.match(r"^[a-zA-Z0-9_@.+-]+$", clean_identifier):
             raise ValidationError(
-                "A valid email address is required",
+                "A valid username or email address is required (at least 2 characters: letters, numbers, _, -, ., @)",
                 code="validation_error",
                 recovery_action="provide_email",
             )
@@ -190,9 +186,9 @@ class IdentityService:
                 code="validation_error",
                 recovery_action="choose_role",
             )
-        if await self.get_user_by_email(clean_email):
+        if await self.get_user_by_email(clean_identifier):
             raise ValidationError(
-                f"A user with email {clean_email} already exists",
+                f"A user with username/email {clean_identifier} already exists",
                 code="user_exists",
                 recovery_action="use_existing_user",
             )
@@ -200,14 +196,34 @@ class IdentityService:
         user = User(
             id=uuid.uuid4().hex,
             tenant_id=tenant_id,
-            email=clean_email,
+            email=clean_identifier,
             name=(name or "").strip(),
             role=role,
             password_hash=hash_password(raw_password),
+            must_change_password=must_change_password,
         )
         self.session.add(user)
         await self.session.flush()
         return user, raw_password
+
+    async def change_password(
+        self, user_id: str, new_password: str
+    ) -> User:
+        """Set a new password for a user and clear the must_change_password flag."""
+        user = await self.get_user(user_id)
+        if user is None:
+            raise ValidationError("User not found", code="user_not_found")
+        clean_pw = (new_password or "").strip()
+        if len(clean_pw) < 6:
+            raise ValidationError(
+                "Password must be at least 6 characters long",
+                code="weak_password",
+                recovery_action="provide_password",
+            )
+        user.password_hash = hash_password(clean_pw)
+        user.must_change_password = False
+        await self.session.flush()
+        return user
 
     async def authenticate(self, email: str, password: str) -> User | None:
         """Password check. Returns None for unknown, inactive or wrong —
@@ -293,7 +309,7 @@ class IdentityService:
     ) -> tuple[str, str]:
         """Issue a workspace API key. Returns (id, raw_key) — the raw key
         is shown once."""
-        if role not in ("viewer", "operator", "admin"):
+        if role not in ("viewer", "operator", "admin", "service"):
             raise ValidationError(
                 f"Role {role!r} cannot be issued to an API key",
                 code="validation_error",
@@ -350,12 +366,11 @@ class IdentityService:
     # -- provisioning helpers -------------------------------------------------
 
     async def has_owner(self, tenant_id: str) -> bool:
-        """Is there at least one active Console-capable user for this
-        workspace? Drives the setup `owner_ready` stage."""
+        """Is there at least one active owner for this workspace?"""
         stmt = select(func.count()).select_from(User).where(
             User.tenant_id == tenant_id,
             User.is_active.is_(True),
-            User.role.in_(CONSOLE_ROLES),
+            User.role.in_(OWNER_ROLES),
         )
         return int((await self.session.execute(stmt)).scalar_one()) > 0
 
@@ -373,6 +388,60 @@ class IdentityService:
             return None
         return await self.create_user(tenant_id, email or "", role="admin", name=name)
 
+    async def ensure_default_admin(
+        self, tenant_id: str = "ten_local"
+    ) -> tuple[User, str, bool]:
+        """Industry standard self-hosted/enterprise SaaS bootstrap:
+        Ensure the default 'admin' account exists.
+        If it does not exist, provision username 'admin' with a generated random
+        password and must_change_password=True, outputting it to the operator.
+        Returns: (user, raw_password, was_created)
+        """
+        existing = await self.get_user_by_email("admin")
+        if existing:
+            return existing, "", False
+
+        raw_password = os.getenv("SLIDEIN_INITIAL_ADMIN_PASSWORD")
+        must_change = True
+        if not raw_password:
+            if os.getenv("SLIDEIN_AUTH_MODE", "enforced").strip().lower() == "disabled":
+                # Local development: the documented local credential is
+                # admin/admin, so the bootstrapped account uses it directly.
+                raw_password = "admin"
+                # Don't force a password change on first sign-in during local
+                # development — admin/admin should land in the Console directly.
+                must_change = False
+            else:
+                raw_password = generate_password(14)
+        user, _ = await self.create_user(
+            tenant_id=tenant_id,
+            email="admin",
+            role="admin",
+            name="Administrator",
+            password=raw_password,
+            must_change_password=must_change,
+        )
+
+        banner = (
+            "\n" + "=" * 72 + "\n"
+            "  SLIDEIN INITIAL ADMIN CREDENTIALS GENERATED (First-time setup)\n"
+            "  Username: admin\n"
+            f"  Password: {raw_password}\n"
+            "  Action:   Please sign in and set your new permanent password.\n"
+            + "=" * 72 + "\n"
+        )
+        print(banner, flush=True)
+        try:
+            cred_file = os.path.join(
+                os.getenv("SLIDEIN_ROOT", "."), ".initial_admin_credentials"
+            )
+            with open(cred_file, "w", encoding="utf-8") as f:
+                f.write(banner)
+        except Exception:
+            pass
+
+        return user, raw_password, True
+
 
 def session_response(
     user: User, token: str, expires: datetime
@@ -385,6 +454,7 @@ def session_response(
         "tenant_id": user.tenant_id,
         "role": user.role,
         "interfaces": interfaces_for(user.role),
+        "must_change_password": getattr(user, "must_change_password", False),
     }
 
 

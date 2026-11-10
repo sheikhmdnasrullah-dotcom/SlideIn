@@ -11,15 +11,20 @@ This file describes observed implementation, not aspirations. Older live-deploym
 
 ## 1. Current architectural reality
 
-Slidein currently has multiple product centers, not one fully converged workspace.
+The product interface is one page shell — `slidein-app/` — with a single
+`ModeSwitcher` toggling Console (controller) and Dashboard (viewer). The
+parallel dashboards that previously competed with it (`unified/`, and the
+Acquisition OS under `project/`) were quarantined to `saas/.quarantine/` so
+they are no longer in the runtime path; the unified shell is the only
+customer Console/Dashboard. Boot state, see §6.
 
 | Area | Observed state | Canonical disposition |
 |---|---|---|
-| `slidein-app/` | Real Next.js customer workspace with server-side BFF, workflow navigation, backend-driven overview, prospect/draft/conversation pages | Canonical customer frontend |
-| `slidein-api/` | FastAPI workflow API with persistent acquisition records, stage contracts, approvals, sending policy, conversations, activity, autopilot, and a new source-grounded setup intake/blueprint implementation | Canonical backend/domain |
-| `workspace-app/` | Broad Next.js internal console with many tool surfaces; acquisition command center consumes mock opportunities and hardcoded operational content | Internal/legacy; not customer workspace |
-| `product/` | Parallel Acquisition OS models/API plus adaptive core and an interim universal-flow guard; main API mounts opportunities, command-center, and health routers | Do not expand as another product; absorb useful core concepts |
-| `osint_core/`, `visitor_core/`, `unified/` | Useful enrichment/visitor prototypes with unauthenticated, non-tenant-scoped surfaces | Not customer-safe; adapt only after isolation and scope review |
+| `slidein-app/` | Next.js customer workspace: one page shell with ModeSwitcher toggling Console (seven-step workflow + tool/connector surface) and Dashboard (live adaptive viewer). Auth-disabled local dev renders immediately. | Canonical customer frontend |
+| `slidein-api/` | FastAPI workflow API. New `/v1/tenants/{id}/dashboard/sections` + `/proposals` + `/behavior` routes back a Redis-persisted adaptive Dashboard layout (validated module registry only; proposals require explicit approval). | Canonical backend/domain |
+| `workspace-app/` | Broad internal/legacy console (mock opportunities, hardcoded content). No longer booted by `dev`. | Internal/legacy; not customer workspace |
+| `project/` | Parallel Acquisition OS with a separate command-center dashboard. Quarantined to `.quarantine/`; never booted; not a product. | Do not expand; absorb useful core concepts only |
+| `osint_core/`, `visitor_core/`, `unified/` | Useful enrichment/visitor prototypes with unauthenticated, non-tenant-scoped surfaces; never exposed to customers. Quarantined. | Not customer-safe; adapt only after isolation and scope review |
 | Mail/deliverability stack | Go/KumoMTA/Lua/Python/Rust/Redis/Celery/Caddy/Docker and monitoring components | Retain behind verified canonical adapters |
 
 ## 2. Implemented canonical workflow
@@ -97,10 +102,9 @@ Dedicated client environments remain the initial managed deployment model. Share
 ## 5. Execution and automation
 
 - `StageRunner` provides contracts, run/activity records, and explicit retry attempts.
-- It does not provide durable scheduling, automatic retry/backoff, exactly-once behavior, or distributed execution.
-- Autopilot is an in-process loop, not a durable worker system.
-- Autopilot state currently defaults to enabled, auto-approve, and send-enabled; transport defaults to `dry_run`.
-- The accepted target default for new instances is autopilot disabled until activation, review required, and dry-run transport.
+- A `WorkJob` database ledger, lease/recovery service, and Celery/Redis worker path now exist alongside inline execution. `docker-compose.workers.yml` provides the API/worker/single-scheduler/PostgreSQL/Redis slice with dry-run transport. Hermetic tests cover lease recovery, retry/backoff, dead-letter, cancellation, tenant isolation, setup-triggered research, duplicate delivery, and no-double-send replay; live broker, container restart, and VPS behavior still require acceptance verification.
+- New autopilot state defaults to disabled, review-required, and send-disabled; transport defaults to `dry_run`.
+- Research uses the canonical orchestrator by default. `ToolExecution` and `ToolAttempt` persist every registry row, sequential adapter outcome, fallback, unresolved capability, and replay result.
 - LangGraph checkpoints exist, but HTTP restart/resume behavior requires verification and authorization hardening.
 
 ## 6. Inbound, engagement, and booking
@@ -145,7 +149,7 @@ Dedicated client environments remain the initial managed deployment model. Share
 
 | Check | Observed result |
 |---|---|
-| `slidein-api` pytest | 196 passed (188 + 8 one-shot setup flow tests); one `TestRunService` collection warning |
+| `slidein-api` pytest | 313 passed, 0 failed, 0 skipped; includes orchestration, durable jobs with lease heartbeats, setup/identity, billing, inbound mail, and full API acceptance journey |
 | `product/tests/test_flow.py` | 4 passed; verifies stage identifiers, aliases, unknown-stage rejection, and adaptation integration |
 | `slidein-app` TypeScript | Passed |
 | `slidein-app` lint | Passed (the `no-assign-module-variable` error in `components/workspace/sidebar.tsx` was renamed away) |
@@ -232,5 +236,29 @@ Conflicts found and resolved against the canonical texts:
    registry (TASKS 2) is the next controlled step — target: one code-owned
    registry in slidein_api, adaptive catalog deleted after callers migrate.
    Owner: convergence program. Test: registry parity + lifecycle test.
-Noted, not yet done: Alembic (create_all still bootstrap), durable scheduler,
-production inbound connector, user/team sessions. No live sending performed.
+Noted, not yet done: Alembic (create_all still bootstrap), production-proven
+durable scheduling, production inbound connector, user/team sessions. No live
+sending performed.
+
+## 2026-10-26 — Research tool orchestration and recipient verification
+
+- The research route and autopilot default to `orchestrated`. The orchestrator
+  resolves the full registry coverage plan, executes only eligible adapters
+  sequentially, applies attempt/time budgets and deterministic fallback, and
+  persists `ToolExecution` plus ordered `ToolAttempt` records. Replay uses a
+  tenant-scoped execution key and does not duplicate evidence.
+- Authenticated execution reads are available at
+  `GET /v1/tenants/{id}/tools/executions` and
+  `GET /v1/tenants/{id}/tools/executions/{execution_id}`.
+- The registry now includes Warmbly, Node mailbox warmup, deliverability and
+  optimization warmup, the legacy outreach daemon, deterministic drafting,
+  SMTP/KumoMTA, and inbound/conversation capabilities. Registration is not an
+  active-health claim. No separate Warmly installation was found.
+- Reacher has a canonical HTTP adapter and is recorded in draft/send
+  preflight. Live SMTP/KumoMTA requires a `safe` recipient verdict; dry-run
+  records unconfigured/unavailable/unknown verdicts without sending.
+- New autopilot defaults are disabled, review-required, send-disabled, and
+  dry-run. Existing explicit tenant switches are preserved.
+- Warmbly and the three legacy warmup/daemon paths remain unwired to canonical
+  execution. External provider health, live DNS/SMTP, and production mailbox
+  ingestion were not exercised.

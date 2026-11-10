@@ -71,8 +71,13 @@ class EventLedger:
                         "event": record["event"],
                         "description": record["description"],
                         "icon": record["icon"],
-                        "tags": record["tags"],
-                        "notify": record["event"] in ("Identity Resolved", "Fallback Triggered"),
+                        # Operational metadata only: never mirror visitor identity,
+                        # IP, email, name, company, or free-form payload tags.
+                        "tags": {
+                            key: value for key, value in record["tags"].items()
+                            if key in {"resolution_tier", "status", "error_type"}
+                        },
+                        "notify": False,
                     },
                 )
         except httpx.HTTPError:

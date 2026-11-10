@@ -93,12 +93,29 @@ def _bootstrap_database():
 
 
 @pytest.fixture(autouse=True)
+def _isolate_external_providers(monkeypatch: pytest.MonkeyPatch):
+    for name in (
+        "SLIDEIN_LLM_BASE_URL", "SLIDEIN_LLM_API_KEY", "SLIDEIN_LLM_MODEL",
+        "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_MODEL",
+        "FIRECRAWL_API_KEY", "REACHER_URL", "REACHER_SECRET",
+        "SLIDEIN_TRANSPORT", "SLIDEIN_SMTP_HOST", "KUMO_AUTH_PASS",
+        "WARMBLY_URL", "WARMBLY_API_TOKEN", "SLIDEIN_WARMUP_ENFORCE",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("OPENOSINT_CLI", "/nonexistent/openosint")
+
+
+@pytest.fixture(autouse=True)
 def _clean_database():
     """Every test starts from an empty database so journeys are isolated."""
     import asyncio
 
+    from slidein_api.api.app import _RATE_WINDOWS
     from slidein_api.db import reset_db
 
+    # The in-process limiter survives app instances; request budgets must not
+    # leak between otherwise isolated tests.
+    _RATE_WINDOWS.clear()
     asyncio.run(reset_db())
     yield
 

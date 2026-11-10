@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/sheikhmdnasrullah-dotcom/SlideIn/security/advisories/new
+    about: Do not open a public issue for vulnerabilities. Use private reporting.
+  - name: Get help
+    url: https://github.com/sheikhmdnasrullah-dotcom/SlideIn/blob/main/SUPPORT.md
+    about: Read SUPPORT.md before opening an issue.

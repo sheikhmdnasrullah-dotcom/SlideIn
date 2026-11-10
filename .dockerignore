@@ -1,0 +1,9 @@
+# Keep worker builds limited to the canonical API and its product-core dependency.
+**
+!slidein-api/
+slidein-api/*
+!slidein-api/requirements.txt
+!slidein-api/slidein_api/
+!slidein-api/slidein_api/**
+!product/
+!product/**
