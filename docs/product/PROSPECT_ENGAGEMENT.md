@@ -59,8 +59,8 @@ Every requirement carries a **source label** and a **status label**. Never treat
 ### 1.2 Foundational Project Assets Created (2026-10-16)
 
 Per owner directive, the canonical foundational materials have been created to ground future agents:
-- **Executive Delivery Report:** [`docs/operations/EXECUTIVE_DELIVERY_REPORT.md`](../operations/EXECUTIVE_DELIVERY_REPORT.md).
-- **Client Communications Register:** [`docs/product/CLIENT_COMMUNICATIONS_REGISTER.md`](CLIENT_COMMUNICATIONS_REGISTER.md) (1:1 plain-text standard, 24-hr grace period, alert payloads).
+- **Executive Delivery Report:** `docs/operations/EXECUTIVE_DELIVERY_REPORT.md`.
+- **Client Communications Register:** `docs/product/CLIENT_COMMUNICATIONS_REGISTER.md` (1:1 plain-text standard, 24-hr grace period, alert payloads).
 - **Updated Brand Kit:** [`docs/design/UPDATED_BRAND_KIT.md`](../design/UPDATED_BRAND_KIT.md) (Live-text wordmark, OKLCH brand orange hue 42.28, Fraunces display typography, blueprint primitives).
 
 ### 1.3 Confirmed Operational Decisions & Architecture (Owner Confirmed 2026-10-16)

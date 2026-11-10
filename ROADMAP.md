@@ -2,8 +2,6 @@
 
 The active dependency-ordered implementation plan is [`docs/engineering/IMPLEMENTATION_ROADMAP.md`](docs/engineering/IMPLEMENTATION_ROADMAP.md).
 
-The working checkbox list is [`../planning/TASKS.md`](../planning/TASKS.md).
-
 ## Product sequence
 
 1. Protect the current system and establish a reproducible baseline.

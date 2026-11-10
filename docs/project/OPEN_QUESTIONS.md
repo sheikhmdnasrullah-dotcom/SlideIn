@@ -12,8 +12,8 @@
 
 | ID | Subject | Decision / Resolution | Status |
 |---|---|---|---|
-| **OQ-001** | Executive Delivery Report | Built and established at [`docs/operations/EXECUTIVE_DELIVERY_REPORT.md`](../operations/EXECUTIVE_DELIVERY_REPORT.md). | **RESOLVED** |
-| **OQ-002** | Client Communications Register | Built and established at [`docs/product/CLIENT_COMMUNICATIONS_REGISTER.md`](../product/CLIENT_COMMUNICATIONS_REGISTER.md). | **RESOLVED** |
+| **OQ-001** | Executive Delivery Report | Built and established at `docs/operations/EXECUTIVE_DELIVERY_REPORT.md`. | **RESOLVED** |
+| **OQ-002** | Client Communications Register | Built and established at `docs/product/CLIENT_COMMUNICATIONS_REGISTER.md`. | **RESOLVED** |
 | **OQ-003** | Updated Brand Kit | Built and established at [`docs/design/UPDATED_BRAND_KIT.md`](../design/UPDATED_BRAND_KIT.md). | **RESOLVED** |
 | **OQ-004** | Booking / Calendar Provider | **Primary Default:** Notion Booking Calendar. **Secondary:** Dedicated booking link sync (Cal.com, Calendly, or custom link). | **RESOLVED** |
 | **OQ-005** | Milestone 1 (M1) Approval | **Approved** by the owner as the official first development milestone and MVP scope. | **RESOLVED** |
