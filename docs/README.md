@@ -24,7 +24,6 @@ was actually observed.
 - [Local setup](development/LOCAL_SETUP.md)
 - [Testing matrix](development/TESTING.md)
 - [DNS records](deployment/DNS_RECORDS.md)
-- [Managed service plan](deployment/MANAGED_SERVICE_PLAN.md) (intent only, not available)
 
 ## Security and compliance
 

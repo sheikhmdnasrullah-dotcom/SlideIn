@@ -66,7 +66,7 @@ running).
 8. **One app, one shell.** The Console and Dashboard are two modes of one
    workspace, toggled by a single `ModeSwitcher`. Do not create a second
    dashboard, route tree, or shell — report gaps instead. See
-   `AGENTS.md` §3.
+   `docs/project/CURRENT_STATE.md` §1.
 
 ## Code map
 

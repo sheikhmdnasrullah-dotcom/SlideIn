@@ -22,7 +22,5 @@ This project is in **beta** and maintained by a solo developer in public.
 
 ## What is not offered yet
 
-- Managed hosting / paid support (see
-  `docs/deployment/MANAGED_SERVICE_PLAN.md` for the intent — it is not
-  available today)
+- Managed hosting / paid support (not available today)
 - Enterprise features, compliance certifications, or uptime guarantees

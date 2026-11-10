@@ -4,3 +4,25 @@ deliverability/sample/test_*.eml
 .kilo
 .agents
 .kimi-code
+# Internal planning, agent state and operations material
+AGENTS.md
+CLAUDE.md
+memory.md
+rules.md
+tasks.md
+prd.md
+design.md
+CONVENTIONS.md
+EMAIL_SENDING_POLICY.md
+ISSUE_TEMPLATE.md
+SLIDEIN_PRODUCT_VISION.md
+docs/operations/CLIENT_DEPLOYMENT_RUNBOOK.md
+docs/operations/EXECUTIVE_DELIVERY_REPORT.md
+docs/product/CLIENT_COMMUNICATIONS_REGISTER.md
+docs/deployment/MANAGED_SERVICE_PLAN.md
+docs/deployment/PRODUCTION_RUNBOOK.md
+docs/project/MVP_LAUNCH_PLAN.md
+docs/project/WHITELABEL_BASELINE_AUDIT.md
+deliverability/GOPHISH_KUMOMTA_COORDINATION.md
+deliverability/GOPHISH_KUMOMTA_COORDINATION_PRODUCTION.md
+deliverability/SETUP_GUIDE_PRODUCTION.md

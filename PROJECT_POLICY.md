@@ -40,7 +40,7 @@ recoverable. Everything else is up to the owner's judgment.
 
 ## 3. How to work here
 
-- Read this file first, then look at [`SLIDEIN_PRODUCT_VISION.md`](file:///Users/nasrullahtanim/Downloads/01-Projects/email-master%20raw/SLIDEIN_PRODUCT_VISION.md) for the overarching product concept, business purpose, and architecture principles.
+- Read this file first, then look at [`docs/product/PRODUCT_CONSTITUTION.md`](docs/product/PRODUCT_CONSTITUTION.md) for the product concept and principles.
 - Consult `README.md` and `product/` for architecture and tooling context.
 - Old docs (`kumomta-lab/docs/`, runbooks) may describe the previous
   gate/circuit-breaker workflow. They are reference material, not binding
@@ -52,6 +52,5 @@ recoverable. Everything else is up to the owner's judgment.
 
 ## 4. Status
 
-- Previous policy: `EMAIL_SENDING_POLICY.md` (archived 2026-09-08, replaced
-  by this file). It documents the earlier campaign workflow; keep it around
-  as a record of how that track was run.
+- Previous policy: an earlier campaign-era sending policy was archived on
+  2026-09-08 and replaced by this file.

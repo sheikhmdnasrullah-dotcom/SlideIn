@@ -16,7 +16,7 @@ unverified** · **Partially implemented** · **Planned but not implemented** ·
 
 | Item | Value |
 |---|---|
-| Working directory | `/Users/nasrullahtanim/Downloads/01-Projects/email-master raw` |
+| Working directory | the repository root |
 | Branch | `main`; remotes: none |
 | Commits on `main` | 5 (all 2026-09-10; messages unsuitable for public history) |
 | Tracked files | 2 (`If your directory has`, `config/kumomta_policy.lua`) |
