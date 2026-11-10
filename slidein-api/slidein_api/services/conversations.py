@@ -73,7 +73,7 @@ def classify(text: str) -> tuple[str, float, str]:
     if not lowered:
         return ReplyIntent.UNCLASSIFIED.value, 0.0, "Empty reply body."
 
-    best_intent = ReplyIntent.UNCLASSIFIED.value
+    best_intent = ReplyIntent.UNCLASSIFIED
     best_score = 0
     reason = "No intent keyword matched."
     for intent, keywords, description in _INTENT_RULES:

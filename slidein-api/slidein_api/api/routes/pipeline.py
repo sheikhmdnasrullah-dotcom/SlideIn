@@ -19,6 +19,7 @@ from ...security import AuthContext, require_role, resolve_workspace
 from ..deps import module_gate
 from ...services.config import ConfigService
 from ...services.discovery import DiscoveryService
+from ...services.enrichment import EnrichmentService
 from ...services.overview import OverviewService
 from ...services.personalization import PersonalizationService
 from ...services.qualification import QualificationService
@@ -234,7 +235,7 @@ async def research(
     require_role(auth, "operator")
     depth = str(payload.get("depth") or "standard")
     claims = payload.get("claims") or []
-    connector = str(payload.get("connector") or "website")
+    connector = str(payload.get("connector") or "orchestrated")
 
     async def executor(stage_payload: dict, session) -> dict:
         discovery = DiscoveryService(session)
@@ -274,6 +275,10 @@ async def research(
             supplied_claims=claims,
             connector=connector,
             actor=f"user:{auth.role}",
+            execution_id=str(payload.get("execution_id") or ""),
+            capabilities=payload.get("capabilities"),
+            max_attempts=min(50, max(1, int(payload.get("max_attempts") or 12))),
+            budget_seconds=min(300.0, max(1.0, float(payload.get("budget_seconds") or 120.0))),
         )
 
         to_status = from_status
@@ -317,6 +322,53 @@ async def research(
                 "claims": claims,
                 "connector": connector,
             },
+            actor=f"user:{auth.role}",
+            role=auth.role,
+            subject_id=prospect_id,
+            executor=executor,
+        )
+    if outcome.status == "failed":
+        _fail(outcome)
+    return _outcome_response(outcome)
+
+
+@router.post("/tenants/{tenant_id}/prospects/{prospect_id}/enrich", tags=["pipeline"])
+async def enrich_prospect(
+    tenant_id: str,
+    prospect_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Heavy enrichment pass — the full OSINT stack over one prospect:
+    subfinder → dnsrecon → theHarvester → GitHub CLI → holehe → maigret
+    (Spiderfoot at depth=deep). Personal emails are discovered and
+    Reacher-verified. Required before any live send (enforced in the
+    outreach stage)."""
+    require_role(auth, "operator")
+    depth = str(payload.get("depth") or "standard")
+
+    async def executor(stage_payload: dict, session) -> dict:
+        result = await EnrichmentService(session).enrich(
+            tenant_id=auth.tenant_id,
+            prospect_id=prospect_id,
+            actor=f"user:{auth.role}",
+            depth=depth,
+        )
+        return {
+            "status": "succeeded",
+            "outputs": result,
+            "needs_review": [],
+            "from_status": "",
+            "to_status": "",
+        }
+
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "research")
+        runner = StageRunner(session)
+        outcome = await runner.run(
+            StageName.RESEARCH,
+            tenant_id=auth.tenant_id,
+            payload={"prospect_id": prospect_id, "depth": depth, "enrichment": True},
             actor=f"user:{auth.role}",
             role=auth.role,
             subject_id=prospect_id,

@@ -11,6 +11,7 @@
  */
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -149,24 +150,38 @@ function ContextForm() {
   return (
     <form action={formAction} className="flex flex-col gap-5">
       <Field
-        label="What the client gave you"
-        hint="Notes, a brief, a call transcript, requirements — paste them as they are. Nothing is invented from what is not here."
+        label="Everything you have about the business"
+        hint="Paste a meeting transcript, rough notes, offers, customer context, constraints, or anything else. You do not need to organize it into fields."
       >
         <Textarea
           name="context"
-          rows={7}
-          placeholder={"Acme Mortgage Partners helps London renters become first-time buyers…"}
+          rows={9}
+          placeholder={"Paste the meeting transcript or describe the business in your own words…"}
         />
       </Field>
-      <Field
-        label="Website (optional)"
-        hint="Read server-side for positioning and headings. Only a public http(s) address is accepted."
-      >
-        <Input name="website" type="url" placeholder="https://example.com" />
-      </Field>
+      <div className="grid gap-5 md:grid-cols-2">
+        <Field
+          label="Business or offer website (optional)"
+          hint="Public pages are read server-side for positioning and supporting evidence."
+        >
+          <Input name="website" type="url" placeholder="https://example.com" />
+        </Field>
+        <Field
+          label="Transcripts or text documents (optional)"
+          hint="TXT, MD, CSV, JSON, VTT, SRT, or LOG; up to 12 files, 100 KB each."
+        >
+          <Input
+            name="documents"
+            type="file"
+            multiple
+            accept=".txt,.md,.csv,.json,.vtt,.srt,.log,text/plain,text/markdown,text/csv,application/json"
+            className="h-auto py-2.5 file:mr-3 file:rounded-sm file:border-0 file:bg-surface-2 file:px-2.5 file:py-1 file:text-xs file:text-ink-strong"
+          />
+        </Field>
+      </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending} size="sm">
-          {pending ? "Generating…" : "Generate setup"}
+          {pending ? "Starting…" : "Build my workspace"}
         </Button>
         <ResultLine result={result} />
       </div>
@@ -179,7 +194,7 @@ function SourcesPanel({ status }: { status: SetupStatus }) {
     return (
       <SetupEmpty
         title="No context yet"
-        description="Paste what the client gave you above. Extraction is deterministic: the same input always produces the same profile."
+        description="Add any business context above. Slidein will organize it automatically and preserve the source of every extracted value."
         />
     );
   }
@@ -628,18 +643,43 @@ function TestActivatePanel({ status }: { status: SetupStatus }) {
 // ── screen ──────────────────────────────────────────────────────────────────
 
 export function SetupScreen({ status }: { status: SetupStatus }) {
+  const router = useRouter();
+  const runState = status.run?.state;
+  const building = runState === "queued" || runState === "running";
   const hasProfile = Boolean(status.profile && Object.keys(status.profile).length > 0);
+
+  React.useEffect(() => {
+    if (!building) return;
+    const timer = window.setInterval(() => router.refresh(), 1500);
+    return () => window.clearInterval(timer);
+  }, [building, router]);
+
   return (
     <>
       <ProgressPanel status={status} />
 
       <Section
         eyebrow="Step 1"
-        title="Provide context"
-        description="Notes, brief, transcript, website — whatever the client handed over. Extraction is deterministic and keeps the source of every value."
+        title="Provide everything in one place"
+        description="Paste or upload whatever you have. The backend organizes it, retrieves permitted website context, and builds the existing business records automatically."
       >
         <Surface variant="raised" className="px-6 py-5">
           <ContextForm />
+          {status.run && (
+            <div className="mt-4 flex flex-wrap items-center gap-2.5 border-t border-rule pt-4" role="status">
+              <StatusBadge
+                tone={runState === "complete" ? "live" : runState === "failed" ? "danger" : "info"}
+                label={building ? "building workspace" : runState}
+              />
+              <span className="text-2xs text-ink-muted">
+                {building
+                  ? "You can leave this page; the setup run is persisted on the server."
+                  : status.run.error || (status.extraction?.mode === "llm_grounded"
+                    ? `Source-grounded LLM extraction: ${status.extraction.provider}.`
+                    : "Built with deterministic source extraction; configure a backend LLM for richer extraction.")}
+              </span>
+            </div>
+          )}
         </Surface>
         <Surface variant="raised" className="mt-4 px-6 py-4">
           <SourcesPanel status={status} />

@@ -180,13 +180,13 @@ def main():
     else:
         print_row("PostgreSQL", "DEGRADED", "Not listening — product API needs it", "5432")
 
-    # 4. APPLICATION APIS & ENGINES
+    # 4. APPLICATION APIS & ENGINES (canonical product stack)
     print(f"\n{BOLD}4. Application Backend & Modules{RESET}")
-    slidein_server = check_port("127.0.0.1", 8088)
-    if slidein_server:
-        print_row("SlideIn Unified API", "HEALTHY", "Command Center & REST API listening", "8088")
+    slidein_api = check_port("127.0.0.1", 8100)
+    if slidein_api:
+        print_row("Slidein API", "HEALTHY", "Workflow API listening", "8100")
     else:
-        print_row("SlideIn Unified API", "DOWN", "Server inactive (start with: ./dev) — see slidein_server.log", "8088")
+        print_row("Slidein API", "DOWN", "Server inactive (start with: ./dev) — see slidein_api.log", "8100")
         overall_healthy = False
 
     gophish_admin = check_port("127.0.0.1", 3333)
@@ -196,16 +196,16 @@ def main():
         print_row("SlideIn / Go API", "DOWN", "Process inactive (start with: ./dev) — see gophish_local.log", "3333")
         overall_healthy = False
 
-    # Next.js workspace (path-scoped: never trust port 3000 alone, other apps
-    # may occupy it; parse the actual port our own process listens on)
-    ws_pids = find_processes(str(HERE / "project" / "node_modules"))
+    # Canonical workspace shell (path-scoped: never trust a port alone — parse
+    # the actual port our own Next.js process listens on).
+    ws_pids = find_processes(str(HERE / "slidein-app" / "node_modules"))
     if ws_pids:
         cmd = process_command(ws_pids[0])
         m = re.search(r"-p\s+(\d+)", cmd)
-        ws_port = int(m.group(1)) if m else 3000
-        print_row("Workspace (Next.js)", "HEALTHY", f"Dashboard: http://127.0.0.1:{ws_port}/dashboard", str(ws_port))
+        ws_port = int(m.group(1)) if m else 3200
+        print_row("Workspace (Next.js)", "HEALTHY", f"Console+Dashboard: http://127.0.0.1:{ws_port}/", str(ws_port))
     else:
-        print_row("Workspace (Next.js)", "DOWN", "Not running (start with: ./dev)", "3000")
+        print_row("Workspace (Next.js)", "DOWN", "Not running (start with: ./dev)", "3200")
         overall_healthy = False
 
     # Deliverability Core Modules

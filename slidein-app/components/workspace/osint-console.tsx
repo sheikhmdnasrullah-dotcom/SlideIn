@@ -102,7 +102,7 @@ export function OsintConsole({ health }: { health: OsintHealth }) {
             name="query"
             required
             autoFocus
-            placeholder="Sanjida Nasrin Efa · jane@acme.example · acme.com · @handle"
+            placeholder="Name, email, domain, or @handle"
           />
         </Field>
 

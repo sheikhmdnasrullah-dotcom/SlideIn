@@ -1,6 +1,8 @@
 """Research — collects source-backed evidence for one prospect.
 
-Research never invents facts. Evidence comes from one of three connectors:
+Research never invents facts. The default orchestrated path executes eligible
+WebsiteConnector, OpenOSINT, and Firecrawl adapters in deterministic order and
+persists every tool outcome. Explicit compatibility connectors are:
 
   * `WebsiteConnector` — fetches the prospect's public pages with a real
     HTTP request and extracts only what those pages actually contain.
@@ -11,6 +13,8 @@ Research never invents facts. Evidence comes from one of three connectors:
     GitHub) through :class:`slidein_api.integrations.openosint.
     OpenOSINTAdapter` and files each tool's output as a claim; see
     `services/osint.py` for the target and claim mapping.
+  * `firecrawl` — retrieves public company content through the configured
+    Firecrawl adapter with the canonical website connector as fallback.
 
 Every evidence row records the URL it came from, whether the claim was
 read directly from that page (`verified`) or derived from it (`inferred`),
@@ -375,13 +379,31 @@ class ResearchService:
         prospect: Prospect,
         depth: str = "standard",
         supplied_claims: list[dict] | None = None,
-        connector: str = "website",
+        connector: str = "orchestrated",
         offline_connector: bool = False,
         actor: str = "operator",
+        execution_id: str = "",
+        capabilities: list[str] | None = None,
+        max_attempts: int = 12,
+        budget_seconds: float = 120.0,
     ) -> dict:
         """Persist evidence rows. Returns the contract's outputs."""
-        claims: list[Claim] = []
+        if connector == "orchestrated" and not supplied_claims:
+            from .tool_orchestration import ResearchToolOrchestrator
 
+            return await ResearchToolOrchestrator(self.session).collect(
+                tenant_id=tenant_id,
+                prospect=prospect,
+                actor=actor,
+                execution_id=execution_id,
+                capabilities=capabilities,
+                max_attempts=max_attempts,
+                budget_seconds=budget_seconds,
+                offline_connector=offline_connector,
+                depth=depth,
+            )
+
+        claims: list[Claim] = []
         if supplied_claims:
             claims.extend(SuppliedClaimsConnector().collect(prospect, claims=supplied_claims))
 
@@ -398,9 +420,10 @@ class ResearchService:
                     details={"lookups": [r.summary() for r in results]},
                     recovery_action="retry_stage",
                 )
-        elif connector in {"website", "firecrawl", "supplied"} or not supplied_claims:
+        elif connector in {"website", "firecrawl", "supplied", "orchestrated"} or not supplied_claims:
             domain = (prospect.company_domain or prospect.email.split("@")[-1]).strip().strip(".")
-            if connector == "firecrawl":
+            selected_connector = "website" if connector == "orchestrated" else connector
+            if selected_connector == "firecrawl":
                 try:
                     for raw in await FirecrawlAdapter().scrape(domain):
                         claims.append(Claim(**raw))
@@ -408,13 +431,11 @@ class ResearchService:
                     if not claims:
                         website = WebsiteConnector(offline=offline_connector)
                         claims.extend(website.collect(prospect, depth=depth))
-            elif connector in {"website", "supplied"}:
+            elif selected_connector in {"website", "supplied"}:
                 try:
                     website = WebsiteConnector(offline=offline_connector)
                     claims.extend(website.collect(prospect, depth=depth))
                 except ProviderError:
-                    # Configured Firecrawl is the deterministic website fallback.
-                    # With no key, preserve the original source_unavailable error.
                     if not claims and FirecrawlAdapter().api_key:
                         for raw in await FirecrawlAdapter().scrape(domain):
                             claims.append(Claim(**raw))
@@ -433,7 +454,25 @@ class ResearchService:
                 code="source_unavailable",
                 recovery_action="retry_stage",
             )
+        result = await self.persist_claims(
+            tenant_id=tenant_id,
+            prospect=prospect,
+            claims=claims,
+            actor=actor,
+            collector=connector,
+        )
+        result.pop("evidence_records", None)
+        return result
 
+    async def persist_claims(
+        self,
+        *,
+        tenant_id: str,
+        prospect: Prospect,
+        claims: list[Claim],
+        actor: str,
+        collector: str,
+    ) -> dict:
         rows: list[EvidenceItem] = []
         for claim in claims:
             row = EvidenceItem(
@@ -456,11 +495,13 @@ class ResearchService:
         verified = sum(
             1 for r in rows if r.verification_status == VerificationStatus.VERIFIED.value
         )
+        serialized = [evidence(row) for row in rows]
         return {
-            "evidence_ids": [r.id for r in rows],
+            "evidence_ids": [row["id"] for row in serialized],
+            "evidence_records": serialized,
             "evidence_count": len(rows),
             "verified_count": verified,
-            "collector": connector,
+            "collector": collector,
             "research_summary": {
                 "evidence_types": sorted({r.evidence_type for r in rows}),
                 "sources": sorted({r.source_name for r in rows if r.source_name}),

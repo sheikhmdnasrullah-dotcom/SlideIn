@@ -11,8 +11,8 @@ Two credentials resolve to the same `AuthContext`:
   * an **API key** (env `SLIDEIN_API_KEYS` or a key issued at
     provisioning) — a server or integration.
 
-Both hit the same `require_role` ladder, so Console and Dashboard cannot
-see different permission rules than the API itself.
+Both hit the same `require_role` ladder, so the Console UI cannot see
+different permission rules than the API itself.
 
 Local development can set `SLIDEIN_AUTH_MODE=disabled`, which resolves
 every request to the first configured workspace as `admin`. Nothing else
@@ -210,7 +210,9 @@ async def authenticate(request: Request) -> AuthContext | None:
     routes that need them.
     """
     path = request.url.path
-    if path.startswith(("/health", "/docs", "/redoc", "/openapi.json", "/v1/contracts")):
+    if path.startswith(
+        ("/health", "/docs", "/redoc", "/openapi.json", "/v1/contracts", "/v1/billing/webhooks")
+    ):
         return None
 
     token = presented_credential(request)

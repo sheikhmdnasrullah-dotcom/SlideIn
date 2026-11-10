@@ -39,7 +39,7 @@ services:
     networks:
       - slidein-net
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:6379:6379"     # Redis (host bind for local API + dev script)
     command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
     volumes:
       - redis-data:/data

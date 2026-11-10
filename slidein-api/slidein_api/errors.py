@@ -93,6 +93,7 @@ class SlideinError(Exception):
         code: str | None = None,
         details: dict | None = None,
         recovery_action: str | None = None,
+        retryable: bool | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -100,9 +101,12 @@ class SlideinError(Exception):
             self.code = code
         self.details = details or {}
         self.recovery_action = recovery_action or RECOVERY_ACTION.get(self.code, "retry_stage")
+        self._retryable_override = retryable
 
     @property
     def retryable(self) -> bool:
+        if self._retryable_override is not None:
+            return self._retryable_override
         return self.code in RETRYABLE
 
     def to_dict(self) -> dict:

@@ -18,9 +18,9 @@ archived under `archived_rules/` for reference; they are not binding.
 ## Production Deployment
 
 ### Infrastructure (live 2026-10-13)
-- VPS: `169.58.206.20` — Ubuntu, Docker, Caddy; 18 containers + systemd + pm2
+- VPS: `<PRIMARY_VPS_IP>` — Ubuntu, Docker, Caddy; 18 containers + systemd + pm2
   (KumoMTA, GoPhish, monitoring, reacher, Warmbly ×11, dashboard)
-- SSH: `ssh -i ~/.ssh/slidein_vps root@169.58.206.20`
+- SSH: `ssh root@<PRIMARY_VPS_IP>`
 - Public HTTPS (Caddy, LE certs): `app`/apex dashboard, `console` GoPhish
   campaign UI, `track` landing/pixels, `warmbly.*` warmup UI/API/pixels.
   `www` is the Vercel marketing site (CNAME, never served by the VPS).
@@ -32,7 +32,7 @@ archived under `archived_rules/` for reference; they are not binding.
   receiving/IMAP mailboxes (mailcow era ended).
 
 ### Deployment Flow
-1. Run `kumomta-lab/scripts/deploy-production.sh root@169.58.206.20` with
+1. Run `kumomta-lab/scripts/deploy-production.sh root@<PRIMARY_VPS_IP>` with
    `VPS_PASS`, `KUMO_AUTH_PASS` (and optionally `KUMO_ADMIN_PASS`) set in
    the environment — values live in `~/.slidein-vps-credentials` /
    `deliverability/config.json`, never in docs. Idempotent; safe to rerun.
@@ -60,7 +60,7 @@ archived under `archived_rules/` for reference; they are not binding.
 - `product/core/` - universal multi-tenant core (Stage 1) + boundary tests
 - `docs/deployment/DNS_RECORDS.md` - all live DNS values (public by design)
 
-### Credentials (VPS:169.58.206.20)
+### Credentials (VPS:<PRIMARY_VPS_IP>)
 - KumoMTA: user `outbound`, password from local `deliverability/config.json`
   (`kumo.password`, env `KUMO_AUTH_PASS`), port 2587
 - GoPhish: uses KumoMTA on port 2587; API key at `/root/gophish/api_key.txt`
@@ -107,3 +107,58 @@ stages. Off-flow workflow proposals are rejected by the adaptation engine
 (`assert_flow_aligned`) and by CI (`product/tests/test_flow.py`). If a task
 seems to need a new top-level stage, stop and flag it to the product owner;
 it is an architecture decision, not a session decision.
+
+---
+
+## Interface Architecture Rule (binding)
+
+There is exactly one customer interface: Console. It lives in
+`slidein-app/app/(workspace)/layout.tsx` and is organized as the canonical
+workflow:
+
+    configure → discover → research → qualify → personalize → outreach → converse
+
+### Console
+
+- Console is the workflow control surface for every client. All tools,
+  integrations, diagnostics, setup, approvals, and execution controls belong here.
+- Every human role opens Console. `viewer` is read-only through the existing
+  role guards; `operator` and `admin` can execute workflow actions.
+- Console sections render only canonical records and real status. Unknown,
+  unsupported, or unwired tools are shown as gaps with explicit reasons, never
+  fabricated as active.
+- The workflow order is fixed. Section customization is limited to validated
+  labels and visibility persisted through `/v1/tenants/{id}/console/sections`.
+  It never generates code, arbitrary modules, per-client forks, or a second view.
+- Setup and Activity remain supporting sections under Settings and Activity;
+  they do not create a new product surface.
+- In Console, users write and do: run tools, inspect agents, edit config, and
+  diagnose.
+
+### Prohibited
+
+1. No Dashboard mode, route, route tree, switcher, cookie, dashboard-only role,
+   dashboard component, or second shell.
+2. No per-client or per-industry interface forks. Client differences belong in
+   versioned configuration and validated Console section preferences.
+3. No preview, prototype, command-center, or legacy console exposed as a product.
+4. No feature duplication under another name to make a client appear supported.
+5. No top-level stage outside the canonical seven-step flow.
+
+### Enforcement
+
+1. No Dashboard mode, route, route tree, switcher, cookie, dashboard-only role,
+   dashboard component, or second shell.
+2. No per-client or per-industry interface forks. Client differences belong in
+   versioned configuration and validated Console section preferences.
+3. No preview, prototype, command-center, or legacy console exposed as a product.
+4. No feature duplication under another name to make a client appear supported.
+5. No top-level stage outside the canonical seven-step flow.
+
+### Enforcement
+
+- `assert_flow_aligned` and `product/tests/test_flow.py` reject off-flow proposals.
+- New customer-facing work must fit the one Console shell and canonical sections.
+- Any new shell, mode, dashboard component, or second interface requires an owner
+  decision and an explicit update to this rule before implementation.
+- Unsupported capabilities are reported as gaps, never fabricated.

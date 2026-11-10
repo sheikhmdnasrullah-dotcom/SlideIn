@@ -208,6 +208,25 @@ Rules:
 - A new industry changes configuration and terminology, not application structure.
 - Internal deployment and infrastructure controls are visible only in the operator context.
 
+### 7.1 One page, one Console (binding)
+
+The workspace is exactly one Console page shell. There is no Dashboard mode,
+toggle, route, role, component, or second shell. Full binding statement:
+`saas/AGENTS.md` → "Interface Architecture Rule".
+
+- Console organizes the customer workflow as Configure → Discover → Research →
+  Qualify → Personalize → Outreach → Converse. It hosts all setup, tools,
+  integrations, diagnostics, approvals, and execution controls.
+- Every human role opens Console. `viewer` is read-only through role guards;
+  `operator` and `admin` execute workflow actions.
+- Console renders canonical records and real statuses only. Unknown or unwired
+  capabilities appear as explicit gaps, never as active.
+- The workflow order is fixed. Console section customization is limited to
+  validated labels and visibility stored in `/v1/tenants/{id}/console/sections`.
+- Prohibited: separate dashboards, second interfaces, per-client forks,
+  prototype command centers, and feature duplication. Unsupported capabilities
+  are reported as gaps, never fabricated.
+
 ## 8. Customer and operator contexts
 
 ### Customer context

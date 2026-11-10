@@ -9,7 +9,8 @@ import { WorkflowSidebar } from "@/components/workspace/sidebar";
 import { WorkspaceMismatch } from "@/components/workspace/workspace-mismatch";
 import { operations } from "@/lib/api/operations";
 import { WORKSPACE_ID } from "@/lib/api/config";
-import { dashboardUrl, requireConsoleSession } from "@/lib/auth/session";
+import { requireSession } from "@/lib/auth/session";
+import { localBrand } from "@/lib/brand";
 import type { Branding } from "@/lib/api/types";
 import { SECTIONS } from "@/lib/workflow/metadata";
 import { themeStyle } from "@/lib/workflow/tenant";
@@ -40,9 +41,9 @@ export default async function WorkspaceLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireConsoleSession();
+  const session = await requireSession();
   if (!session) {
-    // requireConsoleSession redirects; this keeps the type honest.
+    // requireSession redirects; this keeps the type honest.
     redirect("/login");
   }
   if (session.tenant_id !== WORKSPACE_ID) {
@@ -52,26 +53,35 @@ export default async function WorkspaceLayout({
   }
 
   let attentionCounts: Record<string, number> | undefined;
-  let branding: Branding | null = null;
+  let branding: Branding | null = localBrand()?.branding ?? null;
   let enabledModules: string[] | null = null;
   let sectionLabels: Record<string, string> | null = null;
   let moduleOrder: string[] | null = null;
   try {
-    const [overview, brand, modules, template, workspace] = await Promise.all([
+    const [overview, brand, modules, template, consoleLayout] = await Promise.all([
       operations.overview(WORKSPACE_ID, 5),
       operations.branding(WORKSPACE_ID),
       operations.modules(WORKSPACE_ID),
       operations.tenantTemplate(WORKSPACE_ID),
-      operations.workspaceConfig().catch(() => null),
+      operations.consoleSections(WORKSPACE_ID).catch(() => null),
     ]);
     const counts: Record<string, number> = {};
     for (const item of overview.attention) counts[sectionIdForStage(item.stage)] =
       (counts[sectionIdForStage(item.stage)] ?? 0) + 1;
     attentionCounts = counts;
-    branding = brand.branding;
+    branding = localBrand()?.branding ?? brand.branding;
     enabledModules = modules.enabled;
-    sectionLabels = template.terminology.sections ?? null;
-    moduleOrder = workspace?.module_order ?? null;
+    sectionLabels = {
+      ...(template.terminology.sections ?? {}),
+      ...Object.fromEntries(
+        (consoleLayout?.sections ?? [])
+          .filter((section) => section.label)
+          .map((section) => [section.id, section.label as string]),
+      ),
+    };
+    moduleOrder = consoleLayout?.sections
+      .filter((section) => section.visible)
+      .map((section) => section.id) ?? null;
   } catch {
     // The workspace is usable without the API; every panel says why.
   }
@@ -84,26 +94,27 @@ export default async function WorkspaceLayout({
     enabledModules,
     sectionLabels,
     moduleOrder,
-    user: {
-      name: session.name?.trim() || session.email,
-      email: session.email,
-      role: session.role,
-    },
-    dashboardHref: dashboardUrl("/dashboard"),
-  };
+      user: {
+        name: session.name?.trim() || session.email,
+        email: session.email,
+        role: session.role,
+      },
+      brandActive: Boolean(localBrand()),
+    };
+
   return (
-    <div className="flex min-h-0 w-full flex-col lg:flex-row" style={themeStyle(branding)}>
-      <MobileNav {...sidebarProps} />
-      <div className="hidden min-h-0 lg:flex">
-        <WorkflowSidebar {...sidebarProps} />
-      </div>
-      <main className="min-h-0 min-w-0 grow overflow-y-auto">
-        <AutoRefresh seconds={60} />
-        <div className="page-enter mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-5 md:px-10 md:py-10">
-          {children}
+      <div className="flex min-h-0 w-full flex-col lg:flex-row" style={themeStyle(branding)}>
+        <MobileNav {...sidebarProps} />
+        <div className="hidden min-h-0 lg:flex">
+          <WorkflowSidebar {...sidebarProps} />
         </div>
-      </main>
-    </div>
+        <main className="min-h-0 min-w-0 grow overflow-y-auto">
+          <AutoRefresh seconds={60} />
+          <div className="page-enter mx-auto flex max-w-[1280px] flex-col gap-6 px-5 py-5 md:px-10 md:py-10">
+            {children}
+          </div>
+        </main>
+      </div>
   );
 }
 

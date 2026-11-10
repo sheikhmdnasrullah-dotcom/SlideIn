@@ -1,0 +1,97 @@
+name: slidein-workers
+
+# Durable Phase C deployment slice. Transport is deliberately dry-run.
+# Required: POSTGRES_PASSWORD and SLIDEIN_API_KEYS in the shell environment.
+# Run exactly one scheduler; workers may be scaled after VPS acceptance tests.
+
+x-api-environment: &api-environment
+  SLIDEIN_DATABASE_URL: postgresql+asyncpg://slidein:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/slidein
+  SLIDEIN_API_KEYS: ${SLIDEIN_API_KEYS:?set SLIDEIN_API_KEYS}
+  SLIDEIN_AUTH_MODE: enforced
+  SLIDEIN_EXECUTION_MODE: celery
+  SLIDEIN_CELERY_BROKER_URL: redis://redis:6379/0
+  REDIS_URL: redis://redis:6379/0
+  SLIDEIN_AUTOPILOT: "1"
+  SLIDEIN_AUTOPILOT_INTERVAL: "300"
+  SLIDEIN_AUTOPILOT_CONNECTOR: orchestrated
+  SLIDEIN_TRANSPORT: dry_run
+  SLIDEIN_JOB_LEASE_SECONDS: "900"
+  SLIDEIN_JOB_BACKOFF_SECONDS: "30"
+  SLIDEIN_SCHEDULER_INTERVAL_SECONDS: "30"
+  SLIDEIN_LLM_BASE_URL: ${SLIDEIN_LLM_BASE_URL:-}
+  SLIDEIN_LLM_API_KEY: ${SLIDEIN_LLM_API_KEY:-}
+  SLIDEIN_LLM_MODEL: ${SLIDEIN_LLM_MODEL:-}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: slidein
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: slidein
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slidein -d slidein"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: slidein-api/Dockerfile
+    image: slidein-api:local
+    restart: unless-stopped
+    environment: *api-environment
+    ports:
+      - "127.0.0.1:${SLIDEIN_API_PORT:-8100}:8100"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  worker:
+    image: slidein-api:local
+    restart: unless-stopped
+    environment: *api-environment
+    command: ["celery", "-A", "slidein_api.workers.celery_app.celery_app", "worker", "--loglevel=INFO", "--queues=workflow,control", "--concurrency=2"]
+    depends_on:
+      api:
+        condition: service_healthy
+    stop_grace_period: 30s
+
+  scheduler:
+    image: slidein-api:local
+    restart: unless-stopped
+    environment: *api-environment
+    command: ["celery", "-A", "slidein_api.workers.celery_app.celery_app", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:

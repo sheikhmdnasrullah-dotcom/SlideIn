@@ -19,6 +19,8 @@ import { SESSION_COOKIE, sessionCookieOptions } from "./session";
 export interface AuthFormState {
   error?: string;
   notice?: string;
+  must_change_password?: boolean;
+  username?: string;
 }
 
 const DEFAULT_SESSION_SECONDS = 60 * 60 * 24 * 14;
@@ -67,10 +69,11 @@ export async function loginAction(
 ): Promise<AuthFormState> {
   const email = str(formData.get("email")).toLowerCase();
   const password = str(formData.get("password"));
-  const next = safeNext(str(formData.get("next")));
+  const nextParam = str(formData.get("next"));
+  const next = safeNext(nextParam);
 
   if (!email || !password) {
-    return { error: "Enter your email and password." };
+    return { error: "Enter your username/email and password." };
   }
 
   let response: Response;
@@ -78,7 +81,7 @@ export async function loginAction(
     response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, username: email, password }),
       cache: "no-store",
     });
   } catch (cause) {
@@ -109,6 +112,81 @@ export async function loginAction(
     ...sessionCookieOptions(),
     maxAge: sessionSeconds(typeof record.expires_at === "string" ? record.expires_at : undefined),
   });
+
+  if (record.must_change_password === true) {
+    return { must_change_password: true, username: email };
+  }
+
+  redirect(next);
+}
+
+export async function changePasswordAction(
+  _previous: AuthFormState | undefined,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const newPassword = str(formData.get("new_password"));
+  const confirmPassword = str(formData.get("confirm_password"));
+  const username = str(formData.get("username")).toLowerCase();
+  const next = safeNext(str(formData.get("next")));
+
+  if (!newPassword || newPassword.length < 6) {
+    return {
+      error: "New password must be at least 6 characters long.",
+      must_change_password: true,
+      username,
+    };
+  }
+  if (newPassword !== confirmPassword) {
+    return {
+      error: "Passwords do not match.",
+      must_change_password: true,
+      username,
+    };
+  }
+
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value ?? "";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/v1/auth/change-password`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ new_password: newPassword, username }),
+      cache: "no-store",
+    });
+  } catch (cause) {
+    return {
+      error: `Failed to update password: ${(cause as Error).message}`,
+      must_change_password: true,
+      username,
+    };
+  }
+
+  const payload = await readPayload(response);
+  if (!response.ok) {
+    return {
+      error: messageOf(payload, "Failed to update password."),
+      must_change_password: true,
+      username,
+    };
+  }
+
+  const record = (payload ?? {}) as Record<string, unknown>;
+  const newToken = typeof record.token === "string" ? record.token : "";
+  if (newToken) {
+    store.set(SESSION_COOKIE, newToken, {
+      ...sessionCookieOptions(),
+      maxAge: sessionSeconds(
+        typeof record.expires_at === "string" ? record.expires_at : undefined,
+      ),
+    });
+  }
+
   redirect(next);
 }
 

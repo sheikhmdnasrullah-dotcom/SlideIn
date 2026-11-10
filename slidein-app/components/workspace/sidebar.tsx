@@ -6,10 +6,10 @@ import {
   Activity as ActivityIcon,
   Compass,
   FileText,
+  HelpCircle,
   Inbox,
   LayoutDashboard,
   LogOut,
-  Monitor,
   MoreHorizontal,
   Rocket,
   ScanSearch,
@@ -48,13 +48,10 @@ const ICONS: Record<string, LucideIcon> = {
   outreach: FileText,
   conversations: Inbox,
   activity: ActivityIcon,
+  settings: Settings2,
 };
 
-/**
- * WorkflowSidebar: the persistent navigation, ordered by the workflow itself.
- * The nav is not a menu — it is the stage order, so a link always means "go
- * to the next stage that works on this record".
- */
+/** Persistent Console navigation in canonical workflow order. */
 export function WorkflowSidebar({
   attentionCounts,
   workspaceId,
@@ -64,7 +61,7 @@ export function WorkflowSidebar({
   sectionLabels,
   moduleOrder,
   user,
-  dashboardHref,
+  brandActive,
   className,
 }: {
   attentionCounts?: Record<string, number>;
@@ -79,15 +76,18 @@ export function WorkflowSidebar({
   moduleOrder?: string[] | null;
   /** Signed-in identity — renders the account block and the sign-out action. */
   user?: { name: string; email: string; role: string } | null;
-  /** Absolute Dashboard URL for the Console <-> Dashboard switcher. */
-  dashboardHref?: string;
+  /** True when a temporary client brand override (e.g. Finaya) is active. */
+  brandActive?: boolean;
   className?: string;
 }) {
   const pathname = usePathname();
 
-  const visible = (section: SectionMeta) =>
-    !enabledModules ||
-    enabledModules.includes(SECTION_MODULES[section.id] ?? section.id);
+  const visible = (section: SectionMeta) => {
+    return (
+      !enabledModules ||
+      enabledModules.includes(SECTION_MODULES[section.id] ?? section.id)
+    );
+  };
   const sectionRank = (section: SectionMeta) => {
     if (!moduleOrder?.length) return Number.MAX_SAFE_INTEGER;
     const moduleId = SECTION_MODULES[section.id] ?? section.id;
@@ -121,7 +121,14 @@ export function WorkflowSidebar({
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={logo} alt="" className="size-9 rounded-[11px] object-contain" />
+          <img
+            src={logo}
+            alt=""
+            className={cn(
+              "size-9 rounded-[11px] object-contain",
+              brandActive && "ring-brand ring-2 ring-offset-2",
+            )}
+          />
         ) : (
           <GlossTile size={36} float={false}>
             <span className="font-sans text-[13px] font-semibold text-ink-strong">
@@ -129,7 +136,12 @@ export function WorkflowSidebar({
             </span>
           </GlossTile>
         )}
-        <span className="truncate font-sans text-[15px] leading-[22px] font-semibold text-ink-strong">
+        <span
+          className={cn(
+            "truncate text-[15px] leading-[22px] font-semibold",
+            brandActive ? "text-brand" : "text-ink-strong",
+          )}
+        >
           {displayName}
         </span>
         <span className="truncate font-label text-ink-faint">
@@ -192,23 +204,13 @@ export function WorkflowSidebar({
         ))}
       </nav>
 
-      {dashboardHref && (
-        <div className="flex flex-col gap-2 border-t border-rule px-3 pt-3 pb-2">
-          <span className="px-3 font-label text-ink-faint">Interface</span>
-          <div className="flex items-center gap-1 rounded-pill bg-hover-tint p-1">
-            <span className="flex h-7 grow items-center justify-center gap-1.5 rounded-pill bg-surface font-sans text-xs font-medium text-ink-strong shadow-raised">
-              <Monitor className="size-3.5" aria-hidden />
-              Console
-            </span>
-            <a
-              href={dashboardHref}
-              className="flex h-7 grow items-center justify-center gap-1.5 rounded-pill font-sans text-xs font-medium text-ink-muted transition-colors hover:text-ink-strong focus-ring"
-            >
-              Dashboard
-            </a>
-          </div>
-        </div>
-      )}
+      <Link
+        href="/help"
+        className="flex items-center gap-3 rounded-[12px] px-3 py-2 font-sans text-sm font-medium text-ink-muted hover:bg-hover-tint hover:text-ink-strong"
+      >
+        <HelpCircle className="size-[18px]" aria-hidden />
+        <span>Help</span>
+      </Link>
 
       {user && (
         <div className="flex items-center gap-3 border-t border-rule px-4 py-3">

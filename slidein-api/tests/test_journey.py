@@ -578,10 +578,16 @@ def test_rate_limit_blocks_sending_when_exhausted(configured_workspace):
 # 7. Conversations
 # ---------------------------------------------------------------------------
 
-def test_failed_send_is_retryable_and_keeps_state_for_retry(configured_workspace):
+def test_failed_send_is_retryable_and_keeps_state_for_retry(
+    configured_workspace, monkeypatch: pytest.MonkeyPatch
+):
     """External-integration failure: a dead SMTP transport fails the send
     retryably, records the failure, and leaves draft + prospect untouched
     so the operator can retry. A retry over dry_run then succeeds."""
+    async def safe_recipient(email: str) -> dict:
+        return {"collector": "reacher", "status": "safe", "verified": True}
+
+    monkeypatch.setattr("slidein_api.services.outreach.reacher_verification", safe_recipient)
     client, draft, prospect_id = _prepared_draft(configured_workspace)
     headers = configured_workspace["headers"]
     client.post(

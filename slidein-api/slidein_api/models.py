@@ -269,6 +269,53 @@ class ConfigVersion(Base):
 
 
 # ---------------------------------------------------------------------------
+# Optional first-party website capture. Identified visitors become Prospects;
+# these tables store only the connection and consented event history.
+# ---------------------------------------------------------------------------
+
+class WebsiteConnection(Base):
+    __tablename__ = "website_connections"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    domain: Mapped[str] = mapped_column(String(255), nullable=False)
+    site_key: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), default="native", nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="awaiting_installation", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "domain", name="uq_website_connection_domain"),
+    )
+
+
+class WebsiteEvent(Base):
+    __tablename__ = "website_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    website_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("website_connections.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    external_event_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    session_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    page_url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    prospect_id: Mapped[str | None] = mapped_column(
+        String(64), ForeignKey("prospects.id", ondelete="SET NULL"), nullable=True
+    )
+    consented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("website_id", "external_event_id", name="uq_website_event_idempotency"),
+        Index("ix_website_events_session", "tenant_id", "website_id", "session_id"),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
 
@@ -475,6 +522,7 @@ class SentMessage(Base):
     queued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status_updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    dispatch_payload: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
 
     __table_args__ = (
         Index("ix_sent_messages_tenant_status", "tenant_id", "delivery_status"),
@@ -674,6 +722,57 @@ class InboundReply(Base):
 # Workflow runtime + audit
 # ---------------------------------------------------------------------------
 
+class ToolExecution(Base):
+    __tablename__ = "tool_executions"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    execution_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    stage: Mapped[str] = mapped_column(String(64), nullable=False)
+    subject_type: Mapped[str] = mapped_column(String(64), default="prospect", nullable=False)
+    subject_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default=RunStatus.RUNNING.value, nullable=False)
+    requested_capabilities: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    resolved_capabilities: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    output_snapshot: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+    triggered_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "execution_key", name="uq_tool_execution_replay"),
+        Index("ix_tool_executions_subject", "tenant_id", "stage", "subject_id"),
+    )
+
+
+class ToolAttempt(Base):
+    __tablename__ = "tool_attempts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    execution_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tool_executions.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    capabilities: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="skipped", nullable=False)
+    reason: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    error_code: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    error_message: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    missing: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    fallback_from: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    evidence_ids: Mapped[list[str]] = mapped_column(JSONList, default=list, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("execution_id", "tool_id", name="uq_tool_attempt_per_execution"),
+        Index("ix_tool_attempts_tenant_execution", "tenant_id", "execution_id"),
+    )
+
+
 class StageRun(Base):
     """One execution of one stage against one subject. This is the audit
     trail that makes a failure recoverable: every run stores its inputs,
@@ -709,6 +808,23 @@ class StageRun(Base):
     )
 
 
+class InboundReceipt(Base):
+    __tablename__ = "inbound_receipts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    external_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    reply_id: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="processed", nullable=False)
+    error_code: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "provider", "external_id", name="uq_inbound_provider_message"),
+    )
+
+
 class ActivityLog(Base):
     __tablename__ = "activity_logs"
 
@@ -738,7 +854,7 @@ class AutopilotState(Base):
     One row per tenant: whether the loop may advance this workspace, what the
     last tick did, and cumulative totals. Individual stage work is already
     audited by `StageRun` + `ActivityLog`; this table only holds the loop's
-    own control state so the dashboard can render it without replaying runs.
+    own control state so Console can render it without replaying runs.
     """
 
     __tablename__ = "autopilot_state"
@@ -747,13 +863,13 @@ class AutopilotState(Base):
         String(64), ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True
     )
     #: Master switch for THIS workspace (the env master switch is separate).
-    enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
     #: When auto-approval is on, autopilot approves the drafts it generates
     #: before sending. Suppression/limits/compliance still apply on every send.
-    auto_approve: Mapped[bool] = mapped_column(default=True, nullable=False)
+    auto_approve: Mapped[bool] = mapped_column(default=False, nullable=False)
     #: Whether the send step dispatches (transport still resolves per env —
     #: dry_run records without putting bytes on the wire).
-    send_enabled: Mapped[bool] = mapped_column(default=True, nullable=False)
+    send_enabled: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     last_tick_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -768,6 +884,52 @@ class AutopilotState(Base):
     updated_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
+# ---------------------------------------------------------------------------
+# Durable background execution
+# ---------------------------------------------------------------------------
+
+
+class WorkJob(Base):
+    """Durable execution ledger; Redis is only the dispatch transport.
+
+    A job is committed before it is sent to Celery. Workers claim a short
+    lease, so duplicate deliveries cannot execute the same job concurrently
+    and an expired worker lease can be recovered after a restart.
+    """
+
+    __tablename__ = "work_jobs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    state: Mapped[str] = mapped_column(String(32), default="queued", nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+    result: Mapped[dict] = mapped_column(JSONMap, default=dict, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    leased_by: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    broker_task_id: Mapped[str] = mapped_column(String(128), default="", nullable=False)
+    error_code: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    error: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_work_jobs_ready", "state", "run_at"),
+        Index("ix_work_jobs_tenant_kind", "tenant_id", "kind", "state"),
+        Index("ix_work_jobs_lease", "state", "lease_expires_at"),
     )
 
 
@@ -789,12 +951,13 @@ class User(Base):
     tenant_id: Mapped[str] = mapped_column(
         String(64), ForeignKey("tenants.id", ondelete="CASCADE"), index=True, nullable=False
     )
-    #: Login identifier, stored lowercase and unique across the instance.
+    #: Login identifier, stored lowercase and unique across the instance. Can be username (e.g. 'admin') or email.
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(255), default="", nullable=False)
     role: Mapped[str] = mapped_column(String(16), default="viewer", nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

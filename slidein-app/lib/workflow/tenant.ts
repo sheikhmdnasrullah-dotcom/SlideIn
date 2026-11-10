@@ -25,6 +25,7 @@ export const SECTION_MODULES: Record<string, string> = {
   outreach: "outreach",
   conversations: "inbox",
   activity: "activity",
+  settings: "settings",
 };
 
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
@@ -80,13 +81,16 @@ export function themeStyle(branding: Branding | null | undefined): React.CSSProp
   return style as React.CSSProperties;
 }
 
-/** Logo URL only when it is a plain https URL; otherwise null (initials). */
+/** Logo URL only when it is a plain https URL or a same-origin path;
+ * otherwise null (initials used). Same-origin paths (e.g. `/brands/...`)
+ * cannot exfiltrate the session and are safe to render. */
 export function safeLogoUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
-  if (!text.startsWith("https://") || text.includes("@")) return null;
-  if (text.length > 2048) return null;
-  return text;
+  if (!text || text.length > 2048) return null;
+  if (text.startsWith("https://")) return text;
+  if (text.startsWith("/")) return text;
+  return null;
 }
 
 export function brandInitials(name: string | undefined): string {

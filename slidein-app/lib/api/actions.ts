@@ -506,56 +506,69 @@ export async function applyTemplateAction(
 
 // ── client setup ────────────────────────────────────────────────────────────
 
-function setupSources(formData: FormData): Record<string, unknown>[] {
+async function setupSources(
+  formData: FormData,
+): Promise<{ sources: Record<string, unknown>[]; error?: string }> {
   const sources: Record<string, unknown>[] = [];
   const context = str(formData.get("context"));
   const website = str(formData.get("website"));
-  if (context) sources.push({ type: "notes", label: "operator context", text: context });
+  if (context) sources.push({ type: "notes", label: "business context", text: context });
   if (website) sources.push({ type: "website", url: website });
-  return sources;
+
+  const files = formData.getAll("documents").filter(
+    (value): value is File => value instanceof File && value.size > 0,
+  );
+  if (files.length > 12) return { sources, error: "Upload at most 12 text documents at once." };
+  let totalChars = context.length;
+  for (const file of files) {
+    const extension = file.name.toLowerCase().split(".").pop() ?? "";
+    if (!["txt", "md", "csv", "json", "vtt", "srt", "log"].includes(extension)) {
+      return { sources, error: `${file.name}: use TXT, MD, CSV, JSON, VTT, SRT, or LOG.` };
+    }
+    if (file.size > 100_000) {
+      return { sources, error: `${file.name}: keep each text document under 100 KB.` };
+    }
+    const text = await file.text();
+    if (text.includes("\0")) return { sources, error: `${file.name}: binary content is not supported.` };
+    totalChars += text.length;
+    if (totalChars > 400_000) {
+      return { sources, error: "The combined pasted and uploaded context is over 400,000 characters." };
+    }
+    sources.push({
+      type: ["vtt", "srt"].includes(extension) ? "transcript" : "document",
+      label: file.name,
+      filename: file.name,
+      text,
+    });
+  }
+  return { sources };
 }
 
 export async function setupGenerateAction(
   _prev: SetupActionResult,
   formData: FormData,
 ): Promise<SetupActionResult> {
-  const context = str(formData.get("context"));
-  const sources = setupSources(formData);
+  const { sources, error } = await setupSources(formData);
+  if (error) return { ok: false, message: error };
   if (sources.length === 0) {
     return {
       ok: false,
-      message: "Add what the client gave you — a note, a brief, or their website.",
+      message: "Add notes, a transcript, a text document, or a business website.",
     };
   }
 
-  // Two entry points, one screen: `/setup/client` is the intake of record for
-  // a client's context (profile + first workflow + readiness), and
-  // `/setup/generate` builds the per-stage state the screen renders.
-  let intakeError: unknown = null;
-  if (context) {
-    try {
-      await operations.setupClient({
-        materials: [{ source_ref: "operator context", text: context }],
-      });
-    } catch (error) {
-      intakeError = error;
-    }
-  }
-
   try {
-    const report = await operations.setupGenerate(WORKSPACE_ID, { sources });
+    const { run } = await operations.setupIntake(WORKSPACE_ID, sources);
     revalidatePath("/setup");
     revalidatePath("/profile");
     revalidatePath("/overview");
-    const saved = report.profile.saved;
-    const message = saved
-      ? `Setup generated: profile, offers and ICP saved. ${report.status.open_blocking_questions.length} question(s) still need an answer.`
-      : `Context read. ${report.status.open_blocking_questions.length} question(s) still need an answer before the profile can be saved.`;
-    return intakeError
-      ? { ok: false, message: `${message} Intake note failed: ${failure(intakeError).message}`, report }
-      : { ok: true, message, report };
+    return {
+      ok: run.state !== "failed",
+      message: run.state === "failed"
+        ? run.error
+        : "Workspace build started. Slidein will organize the sources and populate the business setup automatically.",
+    };
   } catch (error) {
-    if (intakeError) return failure(intakeError);
     return failure(error);
   }
 }
@@ -631,6 +644,22 @@ export async function activateWorkspaceAction(): Promise<ActionResult> {
     return status.status === "active"
       ? { ok: true, message: "Workspace activated." }
       : { ok: false, message: `Activation returned ${status.status}.` };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+export async function saveConsoleSectionsAction(
+  _prev: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  try {
+    const sections = JSON.parse(str(formData.get("sections"))) as import("./types").ConsoleSectionMeta[];
+    if (!Array.isArray(sections)) return { ok: false, message: "Invalid section layout." };
+    await operations.saveConsoleSections(WORKSPACE_ID, sections);
+    revalidatePath("/overview");
+    revalidatePath("/settings");
+    return { ok: true, message: "Layout saved." };
   } catch (error) {
     return failure(error);
   }

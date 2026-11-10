@@ -1,0 +1,18 @@
+{
+  "name": "slidein-visitor-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild official-tracker.js --bundle --format=iife --platform=browser --target=es2020 --outfile=dist/official-tracker.js",
+    "check": "node --check official-tracker.js"
+  },
+  "dependencies": {
+    "@rudderstack/analytics-js": "^3.35.1",
+    "@snowplow/browser-tracker": "^4.10.2",
+    "logsnag": "^1.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

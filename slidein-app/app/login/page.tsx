@@ -4,7 +4,7 @@ import { LoginForm } from "./login-form";
 import { WorkspaceMismatch } from "@/components/workspace/workspace-mismatch";
 import { GlossTile } from "@/components/system/gloss-tile";
 import { API_BASE_URL, WORKSPACE_ID } from "@/lib/api/config";
-import { dashboardUrl, getSession } from "@/lib/auth/session";
+import { getSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -27,14 +27,10 @@ async function authState(): Promise<AuthState> {
 }
 
 function safeNext(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/overview";
-  return value;
+  return value && value.startsWith("/") && !value.startsWith("//") ? value : "/overview";
 }
 
-/**
- * The shared entry point. An already-signed-in visitor is routed to the
- * interface their role actually opens; everyone else sees the form.
- */
+/** Console sign-in and first-owner setup. */
 export default async function LoginPage({
   searchParams,
 }: {
@@ -45,8 +41,7 @@ export default async function LoginPage({
   const session = await getSession();
 
   if (session && session.tenant_id === WORKSPACE_ID) {
-    if (session.interfaces.includes("console")) redirect(next);
-    redirect(dashboardUrl("/dashboard"));
+    redirect(next);
   }
 
   const state = await authState();
@@ -67,8 +62,8 @@ export default async function LoginPage({
               </h1>
               <p className="font-sans text-sm text-ink-muted">
                 {state.bootstrap_available
-                  ? "This workspace has no accounts yet. Create the owner login — it opens both Console and Dashboard."
-                  : "Console and Dashboard share one account."}
+                  ? "Create the owner account."
+                  : "Sign in to your workspace."}
               </p>
             </div>
           </div>
@@ -81,10 +76,6 @@ export default async function LoginPage({
             />
           </div>
 
-          <p className="text-center font-sans text-xs text-ink-faint">
-            Operators and admins use Console. Clients only need Dashboard — same
-            login, different view.
-          </p>
         </div>
       )}
     </main>

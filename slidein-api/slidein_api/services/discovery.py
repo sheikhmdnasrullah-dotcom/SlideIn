@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..errors import ConfigError, SlideinError, ValidationError
 from ..ids import new_id
-from ..models import Prospect, utcnow
+from ..models import Prospect, ProspectStatus, utcnow
 from ..serialize import prospect
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -80,6 +80,55 @@ class DiscoveryService:
             )
         ).scalars().all()
         return [prospect(r) for r in rows], total
+
+    async def create_website_lead(
+        self,
+        tenant_id: str,
+        *,
+        email: str,
+        first_name: str = "",
+        last_name: str = "",
+        company_name: str = "",
+        source_ref: str,
+        page_url: str,
+    ) -> tuple[Prospect, bool]:
+        """Create a Prospect only from an explicitly submitted email address."""
+        normalized = normalize_email(email)
+        if not _EMAIL_RE.match(normalized):
+            raise ValidationError(
+                "A valid submitted email is required",
+                code="prospect_invalid",
+                recovery_action="fix_prospect_record",
+            )
+        existing = (
+            await self.session.execute(
+                select(Prospect).where(
+                    Prospect.tenant_id == tenant_id,
+                    Prospect.email == normalized,
+                    Prospect.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing, False
+        domain = normalize_domain(email.split("@")[-1])
+        row = Prospect(
+            id=new_id("prospect"),
+            tenant_id=tenant_id,
+            first_name=first_name.strip()[:128],
+            last_name=last_name.strip()[:128],
+            email=normalized,
+            company_name=company_name.strip()[:255] or domain,
+            company_domain=domain,
+            source="website_form",
+            source_ref=source_ref,
+            source_detail={"consent": True, "page_url": page_url},
+            discovered_by="website_consent",
+            state_history=[{"status": ProspectStatus.DISCOVERED.value, "source": "website_form"}],
+        )
+        self.session.add(row)
+        await self.session.flush()
+        return row, True
 
     async def create_records(
         self,

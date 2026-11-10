@@ -10,7 +10,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, Depends
 
 from ...errors import SlideinError
+from ...db import session_scope
 from ...security import AuthContext, require_role, resolve_workspace
+from ...services.jobs import JobService, execution_mode
+from ...workers.dispatch import dispatch_job
 from ...services.autopilot import (
     AutopilotConfig,
     set_switches,
@@ -56,7 +59,60 @@ async def autopilot_configure(
 async def autopilot_run(
     tenant_id: str, auth: AuthContext = Depends(resolve_workspace)
 ) -> dict:
-    """Advance this workspace one tick right now (same work the loop does)."""
+    """Advance now inline, or enqueue the identical tick in durable mode."""
     require_role(auth, "operator")
-    outcome = await tick(auth.tenant_id, AutopilotConfig.from_env())
-    return {"tick": outcome, "status": await status_payload(auth.tenant_id)}
+    if execution_mode() == "inline":
+        outcome = await tick(auth.tenant_id, AutopilotConfig.from_env())
+        return {"tick": outcome, "status": await status_payload(auth.tenant_id)}
+    from ...ids import new_id
+    from ...services.jobs import public_job_dict
+
+    async with session_scope() as session:
+        job = await JobService(session).enqueue(
+            tenant_id=auth.tenant_id,
+            kind="autopilot",
+            idempotency_key=f"autopilot:manual:{new_id('work_job')}",
+            payload={},
+        )
+    await dispatch_job(job["id"])
+    return {
+        "job": public_job_dict(job),
+        "status": await status_payload(auth.tenant_id),
+    }
+
+
+@router.get("/tenants/{tenant_id}/autopilot/jobs/{job_id}", tags=["autopilot"])
+async def autopilot_job(
+    tenant_id: str, job_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    require_role(auth, "viewer")
+    from ...services.jobs import public_job_dict
+
+    async with session_scope() as session:
+        job = await JobService(session).get(auth.tenant_id, job_id)
+    return {"job": public_job_dict(job)}
+
+
+@router.delete("/tenants/{tenant_id}/autopilot/jobs/{job_id}", tags=["autopilot"])
+async def autopilot_cancel_job(
+    tenant_id: str, job_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    require_role(auth, "operator")
+    from ...services.jobs import public_job_dict
+
+    async with session_scope() as session:
+        job = await JobService(session).cancel(auth.tenant_id, job_id)
+    return {"job": public_job_dict(job)}
+
+
+@router.post("/tenants/{tenant_id}/autopilot/jobs/{job_id}/retry", tags=["autopilot"])
+async def autopilot_retry_job(
+    tenant_id: str, job_id: str, auth: AuthContext = Depends(resolve_workspace)
+) -> dict:
+    require_role(auth, "operator")
+    from ...services.jobs import public_job_dict
+
+    async with session_scope() as session:
+        job = await JobService(session).retry(auth.tenant_id, job_id)
+    await dispatch_job(job["id"])
+    return {"job": public_job_dict(job)}

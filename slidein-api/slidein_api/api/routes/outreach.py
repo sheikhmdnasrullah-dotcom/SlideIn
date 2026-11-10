@@ -16,6 +16,8 @@ from ...services.deliverability_guard import DeliverabilityGuard
 from ...services.discovery import DiscoveryService
 from ...services.outreach import OutreachService
 from ...services.personalization import PersonalizationService
+from ...services.transport import get_transport
+from ...services.warmup import WarmupService
 
 router = APIRouter()
 
@@ -29,6 +31,7 @@ _STATUS_BY_CODE = {
     "approval_required": http_status.HTTP_409_CONFLICT,
     "tenant_dispatch_quarantined": http_status.HTTP_409_CONFLICT,
     "not_quarantined": http_status.HTTP_409_CONFLICT,
+    "mailbox_warmup_incomplete": http_status.HTTP_409_CONFLICT,
     "rate_limited": http_status.HTTP_429_TOO_MANY_REQUESTS,
 }
 
@@ -169,6 +172,24 @@ async def reject_draft(
     return {"draft": row}
 
 
+@router.get("/tenants/{tenant_id}/drafts/{draft_id}/preflight", tags=["outreach"])
+async def draft_preflight(
+    tenant_id: str,
+    draft_id: str,
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Run recipient MX + copy-audit on a draft. Read-only; does not send."""
+    require_role(auth, "operator")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        try:
+            return await OutreachService(session).preflight_draft(
+                auth.tenant_id, draft_id
+            )
+        except SlideinError as exc:
+            raise _error(exc)
+
+
 @router.post("/tenants/{tenant_id}/drafts/{draft_id}/send", tags=["outreach"])
 async def send_draft(
     tenant_id: str,
@@ -195,7 +216,13 @@ async def send_draft(
             )
 
         if not attempt_send:
-            blocked = await _policy_block(session, auth.tenant_id, policy, draft_row)
+            raw_transport = payload.get("transport")
+            transport_name = get_transport(
+                raw_transport if isinstance(raw_transport, dict) else {}
+            ).name
+            blocked = await _policy_block(
+                session, auth.tenant_id, policy, draft_row, transport_name=transport_name
+            )
             if blocked is not None:
                 return {
                     "status": "failed",
@@ -219,12 +246,14 @@ async def send_draft(
                 "to_status": draft_row["status"],
             }
 
+        raw_transport = payload.get("transport")
+        transport_config = raw_transport if isinstance(raw_transport, dict) else {}
         result = await outreach.send_draft(
             tenant_id=auth.tenant_id,
             draft_id=draft_id,
             actor=f"user:{auth.role}",
             sender_email=str(payload.get("sender_email") or ""),
-            transport_config=payload.get("transport") or {},
+            transport_config=transport_config,
         )
         return {
             "status": "succeeded",
@@ -259,7 +288,9 @@ async def send_draft(
     return _outcome_response(outcome)
 
 
-async def _policy_block(session, tenant_id: str, policy: dict, draft_row: dict) -> tuple[str, str, str] | None:
+async def _policy_block(
+    session, tenant_id: str, policy: dict, draft_row: dict, *, transport_name: str = "dry_run"
+) -> tuple[str, str, str] | None:
     from ...services.suppression import SuppressionService
 
     outreach = OutreachService(session)
@@ -289,6 +320,15 @@ async def _policy_block(session, tenant_id: str, policy: dict, draft_row: dict) 
         DeliverabilityGuard(tenant_id).validate_pre_send_compliance(policy)
     except SlideinError as exc:
         return (exc.code, exc.message, exc.recovery_action)
+    if transport_name not in ("", "dry_run"):
+        warmup = await WarmupService(session).status(tenant_id, refresh=True)
+        if warmup["enforced"] and not warmup["ready"]:
+            first = (warmup["blockers"] or [{}])[0]
+            return (
+                "mailbox_warmup_incomplete",
+                str(first.get("message") or "Mailbox warmup must complete before live campaigns."),
+                str(first.get("recovery_action") or "wait_for_mailbox_warmup"),
+            )
     return None
 
 
@@ -325,8 +365,49 @@ async def deliverability_status(
     rates against the trip thresholds, and the per-tenant send caps."""
     async with session_scope() as session:
         await module_gate(session, auth.tenant_id, "outreach")
-        return {"deliverability": await OutreachService(session).deliverability_status(
-            auth.tenant_id
+        return {
+            "deliverability": await OutreachService(session).deliverability_status(
+                auth.tenant_id
+            ),
+            "warmup": await WarmupService(session).status(auth.tenant_id, refresh=False),
+        }
+
+
+@router.get("/tenants/{tenant_id}/warmup", tags=["outreach"])
+async def warmup_status(
+    tenant_id: str,
+    refresh: bool = Query(default=True),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """The 14-day Warmbly warmup rule for this workspace: local clock,
+    live Warmbly mailbox evidence, DNS auth verdict, and the exact
+    blockers keeping live campaign sends closed. `refresh=false` reads the
+    last recorded state without contacting Warmbly."""
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        return {"warmup": await WarmupService(session).status(
+            auth.tenant_id, refresh=refresh
+        )}
+
+
+@router.post("/tenants/{tenant_id}/warmup/start", tags=["outreach"])
+async def start_warmup(
+    tenant_id: str,
+    payload: dict = Body(default={}),
+    auth: AuthContext = Depends(resolve_workspace),
+) -> dict:
+    """Start the 14-day mailbox warmup (idempotent — a repeat call re-syncs
+    Warmbly but never resets the clock). Called automatically when initial
+    setup saves the sending identity; exposed for re-sync after mailboxes
+    are connected in Warmbly."""
+    require_role(auth, "operator")
+    async with session_scope() as session:
+        await module_gate(session, auth.tenant_id, "outreach")
+        mailboxes = payload.get("mailboxes")
+        return {"warmup": await WarmupService(session).start(
+            auth.tenant_id,
+            actor=f"user:{auth.role}",
+            mailboxes=[str(m) for m in mailboxes] if isinstance(mailboxes, list) else None,
         )}
 
 
@@ -679,6 +760,8 @@ async def inbound_webhook(
         outcome = await runner.run(
             StageName.CONVERSE,
             tenant_id=auth.tenant_id,
+            subject_type="sender",
+            subject_id=str(payload.get("sender_email") or payload.get("from") or ""),
             payload={
                 "sender_email": str(payload.get("sender_email") or payload.get("from") or ""),
                 "subject": str(payload.get("subject") or ""),

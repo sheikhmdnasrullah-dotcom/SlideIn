@@ -17,10 +17,19 @@ def test_registry_ids_and_priorities_are_unique_and_stable():
     ids = [tool.id for tool in TOOL_REGISTRY]
     assert len(ids) == len(set(ids))
     assert ids == sorted(ids)
-    assert {"website_connector", "openosint", "ecc", "firecrawl", "crawl4ai"} <= set(ids)
+    assert {
+        "website_connector", "openosint", "ecc", "firecrawl", "crawl4ai",
+        "warmbly", "warmup_engine", "deliverability_warmup",
+        "optimization_warmup", "deliverability_daemon", "smtp_transport",
+        "kumomta", "reacher", "deterministic_personalization",
+        "canonical_inbound_webhook", "deterministic_conversation",
+    } <= set(ids)
     for tool in TOOL_REGISTRY:
         assert tool.capabilities
-        assert tool.stage in {"engineering", "research", "personalize", "outreach", "operations"}
+        assert tool.stage in {
+            "configure", "discover", "engineering", "research", "personalize",
+            "outreach", "converse", "operations", "analytics",
+        }
         for capability in tool.capabilities:
             candidates = [item for item in TOOL_REGISTRY if capability in item.capabilities]
             ordered = sorted(candidates, key=lambda item: (item.priority, item.id))

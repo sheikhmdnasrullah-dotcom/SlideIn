@@ -113,12 +113,14 @@ def test_status_reports_defaults_for_a_configured_workspace(configured_workspace
     response = client.get(f"/v1/tenants/{TENANT_A}/autopilot", headers=headers)
     assert response.status_code == 200, response.text
     status = response.json()
-    assert status["enabled"] is True
-    assert status["master_enabled"] is True
+    assert status["enabled"] is False
+    assert status["auto_approve"] is False
+    assert status["send_enabled"] is False
+    assert status["master_enabled"] is False
     assert status["transport"] == "dry_run"
     assert status["last_status"] == "never_run"
     assert status["pipeline"]["discovered"] == 0
-    assert status["connector_chain"] == ["openosint", "website"]
+    assert status["connector_chain"] == ["orchestrated"]
 
 
 def test_toggle_and_run_endpoints(configured_workspace):
@@ -136,7 +138,7 @@ def test_toggle_and_run_endpoints(configured_workspace):
     run = client.post(f"/v1/tenants/{TENANT_A}/autopilot/run", headers=headers)
     assert run.status_code == 200, run.text
     body = run.json()
-    assert body["tick"]["status"] == "workspace_disabled"
+    assert body["tick"]["status"] == "disabled"
 
     client.post(
         f"/v1/tenants/{TENANT_A}/autopilot",
@@ -165,8 +167,11 @@ def test_viewer_cannot_configure_autopilot(configured_workspace):
 
 @pytest.mark.asyncio
 async def test_one_tick_runs_the_whole_loop(fake_cli, configured_workspace, tmp_path):
-    from slidein_api.services.autopilot import status_payload, tick
+    from slidein_api.services.autopilot import set_switches, status_payload, tick
 
+    await set_switches(
+        TENANT_A, actor="test", enabled=True, auto_approve=True, send_enabled=True
+    )
     csv_path = _write_csv(tmp_path / "leads.csv", prospect_records(1))
     outcome = await tick(TENANT_A, _cfg(ingest_paths=(str(csv_path),)))
     assert outcome["status"] == "ok", outcome
@@ -223,8 +228,10 @@ async def test_workspace_switches_gate_the_loop(fake_cli, configured_workspace, 
 
     csv_path = _write_csv(tmp_path / "leads.csv", prospect_records(1))
 
-    # Sending off: the loop still researches/qualifies/drafts/approves.
-    await set_switches(TENANT_A, actor="test", send_enabled=False)
+    # Sending off: the explicitly enabled loop still researches/qualifies/drafts/approves.
+    await set_switches(
+        TENANT_A, actor="test", enabled=True, auto_approve=True, send_enabled=False
+    )
     outcome = await tick(TENANT_A, _cfg(ingest_paths=(str(csv_path),)))
     assert outcome["stats"]["drafts"] == 1
     assert outcome["stats"]["approved"] == 1
@@ -257,10 +264,13 @@ async def test_workspace_switches_gate_the_loop(fake_cli, configured_workspace, 
 
 @pytest.mark.asyncio
 async def test_suppression_blocks_the_send_step(fake_cli, configured_workspace, tmp_path):
-    from slidein_api.services.autopilot import tick
+    from slidein_api.services.autopilot import set_switches, tick
     from slidein_api.db import session_scope
     from slidein_api.services.suppression import SuppressionService
 
+    await set_switches(
+        TENANT_A, actor="test", enabled=True, auto_approve=True, send_enabled=True
+    )
     records = prospect_records(1)
     async with session_scope() as session:
         await SuppressionService(session).add(
@@ -279,9 +289,10 @@ async def test_suppression_blocks_the_send_step(fake_cli, configured_workspace, 
 @pytest.mark.asyncio
 async def test_ingest_without_configuration_reports_blocked(tmp_path, monkeypatch):
     """A bare workspace (no ICP/profile) must not crash the loop."""
-    from slidein_api.services.autopilot import tick
+    from slidein_api.services.autopilot import set_switches, tick
     from tests.conftest import TENANT_B
 
+    await set_switches(TENANT_B, actor="test", enabled=True)
     csv_path = _write_csv(tmp_path / "leads.csv", prospect_records(1))
     outcome = await tick(TENANT_B, _cfg(ingest_paths=(str(csv_path),)))
     # Tenant B has no workspace config: either blocked ingest or an empty

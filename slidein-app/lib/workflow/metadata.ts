@@ -34,29 +34,22 @@ export interface SectionMeta {
 }
 
 export const SECTIONS: SectionMeta[] = [
+  // Console navigation is the canonical workflow and its supporting sections.
   {
     id: "setup",
     href: "/setup",
-    label: "Client Setup",
+    label: "Setup",
     group: "setup",
     stage: "configure",
-    description: "Context in, workspace out: generate, review exceptions, connect, test, activate.",
-  },
-  {
-    id: "overview",
-    href: "/overview",
-    label: "Overview",
-    group: "pipeline",
-    stage: "synthesize",
-    description: "What the pipeline is holding and what needs a decision.",
+    description: "Connect providers, test, and activate your workspace.",
   },
   {
     id: "profile",
     href: "/profile",
-    label: "Business Profile",
+    label: "Business Brain",
     group: "setup",
     stage: "configure",
-    description: "Versioned configuration handed to Discovery.",
+    description: "Your business context and offer profile.",
   },
   {
     id: "discovery",
@@ -64,7 +57,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Discovery",
     group: "pipeline",
     stage: "discover",
-    description: "Source-attributed prospect records for the active ICP.",
+    description: "Prospect records tracked to their source.",
   },
   {
     id: "research",
@@ -72,7 +65,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Research",
     group: "pipeline",
     stage: "research",
-    description: "Source-backed evidence about one prospect.",
+    description: "Evidence gathered about one prospect.",
   },
   {
     id: "osint",
@@ -80,7 +73,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "OSINT",
     group: "pipeline",
     stage: "research",
-    description: "Ad-hoc OpenOSINT lookups against a name, email, handle, or domain.",
+    description: "On-demand lookups for a name, email, handle, or domain.",
   },
   {
     id: "qualification",
@@ -88,7 +81,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Qualification",
     group: "pipeline",
     stage: "qualify",
-    description: "Explainable ICP score and justified offer match.",
+    description: "ICP fit score and the offer match behind it.",
   },
   {
     id: "personalization",
@@ -96,7 +89,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Personalization",
     group: "pipeline",
     stage: "personalize",
-    description: "Versioned drafts built from attributed evidence.",
+    description: "Drafts written from the attributed evidence.",
   },
   {
     id: "outreach",
@@ -104,7 +97,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Outreach",
     group: "pipeline",
     stage: "outreach",
-    description: "Approval, sending policy, dispatch, delivery events.",
+    description: "Approval, sending rules, dispatch, and delivery.",
   },
   {
     id: "conversations",
@@ -112,7 +105,7 @@ export const SECTIONS: SectionMeta[] = [
     label: "Conversations",
     group: "pipeline",
     stage: "converse",
-    description: "Inbound replies on the same prospect records.",
+    description: "Replies on the same prospect records.",
   },
   {
     id: "activity",
@@ -120,12 +113,20 @@ export const SECTIONS: SectionMeta[] = [
     label: "Activity",
     group: "history",
     stage: "synthesize",
-    description: "The workflow history of every record.",
+    description: "History of every record's workflow.",
+  },
+  {
+    id: "settings",
+    href: "/settings",
+    label: "Workspace Settings",
+    group: "history",
+    stage: "configure",
+    description: "Automation and workspace configuration.",
   },
 ];
 
 export const STAGE_LABELS: Record<Stage, string> = {
-  configure: "Business Profile",
+  configure: "Business Brain",
   discover: "Discovery",
   research: "Research",
   qualify: "Qualification",
@@ -425,5 +426,6 @@ export const SECTION_CANONICAL: Record<string, CanonicalSection> = {
   outreach: "outreach",
   conversations: "conversations",
   activity: "activity",
+  settings: "settings",
   contracts: "settings",
 };
