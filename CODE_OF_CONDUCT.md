@@ -53,7 +53,7 @@ reported to the project maintainer through:
 - GitHub's **private vulnerability reporting** on this repository
   (Security tab → Report a vulnerability), or
 - A private message to the maintainer on GitHub
-  ([sheikhmdnasrullahttanim](https://github.com/sheikhmdnasrullah-dotcom)).
+  ([sheikhmdnasrullah-dotcom](https://github.com/sheikhmdnasrullah-dotcom)).
 
 All complaints will be reviewed and investigated promptly and fairly. The
 maintainer will respect the privacy and security of the reporter of any

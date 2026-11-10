@@ -1,17 +1,47 @@
 # SlideIn
 
-> **An agentic system that finds prospects, captures leads, and reaches out to them.**
+> **Evidence-backed, approval-gated personalized outreach, self-hosted on infrastructure you own.**
 
-[![License: BSL 1.1](https://img.shields.io/badge/License-Business%20Source%201.1-000000?logo=bookseller)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.21%2B-00ADD8?logo=go&logoColor=white)](https://go.dev)
-[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://python.org)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
-[![KumoMTA](https://img.shields.io/badge/KumoMTA-Apache--2.0-orange)](https://github.com/KumoCorp/kumomta)
+[![CI](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/actions/workflows/ci.yml/badge.svg)](https://github.com/sheikhmdnasrullah-dotcom/SlideIn/actions/workflows/ci.yml)
+[![License: BSL 1.1](https://img.shields.io/badge/License-Business%20Source%201.1-000000)](LICENSE)
+![Status: alpha](https://img.shields.io/badge/status-alpha-orange)
 
-One self-hosted stack for the entire outbound motion: prospect research,
-lead qualification, personalized outreach, campaign management, and the
-deliverability infrastructure to land it — on a VPS and sender domains you
-own. **Beta.**
+SlideIn researches each prospect from sourced web evidence, qualifies them
+against your saved business profile, drafts personalized messages that cite
+only what the evidence supports, and sends only what a human has approved.
+It runs on a VPS and sender domains you own, and nothing phones home.
+
+**Status: alpha.** The seven-stage workflow, deliverability gate and
+dashboard exist and are tested locally. Billing, multi-customer hosting and
+inbound mailbox hosting are not built. The authoritative, dated status is
+[`docs/project/CURRENT_STATE.md`](docs/project/CURRENT_STATE.md).
+
+**License:** Business Source License 1.1. Free to self-host for one
+organization's internal use; offering it as a hosted service to third
+parties needs a separate commercial license ([details](#license)).
+
+## Why SlideIn
+
+Most outreach tools optimize for volume. SlideIn is built for senders who
+cannot afford a compliance or reputation incident.
+
+- **Approval before every send.** New instances run in dry-run with review
+  required. Nothing reaches a prospect without explicit approval in the
+  dashboard, and every gate fails closed.
+- **Personalization with provenance.** Each hook traces to approved
+  knowledge or attributed evidence. Verified facts, inferences and
+  unverified claims stay separate.
+- **Deliverability by the book.** SPF/DKIM/DMARC, warmup, list
+  verification, suppression and a circuit breaker. No header forgery and no
+  inbox-placement tricks, and contributions that add them are declined.
+- **One workflow, many industries.** Every client runs the same seven
+  stages. Industry differences live in versioned configuration and
+  knowledge, not in forks ([`docs/UNIVERSAL_FLOW.md`](docs/UNIVERSAL_FLOW.md)).
+
+**Not for you if** you want a hosted tool you sign up for today, bulk
+sending without review, or guaranteed inbox placement. Use a hosted
+sequencer for the first, and note that the last one is not something any
+honest tool can promise.
 
 ## The loop
 
@@ -110,7 +140,7 @@ configure ──▶ discover ──▶ research ──▶ qualify ──▶ pers
                                                         overview ◀── activity ◀──┘
 ```
 
-Every arrow is a declared contract (`docs/architecture/CONTRACTS.md`):
+Every arrow is a declared contract (`slidein-api/slidein_api/contracts.py`):
 required inputs, produced outputs, permitted status transitions, failure
 codes with retry behaviour, and the recovery action to surface. Nothing
 advances implicitly — `StageRunner` validates each call and records a
@@ -139,9 +169,13 @@ PostgreSQL (product + agent layer); Redis (queues/cache).
 
 Full docs: `docs/architecture/OVERVIEW.md` (as-built),
 `docs/architecture/SYSTEM_ARCHITECTURE.md` (authoritative spec),
-`docs/architecture/CONTRACTS.md` (stage contracts).
+`slidein-api/slidein_api/contracts.py` (stage contracts).
 
-## Current status (verified 2026-10-13)
+## Status detail (last verified 2026-10-13)
+
+This table is a snapshot. For the newer implementation state (2026-10-26)
+see [`docs/project/CURRENT_STATE.md`](docs/project/CURRENT_STATE.md); where
+the two differ, `CURRENT_STATE.md` wins.
 
 | Area | Status |
 |---|---|
@@ -227,12 +261,23 @@ mailbox connect is manual; installer greenfield proof pending; no
 human-approval queue yet. Debt register:
 `docs/project/TECHNICAL_DEBT.md`.
 
-## Roadmap & contributing
+## Documentation
 
-Staged plan: `ROADMAP.md`. Audit trail:
-`docs/project/PROJECT_AUDIT.md`. Decisions: `docs/decisions/`.
-Small, tested, documented PRs welcome — read `CONTRIBUTING.md` and the
-[Contributor Covenant](CODE_OF_CONDUCT.md) first.
+Start at the index: [`docs/README.md`](docs/README.md).
+
+## Project health
+
+| | |
+|---|---|
+| Roadmap | [`ROADMAP.md`](ROADMAP.md) |
+| Changelog | [`CHANGELOG.md`](CHANGELOG.md) |
+| Contributing | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| Code of conduct | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) |
+| Security policy | [`SECURITY.md`](SECURITY.md) |
+| Getting help | [`SUPPORT.md`](SUPPORT.md) |
+
+Audit trail: `docs/project/PROJECT_AUDIT.md`. Decisions: `docs/decisions/`.
+Small, tested, documented PRs welcome.
 
 ## License
 
@@ -256,10 +301,4 @@ Not built yet; status in `docs/project/CURRENT_STATE.md`.
 
 ## About
 
-The internet's most powerful client acquisition secrets, unified into one actionable framework.
-
-[www.slideinventure.com](https://www.slideinventure.com)
-
-### Topics
-
-agentic · campaign-management · docker · email-deliverability · email-verification · go · kumo-mta · lead-generation · multi-tenant · nextjs · outreach · prospecting · python · sales-automation · self-hosted · smtp
+SlideIn is built by [Slidein Venture](https://www.slideinventure.com).

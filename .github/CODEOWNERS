@@ -1,0 +1,9 @@
+# Default owner for everything. Solo-maintained project.
+*                     @sheikhmdnasrullah-dotcom
+
+# Sending behavior, compliance and security changes always need the owner.
+/deliverability/      @sheikhmdnasrullah-dotcom
+/kumomta-lab/         @sheikhmdnasrullah-dotcom
+/SECURITY.md          @sheikhmdnasrullah-dotcom
+/LICENSE              @sheikhmdnasrullah-dotcom
+/.github/             @sheikhmdnasrullah-dotcom

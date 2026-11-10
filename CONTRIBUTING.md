@@ -1,6 +1,6 @@
 # Contributing to SlideIn
 
-Thanks for your interest in contributing. This project is in **beta**:
+Thanks for your interest in contributing. This project is in **alpha**:
 small, focused contributions that improve correctness, tests, or docs are
 the most helpful right now.
 
@@ -60,7 +60,7 @@ running).
 6. **Stay in the flow.** Every feature maps onto the canonical
    seven-stage workflow: `configure → discover → research → qualify →
    personalize → outreach → converse`. Do not add, reorder, or skip stages
-   — see `docs/architecture/CONTRACTS.md`.
+   — see `slidein-api/slidein_api/contracts.py` and `docs/UNIVERSAL_FLOW.md`.
 7. **Keep it simple.** This is a modular monolith on purpose. New services or
    dependencies need a documented reason in the PR description.
 8. **One app, one shell.** The Console and Dashboard are two modes of one
